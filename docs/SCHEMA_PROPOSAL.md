@@ -839,6 +839,19 @@ schema and quietly leave a table unprotected. An earlier draft of this document
 expressed this as pseudo-code and my own attack test then read the entire
 allowlist as a non-admin — because the pseudo-code had never actually run.
 
+> ⚠️ **A policy is not a grant.** RLS decides which *rows* a role may see once
+> it already has table access; `GRANT` is what gives it that access in the first
+> place. A table with a permissive SELECT policy and no SELECT grant returns
+> `permission denied`, not rows.
+>
+> The Supabase draft of this schema got away with omitting grants because
+> Supabase ships blanket default privileges for its `authenticated` role.
+> **Neon ships none.** Deploying this to the real database with policies but no
+> grants produced `permission denied for table teams` for a signed-in user on
+> every single table — every page of the site, broken, with the security model
+> itself looking perfectly correct. Every `create policy ... to authenticated`
+> below is therefore paired with an explicit grant.
+
 ```sql
 -- Publicly readable mirror + computed tables: read for any signed-in member,
 -- written only by app_pipeline (BYPASSRLS). This loop is also where
@@ -862,10 +875,20 @@ begin
       t || '_read', t);
     execute format(
       'revoke insert, update, delete on public.%I from authenticated', t);
+    -- The grant that makes the SELECT policy above actually usable.
+    execute format('grant select on public.%I to authenticated', t);
     execute format(
       'grant select, insert, update, delete on public.%I to app_pipeline', t);
   end loop;
 end $$;
+
+-- Every policy below references auth.user_id() or is_admin() (which calls it),
+-- and an RLS policy expression is evaluated as the *querying* role -- so
+-- `authenticated` needs to be able to call it, or every policy errors instead
+-- of filtering. Neon's console grants this when RLS is enabled there; issued
+-- explicitly so applying this schema by hand is sufficient on its own.
+grant usage   on schema auth             to authenticated;
+grant execute on function auth.user_id() to authenticated;
 
 -- Admin-only. Not readable by regular members: it contains everyone's email.
 -- app_pipeline needs no grant here: only provision_profile() (SECURITY
@@ -875,15 +898,19 @@ alter table public.league_allowlist force row level security;
 create policy allowlist_admin_read on public.league_allowlist
   for select to authenticated using (public.is_admin());
 revoke insert, update, delete on public.league_allowlist from authenticated;
+-- SELECT granted, but the policy restricts it to admins -- grant opens the
+-- door, policy decides who walks through.
+grant select on public.league_allowlist to authenticated;
 
 -- Ownership snapshots are an admin feature (Step 8), gated in the DB as well as
--- the route, so a non-admin hitting PostgREST directly gets nothing.
+-- the route, so a non-admin querying it directly gets nothing.
 -- app_pipeline writes these weekly (Step 8's ownership-trend capture).
 alter table public.player_ownership_snapshots enable row level security;
 alter table public.player_ownership_snapshots force row level security;
 create policy ownership_admin_read on public.player_ownership_snapshots
   for select to authenticated using (public.is_admin());
 revoke insert, update, delete on public.player_ownership_snapshots from authenticated;
+grant select on public.player_ownership_snapshots to authenticated;
 grant select, insert, update, delete on public.player_ownership_snapshots to app_pipeline;
 
 -- profiles / predictions / comments keep their own policies from above.
@@ -892,10 +919,26 @@ alter table public.predictions       force row level security;
 alter table public.prediction_scores force row level security;
 alter table public.comments          force row level security;
 
+-- User-data grants. Each is deliberately WIDER than what a user can actually
+-- do, because the policies above are what narrow it: e.g. DELETE is granted on
+-- predictions, but predictions_delete restricts it to your own rows in an
+-- unlocked week. Grant opens the door; policy decides who walks through.
+grant select                         on public.profiles          to authenticated;
+grant update (display_name)          on public.profiles          to authenticated;
+grant select, insert, update, delete on public.predictions       to authenticated;
+grant select                         on public.prediction_scores to authenticated;
+grant select, insert, update, delete on public.comments          to authenticated;
+
+-- The view has no RLS of its own -- it reads through to predictions and
+-- profiles, whose policies apply to the querying role.
+grant select on public.prediction_leaderboard to authenticated;
+grant select on public.head_to_head           to authenticated;
+
 -- prediction_scores: app_pipeline writes these every Tuesday when the pipeline
--- scores the week's picks. No grant to authenticated at all -- users have no
--- write path to their own score under any circumstance, by design.
+-- scores the week's picks. authenticated gets SELECT only (above) -- users have
+-- no write path to their own score under any circumstance, by design.
 grant select, insert, update on public.prediction_scores to app_pipeline;
+grant select                 on public.profiles          to app_pipeline;
 ```
 
 ⚠️ **`force` without `enable` is a silent no-op.** `FORCE ROW LEVEL SECURITY`
