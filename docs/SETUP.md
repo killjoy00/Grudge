@@ -64,17 +64,30 @@ Cookies work. Reachable via: seasons
 If you get `Still 401 on every prior season`, the script prints the four likely
 causes. The usual one is a clipped `espn_s2`.
 
-Then the real run — about 3 minutes, ~150 requests, deliberately rate-limited:
+Then the real run — about 2 minutes, ~150 requests, deliberately rate-limited:
 
 ```bash
 node scripts/backfill-history.mjs
 ```
 
-It writes `data/history/{2018..2025}/` with `league.json`, 17 per-week
-`boxscores/spNN.json`, and a `manifest.json` recording which URL shape answered
-and any warnings. **Each season is staged and only promoted once every request
-for it succeeded**, so a season that fails part-way leaves nothing behind and you
-can never commit half a season. Re-running a season overwrites it wholesale.
+It writes `data/history/{2018..2025}/` with `league.json.gz`, 17 per-week
+`boxscores/spNN.json.gz`, and a plain `manifest.json` recording which URL shape
+answered and any warnings. **Each season is staged and only promoted once every
+request for it succeeded**, so a season that fails part-way leaves nothing behind
+and you can never commit half a season. Re-running a season overwrites it
+wholesale and produces byte-identical output.
+
+Expect **~1.1 MB per season, ~9 MB for all eight**. The raw payloads are stored
+minified and gzipped: pretty-printed they run ~13 MB a season, which would put
+~100 MB into git for no benefit, since these are write-once API captures nobody
+hand-edits. Content is unchanged — to read one:
+
+```bash
+gunzip -c data/history/2021/league.json.gz | jq '.teams[].name'
+```
+
+The script exits **1** if any season failed, even if others succeeded, so a
+partial run is never silently mistaken for a complete one.
 
 ```bash
 git checkout -b history-backfill
@@ -89,8 +102,9 @@ on owner SWID, and I'd rather find out from your data than guess.
 If some seasons fail, push the ones that worked. Partial history is fine; the
 schema keys everything by season.
 
-> `--no-boxscores` cuts it to ~16 requests if you just want records and matchups.
-> You'd lose historical optimal-lineup analysis. I'd take the full run.
+> `--no-boxscores` cuts it to ~16 requests if you just want records and
+> matchups, but you'd lose historical optimal-lineup analysis. I'd take the full
+> run. `--skip-probe` skips the cookie check, useful when re-running one season.
 
 ---
 

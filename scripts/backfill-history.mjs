@@ -30,6 +30,7 @@
  *   node scripts/backfill-history.mjs --from=2021 --to=2023
  *   node scripts/backfill-history.mjs --no-boxscores   # ~8x fewer requests
  *   node scripts/backfill-history.mjs --probe          # auth check only, no writes
+ *   node scripts/backfill-history.mjs --skip-probe     # skip the cookie check
  *
  * IDEMPOTENCE / ATOMICITY
  * -----------------------
@@ -37,11 +38,34 @@
  * data/history/{season} once every request for that season succeeded. A season
  * that errors part-way leaves NOTHING behind, so a partial season can never be
  * committed. Re-running overwrites a season wholesale rather than merging.
+ *
+ * OUTPUT
+ * ------
+ *   data/history/{season}/league.json.gz          all season views, one payload
+ *   data/history/{season}/boxscores/spNN.json.gz  per-week player-level scoring
+ *   data/history/{season}/manifest.json           plain: which URL shape, warnings
+ *   data/history/index.json                       plain: seasons present on disk
  */
 
 import { mkdirSync, writeFileSync, rmSync, renameSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
+
+/**
+ * Raw captures are written minified + gzipped as .json.gz.
+ *
+ * Pretty-printed JSON costs ~13 MB per season, which would put ~104 MB into git
+ * across eight seasons. Minified and gzipped it is ~1.1 MB per season (~8.6 MB
+ * total) with byte-identical content once decompressed. These files are
+ * write-once API captures that nobody hand-edits, so the readable-diff property
+ * git would otherwise give us is worth nothing here.
+ *
+ *   read one:  gunzip -c data/history/2021/league.json.gz | jq .
+ */
+function writeRaw(path, data) {
+  writeFileSync(path + '.gz', gzipSync(JSON.stringify(data), { level: 9 }));
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -64,6 +88,10 @@ const FROM = Number(opt('from', 2018));
 const TO = Number(opt('to', 2025));
 const WITH_BOXSCORES = !flag('no-boxscores');
 const PROBE_ONLY = flag('probe');
+// Skips the cookie check. Two uses: re-running a single season after a failure
+// without re-probing, and exercising this script against the public 2026 season,
+// which needs no cookies at all.
+const SKIP_PROBE = flag('skip-probe');
 
 // Views worth capturing per season. mMatchupScore rather than mMatchup: Step 1
 // showed only mMatchupScore carries playoffTierType, pointsByScoringPeriod and
@@ -281,8 +309,8 @@ async function captureSeason(season, preferredShape) {
       (manifest.warnings.length ? `  [33m(${manifest.warnings.length} warning)[0m` : '')
   );
 
-  writeFileSync(join(stage, 'league.json'), JSON.stringify(combined, null, 2));
-  manifest.views.combined = 'league.json';
+  writeRaw(join(stage, 'league.json'), combined);
+  manifest.views.combined = 'league.json.gz';
 
   // Per-week boxscores: the only source of per-player weekly points, which is
   // what optimal-vs-actual lineup history needs. Step 1 confirmed the field
@@ -300,7 +328,7 @@ async function captureSeason(season, preferredShape) {
         throw new Error(`boxscore ${season} SP${sp}: HTTP ${r.status} ${redact(r.body || '')}`);
       }
       const data = unwrap(r.json);
-      writeFileSync(join(bxDir, `sp${String(sp).padStart(2, '0')}.json`), JSON.stringify(data, null, 2));
+      writeRaw(join(bxDir, `sp${String(sp).padStart(2, '0')}.json`), data);
       manifest.boxscores[sp] = (data.schedule || []).length;
       process.stdout.write(`   boxscores: SP${sp}/${MAX_SCORING_PERIOD}\r`);
       await sleep(350);
@@ -339,10 +367,15 @@ async function main() {
   log(`League ${LEAGUE_ID} history backfill`);
   log(`Seasons ${FROM}-${TO}${WITH_BOXSCORES ? ' with' : ' without'} per-week boxscores\n`);
 
-  const preferredShape = await probeAuth();
-  if (PROBE_ONLY) {
-    log('\n--probe given, stopping before any writes.');
-    return;
+  let preferredShape = 'seasons';
+  if (SKIP_PROBE) {
+    log('--skip-probe given, going straight to capture.\n');
+  } else {
+    preferredShape = await probeAuth();
+    if (PROBE_ONLY) {
+      log('\n--probe given, stopping before any writes.');
+      return;
+    }
   }
 
   mkdirSync(STAGING, { recursive: true });
