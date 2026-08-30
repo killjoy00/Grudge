@@ -2,45 +2,87 @@
 
 Nothing in this document has been run. The SQL is here to be read and argued
 with; once you approve it I will split it into numbered files under
-`supabase/migrations/` and apply it.
+`supabase/migrations/` — kept as the folder name for now; rename if you'd rather
+call it `db/migrations/` since Supabase itself is no longer in the stack — and
+apply it.
 
 Every design choice below traces to something confirmed in
-[`exploration/FINDINGS.md`](../exploration/FINDINGS.md). Where it traces to an
-assumption instead, it says so.
+[`exploration/FINDINGS.md`](../exploration/FINDINGS.md) or, for the identity
+layer below, in Neon's and Clerk's own docs (cited inline). Where it traces to
+an assumption instead, it says so.
 
 ---
 
-## Is Supabase the right tool? Yes — with two caveats that will bite you
+## Stack: Neon (Postgres) + Clerk (auth), not Supabase
 
-You asked me to disagree if I disagreed. I don't, mostly.
+**Why the switch.** Supabase's free tier caps a *person*, not an org, at 2 active
+free projects — creating a fresh organization does not reset it, discovered when
+`killjoy00` hit that wall with two existing free projects elsewhere. Rather than
+pay $25/mo or cannibalize an existing project, we're moving to a stack with a
+free tier that doesn't collide with your other work: **Neon** for Postgres, 100
+projects and no per-org/per-person cap on the free tier
+([neon.com/faqs/free-plan-limits-and-quotas](https://neon.com/faqs/free-plan-limits-and-quotas)),
+and **Clerk** for auth, free up to 10,000 monthly active users with magic-link
+sign-in built in
+([clerk.com](https://clerk.com), per current pricing coverage).
 
-**Why it fits.** Your hardest requirement is *"users cannot write predictions for
-a locked week, enforced in the DB, not the UI."* Postgres RLS does exactly that,
-and Supabase is the option where RLS and the auth session are wired together out
-of the box — `auth.uid()` is available inside a policy with no glue code. Magic-link
-email auth is built in. 13 users and ~50 MB of season data sit inside the free tier
-with room to spare. The realistic alternative (Neon + Auth.js) means hand-wiring
-JWT claims into Postgres session variables to get the same guarantee, which is more
-code and more ways to get it wrong.
+**The hard requirement survives the swap.** *"Users cannot write predictions for
+a locked week, enforced in the DB, not the UI"* was the reason Postgres RLS was
+non-negotiable in the first place. Neon has an equivalent to Supabase's
+`auth.uid()`-in-RLS integration — **Neon RLS Authorize** — which validates a JWT
+from an external auth provider (via the `pg_session_jwt` extension) and exposes
+the authenticated user's ID to policies as **`auth.user_id()`**, confirmed from
+Neon's own docs
+([neon.com/docs/guides/rls-tutorial](https://neon.com/docs/guides/rls-tutorial)).
+Every policy below is `auth.uid()` from the original design, renamed to
+`auth.user_id()` — the security model is unchanged, only the function name is.
 
-**Caveat 1 — free-tier projects pause after 7 days of inactivity.** In-season the
-Tuesday pipeline keeps it warm. In the offseason it will pause, and the site's
-data-backed pages will start erroring until you unpause it from the dashboard.
-Not fatal, but don't be surprised in March. If that annoys you, Pro is $25/mo.
+**One real architectural difference, not just a rename.** Supabase's version of
+signup-gating was a trigger on Postgres's own `auth.users` table, which doesn't
+exist here — Clerk owns user identity outside Postgres entirely. Two consequences,
+both improvements once you see them:
 
-**Caveat 2 — Supabase's built-in email is not usable for what you want.** The
-bundled SMTP is rate-limited to a handful of messages per hour and is explicitly
-"for development only". You need it for two things: magic links (bursty — 10 people
-logging in Sunday morning) and the Tuesday newsletter. **Both need custom SMTP.**
-This is the single most common thing that breaks projects shaped like this one, so
-it's in the setup steps as a required item, not an optional one. Resend's free tier
-(3,000/month) covers you comfortably.
+1. **The allowlist gate moves up a layer, and gets simpler.** Clerk has a native
+   dashboard toggle — Sign-up & Sign-in → Restrictions → Allowlist — that blocks
+   sign-in for any email not on the list, before Postgres is ever touched
+   ([clerk.com/docs/authentication/allowlist](https://clerk.com/docs/authentication/allowlist)).
+   No trigger, no function, no SQL at all for this part. You'll add the 13
+   emails there, not in a table `INSERT`.
+2. **Profile provisioning becomes a webhook, not a trigger.** Postgres has no way
+   to know a Clerk signup happened unless something tells it. The standard pattern
+   is a Clerk webhook (`user.created`) hitting a Next.js API route, which looks up
+   the email in `league_allowlist` and upserts the `profiles` row — logically the
+   same as the old trigger, just living in application code instead of the
+   database. I have **not written that webhook handler yet** — it's Step 5/6
+   scope (it needs the Next.js app to exist), flagged here so the schema below
+   accounts for it (`profiles.id` is a Clerk user ID, not a Postgres-generated
+   one, and carries no Postgres-enforced foreign key to anything, since the
+   "users" table now lives outside this database).
 
-**Vercel: also yes.** Next.js App Router is Vercel's own framework; ISR for the
-static pages, server components for the user-state pages, preview deploys per PR.
-Hobby tier is fine for a league site. Its cron is limited to daily on Hobby, which
-doesn't matter — your pipeline is on GitHub Actions anyway. `grudge.planitnow.us`
-is a CNAME; steps are in `SETUP.md`.
+**What I have NOT verified yet, because it needs live accounts, not docs:** the
+exact `pg_session_jwt` extension setup and JWKS registration steps, how a
+Next.js server component actually opens a database connection carrying the
+Clerk-issued JWT so `auth.user_id()` resolves correctly, and `auth.user_id()`'s
+precise return type (assumed `text` below, matching Clerk's string-shaped user
+IDs like `user_2abc...` — if it turns out to return something else, every
+comparison against `profiles.id` needs a matching cast, a small fix). Docs
+describe the Drizzle-ORM path in most detail; raw-SQL / plain `pg` usage is
+less documented.
+**I'd like to verify this against a real Neon + Clerk project before finalizing
+SETUP.md** the way I verified the Supabase RLS design against a real local
+Postgres — same discipline, just needs your accounts created first. The security
+*model* below is proven with a local attack suite either way (see §RLS attack
+suite); what's unverified is purely the provisioning mechanics.
+
+**Caveat carried over — custom SMTP is still required, just for one thing now.**
+Clerk sends its own magic-link emails, so that's covered. You still need Resend
+(or similar) for the Tuesday newsletter, since that's not an auth email at all —
+covered in `SETUP.md`.
+
+**Vercel: still yes**, unaffected by this change. Next.js App Router is Vercel's
+own framework; ISR for the static pages, server components for the user-state
+pages, preview deploys per PR. `grudge.planitnow.us` is a CNAME; steps are in
+`SETUP.md`.
 
 The one thing I'd push back on is *scope*: playoff odds, power rankings, luck
 index, optimal lineup, and a Monte Carlo are five separate modelling features, and
@@ -56,14 +98,37 @@ Three groups of tables, distinguished by **who writes them**:
 
 | group | writer | reader | RLS posture |
 |---|---|---|---|
-| ESPN mirror | pipeline (service role) | everyone | read-only to users; no write policies at all |
-| Computed features | pipeline (service role) | everyone | same |
+| ESPN mirror | pipeline (`app_pipeline` role) | everyone | read-only to users; no write policies at all |
+| Computed features | pipeline (`app_pipeline` role) | everyone | same |
 | User data | the user who owns the row | everyone (with rules) | ownership + lock enforced in policy |
 
-The service role bypasses RLS by design — that is how the pipeline writes. The
-consequence is that **the service-role key is the whole security model**, so it
-lives only in GitHub Actions secrets and server-only Next.js code, never in
-anything prefixed `NEXT_PUBLIC_`.
+**No Supabase-style "service role" exists on plain Postgres — this is standard
+Postgres role-based access instead, which is arguably simpler.** The pipeline
+connects as a dedicated role, `app_pipeline`, created with `BYPASSRLS`:
+
+```sql
+create role app_pipeline with login password '<set via Neon dashboard, not here>' bypassrls;
+```
+
+`BYPASSRLS` skips every RLS policy for that role — that is how the pipeline
+writes the ESPN mirror and computed-feature tables despite their having no
+write policies for anyone else. The consequence is the same one Supabase's
+service-role key carried: **`app_pipeline`'s password is the whole security
+model for those tables**, so its connection string lives only in GitHub Actions
+secrets and server-only Next.js code, never in anything prefixed `NEXT_PUBLIC_`.
+
+The role is created here, at the top, because this is where it's easiest to
+explain — but the actual `grant all on all tables ... to app_pipeline` **has
+to run after every table below exists**, not here: a blanket grant only
+reaches tables that already exist at the moment it runs, and none of this
+document's tables have been created yet at this point in the file. It's
+issued once, for real, in §"Read-only posture" near the end, alongside the
+other statements that are similarly order-dependent on every table existing
+first. If these get split into numbered migration files, `app_pipeline`'s
+`CREATE ROLE` can go in an early file; its table grant belongs in the last one.
+It is a Neon connection string, not a JWT — the pipeline talks to Postgres
+directly and never goes through Clerk or Neon RLS Authorize at all, since it
+isn't acting as any particular league member.
 
 **Every ESPN table carries `season`.** History imported from 2018-2025 lands in
 the *same* tables as 2026. Cross-season rivalry records then become an ordinary
@@ -464,7 +529,17 @@ since no matchup in that season ever gets a real winner.
 
 ## C. User data — and the lock
 
-### The allowlist is the gate
+### The allowlist is two gates now, not one
+
+**Gate 1 — Clerk itself, no SQL.** Sign-up & Sign-in → Restrictions → Allowlist
+in the Clerk dashboard, 13 emails added there. An email not on that list is
+refused at sign-in and never reaches this database at all — a stronger fail-closed
+than the Supabase version, since there's no window where an unauthorized row
+could even be attempted.
+
+**Gate 2 — this table, which supplies the ESPN-team/admin mapping Clerk has no
+concept of.** `league_allowlist` is still needed, just no longer the thing doing
+the blocking:
 
 ```sql
 create extension if not exists citext;
@@ -480,7 +555,9 @@ create table public.league_allowlist (
 );
 
 create table public.profiles (
-  id            uuid primary key references auth.users(id) on delete cascade,
+  -- Clerk's user ID (e.g. "user_2abc..."), NOT a Postgres-generated uuid.
+  -- No FK possible: the users table this would reference lives in Clerk, not here.
+  id            text primary key,
   email         citext unique not null,
   espn_swid     text,
   -- DELIBERATELY NOT UNIQUE: teams 1, 5 and 10 have two owners each.
@@ -492,34 +569,55 @@ create table public.profiles (
 );
 ```
 
-Signup is gated by a trigger on `auth.users`, which fails closed — an email not on
-the allowlist cannot create an account even if someone hits the auth API directly:
+Provisioning moves from a Postgres trigger to a function a webhook calls, because
+Postgres has no `INSERT INTO auth.users` event to hook here — Clerk fires a
+`user.created` webhook to a Next.js API route instead. **The route itself is
+Step 5/6 work, not written yet** (it needs the app to exist); what belongs in
+the schema now is the function it will call, kept `security definer` and
+allowlist-checked so the fail-closed behavior doesn't depend on the webhook
+handler getting the check right:
 
 ```sql
-create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public, auth as $$
+create or replace function public.provision_profile(
+  p_clerk_user_id text, p_email citext, p_display_name text default null
+) returns public.profiles
+language plpgsql security definer set search_path = public as $$
 declare a public.league_allowlist%rowtype;
+declare result public.profiles;
 begin
-  select * into a from public.league_allowlist where email = lower(new.email);
+  select * into a from public.league_allowlist where email = lower(p_email);
   if not found then
-    raise exception 'Email % is not on the league allowlist', new.email
+    raise exception 'Email % is not on the league allowlist', p_email
       using errcode = '42501';
   end if;
   insert into public.profiles (id, email, espn_swid, espn_team_id, is_admin, display_name)
-  values (new.id, lower(new.email), a.espn_swid, a.espn_team_id, a.is_admin,
-          coalesce(new.raw_user_meta_data->>'name', split_part(new.email,'@',1)));
-  update public.league_allowlist set claimed_at = now() where email = lower(new.email);
-  return new;
+  values (p_clerk_user_id, lower(p_email), a.espn_swid, a.espn_team_id, a.is_admin,
+          coalesce(p_display_name, split_part(p_email,'@',1)))
+  on conflict (id) do update set email = excluded.email
+  returning * into result;
+  update public.league_allowlist set claimed_at = now() where email = lower(p_email);
+  return result;
 end $$;
 
-create trigger on_auth_user_created
-  after insert on auth.users for each row execute function public.handle_new_user();
+-- Only the webhook handler's server-side credential may call this -- it must
+-- never be reachable from a browser session, since it writes is_admin.
+-- Reuses app_pipeline: both it and the webhook handler are trusted backend
+-- code, never a specific end user, so one "trusted backend" role covers both
+-- rather than adding a second role for a single function grant.
+revoke all on function public.provision_profile from public, authenticated;
+grant execute on function public.provision_profile to app_pipeline;
 ```
 
 This also answers *"after login, users pick or are assigned their ESPN team"* —
 the allowlist row carries the team, so the profile is provisioned correctly on
 first login with nothing to pick. (If you'd rather people self-select, drop
 `espn_team_id` from the allowlist and I'll add a one-time claim flow instead.)
+
+Belt-and-suspenders worth noting: since Clerk's own allowlist (Gate 1) already
+blocks a non-member from ever obtaining a valid session, `provision_profile`'s
+own allowlist check is defense in depth, not the only thing standing between a
+stranger and a profile row — unlike the Supabase design, where the DB trigger
+*was* the only gate.
 
 ### Privilege escalation — the hole worth naming
 
@@ -534,7 +632,7 @@ create policy profiles_select on public.profiles
   for select to authenticated using (true);
 
 create policy profiles_update on public.profiles for update to authenticated
-  using (auth.uid() = id) with check (auth.uid() = id);
+  using (auth.user_id() = id) with check (auth.user_id() = id);
 ```
 
 That satisfies "users write only their own rows" *and still lets any user set
@@ -548,14 +646,21 @@ revoke update on public.profiles from authenticated;
 grant update (display_name) on public.profiles to authenticated;
 
 -- 2. trigger, in case a future grant is widened by accident.
--- auth.uid() is null for the service role, so the pipeline is unaffected.
+-- Guarded on auth.user_id() being null so a non-Clerk-authenticated connection
+-- (app_pipeline, or provision_profile()'s own SECURITY DEFINER context) is not
+-- blocked by this check. UNVERIFIED: whether auth.user_id() actually returns
+-- null (vs. erroring) on a connection with no Clerk JWT attached is Neon RLS
+-- Authorize behavior I have not confirmed against a live project yet -- see the
+-- stack-choice note at the top of this document. Low real-world risk either
+-- way: app_pipeline never writes to profiles in this design; only
+-- provision_profile() and the user's own display_name update do.
 -- SECURITY DEFINER is load-bearing: without it the function runs as the calling
 -- role, and a role lacking USAGE on schema auth makes the trigger ERROR rather
 -- than block cleanly. Caught by the T7 attack test.
 create or replace function public.prevent_profile_escalation()
 returns trigger language plpgsql security definer set search_path = public, auth as $$
 begin
-  if auth.uid() is not null and (
+  if auth.user_id() is not null and (
        new.is_admin     is distinct from old.is_admin
     or new.espn_team_id is distinct from old.espn_team_id
     or new.espn_swid    is distinct from old.espn_swid
@@ -575,7 +680,7 @@ create trigger profiles_no_escalation
 ```sql
 create or replace function public.is_admin()
 returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
+  select coalesce((select is_admin from public.profiles where id = auth.user_id()), false);
 $$;
 
 -- Returns TRUE (locked) when the week is unknown. An unknown week must never be
@@ -594,7 +699,7 @@ $$;
 ```sql
 create table public.predictions (
   id           uuid primary key default gen_random_uuid(),
-  user_id      uuid not null references public.profiles(id) on delete cascade,
+  user_id      text not null references public.profiles(id) on delete cascade,
   season       int  not null,
   week         int  not null,
   espn_matchup_id int not null,
@@ -629,7 +734,7 @@ create trigger predictions_validate_team
 ```
 
 **The lock, enforced twice.** RLS is the primary gate. The trigger is defence in
-depth — it also catches a service-role mistake, which RLS by definition cannot,
+depth — it also catches an app_pipeline mistake, which RLS by definition cannot,
 and the pipeline never writes this table so it costs nothing:
 
 ```sql
@@ -638,17 +743,22 @@ alter table public.predictions enable row level security;
 -- Own picks always visible; everyone else's only once the week locks, so nobody
 -- can copy picks before kickoff.
 create policy predictions_select on public.predictions for select to authenticated
-  using (auth.uid() = user_id or public.week_is_locked(season, week));
+  using (auth.user_id() = user_id or public.week_is_locked(season, week));
 
 create policy predictions_insert on public.predictions for insert to authenticated
-  with check (auth.uid() = user_id and not public.week_is_locked(season, week));
+  with check (auth.user_id() = user_id and not public.week_is_locked(season, week));
 
 create policy predictions_update on public.predictions for update to authenticated
-  using      (auth.uid() = user_id and not public.week_is_locked(season, week))
-  with check (auth.uid() = user_id and not public.week_is_locked(season, week));
+  using      (auth.user_id() = user_id and not public.week_is_locked(season, week))
+  with check (auth.user_id() = user_id and not public.week_is_locked(season, week));
 
 create policy predictions_delete on public.predictions for delete to authenticated
-  using (auth.uid() = user_id and not public.week_is_locked(season, week));
+  using (auth.user_id() = user_id and not public.week_is_locked(season, week));
+
+-- Read-only for app_pipeline: it needs to see who picked what in order to
+-- score the week on Tuesday, but (as noted at prediction_scores below) never
+-- writes this table directly.
+grant select on public.predictions to app_pipeline;
 
 create or replace function public.enforce_prediction_lock()
 returns trigger language plpgsql security definer set search_path = public as $$
@@ -678,7 +788,7 @@ create table public.prediction_scores (
 alter table public.prediction_scores enable row level security;
 create policy prediction_scores_select on public.prediction_scores
   for select to authenticated using (true);
--- no insert/update/delete policies: service role only.
+-- no insert/update/delete policies: app_pipeline (BYPASSRLS) only.
 
 create view public.prediction_leaderboard as
 select p.user_id, pr.display_name, p.season,
@@ -700,7 +810,7 @@ Soft-deleted so a deleted parent doesn't orphan its replies.
 ```sql
 create table public.comments (
   id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references public.profiles(id) on delete cascade,
+  user_id    text not null references public.profiles(id) on delete cascade,
   season     int not null,
   week       int not null,
   parent_id  uuid references public.comments(id) on delete cascade,
@@ -715,11 +825,11 @@ create index comments_thread on public.comments (season, week, created_at);
 alter table public.comments enable row level security;
 create policy comments_select on public.comments for select to authenticated using (true);
 create policy comments_insert on public.comments for insert to authenticated
-  with check (auth.uid() = user_id);
+  with check (auth.user_id() = user_id);
 create policy comments_update on public.comments for update to authenticated
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (auth.user_id() = user_id) with check (auth.user_id() = user_id);
 create policy comments_delete on public.comments for delete to authenticated
-  using (auth.uid() = user_id or public.is_admin());
+  using (auth.user_id() = user_id or public.is_admin());
 ```
 
 ### Read-only posture for every mirror + computed table
@@ -731,7 +841,11 @@ allowlist as a non-admin — because the pseudo-code had never actually run.
 
 ```sql
 -- Publicly readable mirror + computed tables: read for any signed-in member,
--- no write policies at all, so the service role is the only writer.
+-- written only by app_pipeline (BYPASSRLS). This loop is also where
+-- app_pipeline's table grant actually needs to run -- see the note in
+-- "Shape of the design": a blanket grant issued before these tables existed
+-- would reach nothing, so it's issued here, per table, right after each one
+-- is confirmed to exist.
 do $$
 declare t text;
 begin
@@ -748,10 +862,14 @@ begin
       t || '_read', t);
     execute format(
       'revoke insert, update, delete on public.%I from authenticated', t);
+    execute format(
+      'grant select, insert, update, delete on public.%I to app_pipeline', t);
   end loop;
 end $$;
 
 -- Admin-only. Not readable by regular members: it contains everyone's email.
+-- app_pipeline needs no grant here: only provision_profile() (SECURITY
+-- DEFINER, runs as the function owner) reads this table, never a direct query.
 alter table public.league_allowlist enable row level security;
 alter table public.league_allowlist force row level security;
 create policy allowlist_admin_read on public.league_allowlist
@@ -760,17 +878,24 @@ revoke insert, update, delete on public.league_allowlist from authenticated;
 
 -- Ownership snapshots are an admin feature (Step 8), gated in the DB as well as
 -- the route, so a non-admin hitting PostgREST directly gets nothing.
+-- app_pipeline writes these weekly (Step 8's ownership-trend capture).
 alter table public.player_ownership_snapshots enable row level security;
 alter table public.player_ownership_snapshots force row level security;
 create policy ownership_admin_read on public.player_ownership_snapshots
   for select to authenticated using (public.is_admin());
 revoke insert, update, delete on public.player_ownership_snapshots from authenticated;
+grant select, insert, update, delete on public.player_ownership_snapshots to app_pipeline;
 
 -- profiles / predictions / comments keep their own policies from above.
 -- ENABLE and FORCE are different things and both are needed -- see the warning.
 alter table public.predictions       force row level security;
 alter table public.prediction_scores force row level security;
 alter table public.comments          force row level security;
+
+-- prediction_scores: app_pipeline writes these every Tuesday when the pipeline
+-- scores the week's picks. No grant to authenticated at all -- users have no
+-- write path to their own score under any circumstance, by design.
+grant select, insert, update on public.prediction_scores to app_pipeline;
 ```
 
 ⚠️ **`force` without `enable` is a silent no-op.** `FORCE ROW LEVEL SECURITY`

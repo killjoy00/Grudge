@@ -108,91 +108,80 @@ schema keys everything by season.
 
 ---
 
-## Task 2 — Supabase project (~15 minutes)
+## Task 2 — Neon + Clerk project (~15 minutes)
 
-Do this now; it unblocks the schema.
+**Changed from Supabase.** Supabase's free tier turned out to cap you personally
+at 2 active free projects across every org you administer — a fresh org doesn't
+reset it, confirmed by the error Supabase's own dashboard gave when you tried.
+Neon (Postgres) + Clerk (auth) has no such collision with your other projects,
+and Neon has an equivalent RLS-to-auth integration (Neon RLS Authorize) that
+keeps the "locked week enforced in the DB" guarantee intact — full reasoning
+in `docs/SCHEMA_PROPOSAL.md`.
 
-### 2a. Create the project
+**Heads up before you start:** I've verified the security *model* against a
+real local Postgres (24/24 attack-suite checks passing), but not yet the exact
+account-setup mechanics below — Neon and Clerk's docs don't fully cover
+raw-SQL / non-Drizzle usage. Steps 2a-2c are safe to do now; **hold off on
+inviting the other 12 members until I've confirmed the Next.js-to-Neon wiring
+against your actual project** — I'll follow up once that's verified rather
+than have you redo an invite flow.
 
-1. <https://supabase.com/dashboard> → **New project**.
-2. Name `grudge`, region **East US (North Virginia)** — closest to Vercel's
-   default `iad1`, which keeps server-component queries fast.
-3. Generate a database password and **put it in your password manager now.** It
-   is shown once and you need it for direct `psql`/migration access.
-4. Free plan. Wait ~2 minutes for provisioning.
+### 2a. Create the Neon project
 
-### 2b. Collect four values
+1. <https://console.neon.tech> → **New project**.
+2. Name `grudge`, region closest to Vercel's default `iad1` (US East) for
+   fast server-component queries.
+3. Free plan — 100 projects per account, so this doesn't compete with anything
+   else you have. Wait ~30 seconds for provisioning.
+4. **Dashboard → Connection Details** → copy the pooled connection string →
+   save as `DATABASE_URL`. This is the *admin* connection (used to run
+   migrations), not `app_pipeline`'s — you'll create that role via migration,
+   with its own generated password, once I write the migration files.
 
-**Settings → API**:
-- **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-- **`anon` / public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY` (safe in the browser;
-  it is powerless without a session because every table has RLS)
-- **`service_role` key** → `SUPABASE_SERVICE_ROLE_KEY`
+### 2b. Create the Clerk application
 
-> ⚠️ The service-role key **bypasses RLS entirely**. It is the whole security
-> model. It goes in GitHub Actions secrets and server-only Next.js code. It must
-> never appear in a `NEXT_PUBLIC_*` variable, a client component, or a commit. If
-> it ever leaks, rotate it in Settings → API immediately.
+1. <https://dashboard.clerk.com> → **Create application**. Name it `Grudge`.
+2. **Email** as the only sign-in option — toggle off phone number and
+   username; toggle off password ("Email verification code" or "Email magic
+   link" only). Pick **magic link** specifically, not just a code, to match
+   what was asked for.
+3. **API Keys** page → copy the **Publishable key** (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`)
+   and **Secret key** (`CLERK_SECRET_KEY`).
 
-**Settings → Database → Connection string → URI** → `SUPABASE_DB_URL`
-(substitute the password from 2a). I'll use this to apply migrations.
+### 2c. Turn on the allowlist — but don't add emails yet
 
-Put them in `.env.local` (already gitignored):
+**Configure → Restrictions → Allowlist** → toggle **Enable allowlist**. Leave
+the identifier list empty for now (an enabled allowlist with zero entries
+blocks everyone, which is the correct fail-closed state until I've verified
+the provisioning webhook). I'll tell you exactly when to add the 13 emails —
+right after I confirm a signup actually reaches Postgres correctly.
 
-```bash
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbG...
-SUPABASE_DB_URL=postgresql://postgres:...@db.xxxxxxxx.supabase.co:5432/postgres
-```
+### 2d. Custom SMTP for the newsletter only
 
-### 2c. Configure auth for magic links
-
-**Authentication → Providers**: enable **Email**, and turn **"Confirm email"
-ON** and **password auth OFF** — magic link only.
-
-**Authentication → URL Configuration**:
-- Site URL: `https://grudge.planitnow.us`
-- Redirect URLs — add all three:
-  ```
-  https://grudge.planitnow.us/**
-  https://*.vercel.app/**
-  http://localhost:3000/**
-  ```
-
-### 2d. Custom SMTP — required, not optional
-
-Supabase's built-in email sender is capped at a few messages per hour and is
-documented as development-only. With 13 people logging in around Sunday kickoff
-you will hit that cap and magic links will silently stop arriving. It also can't
-send your Tuesday newsletter.
+Clerk sends its own magic-link emails, so auth email is already covered — this
+step is *only* for the Tuesday recap, which isn't an auth email at all.
 
 1. <https://resend.com> → sign up (free tier: 3,000 emails/month).
 2. **Domains → Add Domain** → `planitnow.us`. Add the DKIM/SPF records it gives
    you to your DNS. Wait for **Verified**.
 3. **API Keys** → create one → save as `RESEND_API_KEY`.
-4. Back in Supabase: **Project Settings → Authentication → SMTP Settings** →
-   **Enable Custom SMTP**:
 
-   | field | value |
-   |---|---|
-   | Host | `smtp.resend.com` |
-   | Port | `465` |
-   | Username | `resend` |
-   | Password | your `RESEND_API_KEY` |
-   | Sender email | `grudge@planitnow.us` |
-   | Sender name | `UNC Grudge Match` |
+Nothing to verify yet — the newsletter isn't built until Step 5/6.
 
-5. **Authentication → Rate Limits** → raise "Emails per hour" to 30.
+Put everything from this task in `.env.local` (already gitignored):
 
-Verify: **Authentication → Users → Invite user**, send yourself one, confirm it
-arrives from `grudge@planitnow.us`. If it lands in spam, your DKIM/SPF isn't
-fully propagated yet.
+```bash
+DATABASE_URL=postgresql://neondb_owner:...@ep-xxxx.us-east-1.aws.neon.tech/grudge?sslmode=require
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+RESEND_API_KEY=re_...
+```
 
-### 2e. Send me the allowlist
+### 2e. Send me the allowlist (don't add it to Clerk yet — see the note above)
 
-The last thing blocking the schema. 13 rows — I have the SWIDs and names from
-Step 1, so I only need email and team:
+I need 13 rows — I have the SWIDs and names from Step 1, so email and team is
+enough. This feeds two places once verified: Clerk's own allowlist (2c) and
+the `league_allowlist` table `provision_profile()` reads from:
 
 ```
 email,espn_team_id,is_admin
@@ -226,13 +215,13 @@ Note there is **no team 7**, and three teams have two owners — so 13 emails fo
 
 | secret | from |
 |---|---|
-| `SUPABASE_URL` | 2b Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | 2b service_role key |
+| `PIPELINE_DATABASE_URL` | `app_pipeline`'s connection string — generated when I write the migration that creates that role (not yet); until then, `DATABASE_URL` from 2a works for local testing only |
 | `RESEND_API_KEY` | 2d |
 | `VERCEL_DEPLOY_HOOK_URL` | Task 4c |
 
 No ESPN cookies here — the weekly pipeline is unauthenticated by design, which is
-the main reason the backfill is a separate one-time script.
+the main reason the backfill is a separate one-time script. No Clerk secret here
+either — the pipeline talks to Postgres directly and never touches Clerk.
 
 ---
 
@@ -245,13 +234,17 @@ Nothing to do yet; here so you can see the shape.
 Next.js → **don't deploy yet**, add env vars first.
 
 ### 4b. Environment variables
-**Settings → Environment Variables**, all three environments:
+**Settings → Environment Variables**, all three environments. The Clerk keys
+are confirmed from Task 2; the exact variable Next.js needs for the
+authenticated-user DB connection (versus `DATABASE_URL`) is one of the two
+things I'm still verifying — see the note at the top of Task 2 — so treat this
+table as likely-but-not-final until I confirm it against your live project:
 
 | name | scope |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Production, Preview, Development |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Production, Preview, Development |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Production only** |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Production, Preview, Development |
+| `CLERK_SECRET_KEY` | Production, Preview, Development |
+| `DATABASE_URL` | Production, Preview, Development *(unverified — may need to be a different, RLS-Authorize-aware connection string; see Task 2 note)* |
 | `RESEND_API_KEY` | Production only |
 
 ### 4c. Deploy hook
@@ -267,7 +260,8 @@ Type: CNAME    Name: grudge    Value: cname.vercel-dns.com
 ```
 
 TLS is issued automatically once DNS resolves — usually minutes, up to an hour.
-Then go back to **2c** and confirm the Supabase Site URL matches.
+Then go back to **Clerk → Configure → Domains** and add it there too, so magic
+links point at the right place.
 
 ---
 
@@ -275,9 +269,9 @@ Then go back to **2c** and confirm the Supabase Site URL matches.
 
 | value | laptop `.env.local` | GitHub secret | Vercel | browser |
 |---|:--:|:--:|:--:|:--:|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | — | ✅ | ✅ |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | — | ✅ | ✅ |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | ✅ | ✅ prod only | ❌ **never** |
-| `SUPABASE_DB_URL` | ✅ | — | — | ❌ |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ✅ | — | ✅ | ✅ (that's what "publishable" means) |
+| `CLERK_SECRET_KEY` | ✅ | — | ✅ | ❌ **never** |
+| `DATABASE_URL` (admin/migrations) | ✅ | — | — | ❌ |
+| `PIPELINE_DATABASE_URL` (`app_pipeline`) | — | ✅ | — | ❌ **never** — bypasses RLS entirely |
 | `RESEND_API_KEY` | ✅ | ✅ | ✅ prod only | ❌ |
 | `ESPN_SWID` / `ESPN_S2` | ✅ backfill only | ❌ **never** | ❌ | ❌ |

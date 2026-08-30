@@ -1,6 +1,16 @@
--- Supabase's default grants to `authenticated`, then the proposal's lockdown on
--- top. Order matters: the blanket grant must come first so the revokes have
--- something to take away, exactly as in a real Supabase project.
+-- Baseline grants a Neon project would carry for the `authenticated` role,
+-- then the proposal's lockdown on top. Order matters: the blanket grant must
+-- come first so the revokes have something to take away.
+--
+-- Note on redundancy: the schema's own read-only tables (seasons, teams,
+-- matchups, etc.) already have RLS FORCEd with no INSERT/UPDATE/DELETE policy
+-- at all, so even though this blanket grant re-adds the SQL-level privilege
+-- after schema.sql's own revokes ran, Postgres still denies the write --
+-- absent any applicable policy, RLS's default for a command is deny. The
+-- actual enforcement is RLS having no write policy, not this GRANT dance.
+-- The GRANT dance is what matters on `profiles`, where an UPDATE policy DOES
+-- exist and RLS has no per-column granularity -- there, the column-level
+-- GRANT is the only thing stopping a full-row update.
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
