@@ -1,0 +1,49 @@
+[view] mTeam: HTTP 200 38991B 317ms
+   top-level keys: draftDetail, gameId, id, members, scoringPeriodId, seasonId, segmentId, status, teams
+[view] mRoster: HTTP 200 1084122B 150ms
+   top-level keys: draftDetail, gameId, id, scoringPeriodId, seasonId, segmentId, status, teams
+[view] mMatchup: HTTP 200 532623B 173ms
+   top-level keys: draftDetail, gameId, id, schedule, scoringPeriodId, seasonId, segmentId, status, teams
+[view] mMatchupScore: HTTP 200 231060B 113ms
+   top-level keys: draftDetail, gameId, id, schedule, scoringPeriodId, seasonId, segmentId, status
+[view] mStandings: HTTP 200 13531B 85ms
+   top-level keys: draftDetail, gameId, id, schedule, scoringPeriodId, seasonId, segmentId, status, teams
+[view] mSettings: HTTP 200 7531B 54ms
+   top-level keys: draftDetail, gameId, id, scoringPeriodId, seasonId, segmentId, settings, status
+[view] mTransactions2: HTTP 200 67759B 67ms
+   top-level keys: draftDetail, gameId, id, scoringPeriodId, seasonId, segmentId, status, transactions
+[variant] mMatchup_sp1: HTTP 200 532623B
+   top-level keys: draftDetail, gameId, id, schedule, scoringPeriodId, seasonId, segmentId, status, teams
+[variant] mMatchupScore_sp1: HTTP 200 231060B
+   top-level keys: draftDetail, gameId, id, schedule, scoringPeriodId, seasonId, segmentId, status
+[variant] mRoster_sp1: HTTP 200 1084122B
+   top-level keys: draftDetail, gameId, id, scoringPeriodId, seasonId, segmentId, status, teams
+[variant] mBoxscore_sp1: HTTP 200 242818B
+   top-level keys: draftDetail, gameId, id, schedule, scoringPeriodId, seasonId, segmentId, settings, status, teams
+[variant] mTransactions2_sp1: HTTP 200 67759B
+   top-level keys: draftDetail, gameId, id, scoringPeriodId, seasonId, segmentId, status, transactions
+[variant] multiview: HTTP 200 1463470B
+   top-level keys: draftDetail, gameId, id, members, schedule, scoringPeriodId, seasonId, segmentId, settings, status, teams
+[variant] no_view: HTTP 200 2381B
+   top-level keys: gameId, id, members, scoringPeriodId, seasonId, segmentId, settings, status, teams
+[variant] mPendingTransactions: HTTP 200 751B
+   top-level keys: draftDetail, gameId, id, pendingTransactions, scoringPeriodId, seasonId, segmentId, status
+[variant] mNav: HTTP 200 5428B
+   top-level keys: draftDetail, gameId, id, members, scoringPeriodId, seasonId, segmentId, settings, status, teams
+[history] 2012: HTTP 404 150B -> empty
+[history] 2013: HTTP 404 150B -> empty
+[history] 2014: HTTP 404 150B -> empty
+[history] 2015: HTTP 404 150B -> empty
+[history] 2016: HTTP 404 150B -> empty
+[history] 2017: HTTP 404 150B -> empty
+[history] 2018: HTTP 404 150B -> empty
+[history] 2019: HTTP 404 150B -> empty
+[history] 2020: HTTP 404 150B -> empty
+[history] 2021: HTTP 404 150B -> empty
+[history] 2022: HTTP 404 150B -> empty
+[history] 2023: HTTP 404 150B -> empty
+[history] 2024: HTTP 404 150B -> empty
+[history] 2025: HTTP 404 150B -> empty
+[history] 2026: HTTP 404 150B -> empty
+[history] seasons with data: NONE
+[kona] kona_player_info: HTTP 200 146652B

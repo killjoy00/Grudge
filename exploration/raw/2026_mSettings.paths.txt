@@ -1,0 +1,211 @@
+<root>  ::  object  (n=1)
+draftDetail  ::  object  (n=1)
+draftDetail.drafted  ::  boolean  (n=1)  e.g. true
+draftDetail.inProgress  ::  boolean  (n=1)  e.g. false
+gameId  ::  number  (n=1)  e.g. 1
+id  ::  number  (n=1)  e.g. 114052
+scoringPeriodId  ::  number  (n=1)  e.g. 1
+seasonId  ::  number  (n=1)  e.g. 2026
+segmentId  ::  number  (n=1)  e.g. 0
+settings  ::  object  (n=1)
+settings.acquisitionSettings  ::  object  (n=1)
+settings.acquisitionSettings.acquisitionBudget  ::  number  (n=1)  e.g. 100
+settings.acquisitionSettings.acquisitionLimit  ::  number  (n=1)  e.g. -1
+settings.acquisitionSettings.acquisitionType  ::  string  (n=1)  e.g. "WAIVERS_TRADITIONAL"
+settings.acquisitionSettings.finalPlaceTransactionEligible  ::  number  (n=1)  e.g. 0
+settings.acquisitionSettings.isUsingAcquisitionBudget  ::  boolean  (n=1)  e.g. true
+settings.acquisitionSettings.matchupAcquisitionLimit  ::  number  (n=1)  e.g. 0
+settings.acquisitionSettings.matchupLimitPerScoringPeriod  ::  boolean  (n=1)  e.g. false
+settings.acquisitionSettings.minimumBid  ::  number  (n=1)  e.g. 0
+settings.acquisitionSettings.transactionLockingEnabled  ::  boolean  (n=1)  e.g. false
+settings.acquisitionSettings.waiverHours  ::  number  (n=1)  e.g. 48
+settings.acquisitionSettings.waiverOrderReset  ::  boolean  (n=1)  e.g. true
+settings.acquisitionSettings.waiverProcessDays  ::  array(len=0)  (n=1)
+settings.acquisitionSettings.waiverProcessHour  ::  number  (n=1)  e.g. 3
+settings.draftSettings  ::  object  (n=1)
+settings.draftSettings.auctionBudget  ::  number  (n=1)  e.g. 200
+settings.draftSettings.availableDate  ::  number  (n=1)  e.g. 1788046200000
+settings.draftSettings.date  ::  number  (n=1)  e.g. 1788049800000
+settings.draftSettings.isTradingEnabled  ::  boolean  (n=1)  e.g. true
+settings.draftSettings.keeperCount  ::  number  (n=1)  e.g. 0
+settings.draftSettings.keeperCountFuture  ::  number  (n=1)  e.g. 0
+settings.draftSettings.keeperOrderType  ::  string  (n=1)  e.g. "TRADITIONAL"
+settings.draftSettings.leagueSubType  ::  string  (n=1)  e.g. "NONE"
+settings.draftSettings.orderType  ::  string  (n=1)  e.g. "MANUAL"
+settings.draftSettings.pickOrder  ::  array(len=10)  (n=1)
+settings.draftSettings.pickOrder[]  ::  number  (n=10)  e.g. 10, 11, 9, 5, 2, 4
+settings.draftSettings.timePerSelection  ::  number  (n=1)  e.g. 90
+settings.draftSettings.type  ::  string  (n=1)  e.g. "SNAKE"
+settings.financeSettings  ::  object  (n=1)
+settings.financeSettings.entryFee  ::  number  (n=1)  e.g. 0
+settings.financeSettings.miscFee  ::  number  (n=1)  e.g. 0
+settings.financeSettings.perLoss  ::  number  (n=1)  e.g. 0
+settings.financeSettings.perTrade  ::  number  (n=1)  e.g. 0
+settings.financeSettings.playerAcquisition  ::  number  (n=1)  e.g. 0
+settings.financeSettings.playerDrop  ::  number  (n=1)  e.g. 0
+settings.financeSettings.playerMoveToActive  ::  number  (n=1)  e.g. 0
+settings.financeSettings.playerMoveToIR  ::  number  (n=1)  e.g. 0
+settings.isAutoReactivate  ::  boolean  (n=1)  e.g. false
+settings.isCustomizable  ::  boolean  (n=1)  e.g. true
+settings.isPublic  ::  boolean  (n=1)  e.g. true
+settings.name  ::  string  (n=1)  e.g. "UNC Grudge Match"
+settings.restrictionType  ::  string  (n=1)  e.g. "NONE"
+settings.rosterSettings  ::  object  (n=1)
+settings.rosterSettings.autoPilotTypeSupported  ::  string  (n=1)  e.g. "NONE"
+settings.rosterSettings.isBenchUnlimited  ::  boolean  (n=1)  e.g. true
+settings.rosterSettings.isUsingUndroppableList  ::  boolean  (n=1)  e.g. false
+settings.rosterSettings.lineupLocktimeType  ::  string  (n=1)  e.g. "INDIVIDUAL_GAME"
+settings.rosterSettings.lineupSlotCounts  ::  object  (n=1)
+settings.rosterSettings.lineupSlotCounts.0  ::  number  (n=1)  e.g. 1
+settings.rosterSettings.lineupSlotCounts.1  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.10  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.11  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.12  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.13  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.14  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.15  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.16  ::  number  (n=1)  e.g. 1
+settings.rosterSettings.lineupSlotCounts.17  ::  number  (n=1)  e.g. 1
+settings.rosterSettings.lineupSlotCounts.18  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.19  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.2  ::  number  (n=1)  e.g. 2
+settings.rosterSettings.lineupSlotCounts.20  ::  number  (n=1)  e.g. 6
+settings.rosterSettings.lineupSlotCounts.21  ::  number  (n=1)  e.g. 2
+settings.rosterSettings.lineupSlotCounts.22  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.23  ::  number  (n=1)  e.g. 1
+settings.rosterSettings.lineupSlotCounts.24  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.3  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.4  ::  number  (n=1)  e.g. 2
+settings.rosterSettings.lineupSlotCounts.5  ::  number  (n=1)  e.g. 1
+settings.rosterSettings.lineupSlotCounts.6  ::  number  (n=1)  e.g. 1
+settings.rosterSettings.lineupSlotCounts.7  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.8  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotCounts.9  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.lineupSlotStatLimits  ::  object  (n=1)
+settings.rosterSettings.moveLimit  ::  number  (n=1)  e.g. -1
+settings.rosterSettings.positionLimits  ::  object  (n=1)
+settings.rosterSettings.positionLimits.0  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.1  ::  number  (n=1)  e.g. -1
+settings.rosterSettings.positionLimits.10  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.11  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.12  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.13  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.14  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.15  ::  number  (n=1)  e.g. -1
+settings.rosterSettings.positionLimits.16  ::  number  (n=1)  e.g. 3
+settings.rosterSettings.positionLimits.17  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.2  ::  number  (n=1)  e.g. -1
+settings.rosterSettings.positionLimits.3  ::  number  (n=1)  e.g. -1
+settings.rosterSettings.positionLimits.4  ::  number  (n=1)  e.g. -1
+settings.rosterSettings.positionLimits.5  ::  number  (n=1)  e.g. 3
+settings.rosterSettings.positionLimits.6  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.7  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.8  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.positionLimits.9  ::  number  (n=1)  e.g. 0
+settings.rosterSettings.rosterLocktimeType  ::  string  (n=1)  e.g. "INDIVIDUAL_GAME"
+settings.rosterSettings.universeIds  ::  array(len=1)  (n=1)
+settings.rosterSettings.universeIds[]  ::  number  (n=1)  e.g. 0
+settings.scheduleSettings  ::  object  (n=1)
+settings.scheduleSettings.consolationLadderDisabled  ::  boolean  (n=1)  e.g. false
+settings.scheduleSettings.divisions  ::  array(len=1)  (n=1)
+settings.scheduleSettings.divisions[]  ::  object  (n=1)
+settings.scheduleSettings.divisions[].id  ::  number  (n=1)  e.g. 0
+settings.scheduleSettings.divisions[].name  ::  string  (n=1)  e.g. "Tar Heel"
+settings.scheduleSettings.divisions[].size  ::  number  (n=1)  e.g. 10
+settings.scheduleSettings.matchupPeriodCount  ::  number  (n=1)  e.g. 14
+settings.scheduleSettings.matchupPeriodLength  ::  number  (n=1)  e.g. 1
+settings.scheduleSettings.matchupPeriods  ::  object  (n=1)
+settings.scheduleSettings.matchupPeriods.1  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.10  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.10[]  ::  number  (n=1)  e.g. 10
+settings.scheduleSettings.matchupPeriods.11  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.11[]  ::  number  (n=1)  e.g. 11
+settings.scheduleSettings.matchupPeriods.12  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.12[]  ::  number  (n=1)  e.g. 12
+settings.scheduleSettings.matchupPeriods.13  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.13[]  ::  number  (n=1)  e.g. 13
+settings.scheduleSettings.matchupPeriods.14  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.14[]  ::  number  (n=1)  e.g. 14
+settings.scheduleSettings.matchupPeriods.15  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.15[]  ::  number  (n=1)  e.g. 15
+settings.scheduleSettings.matchupPeriods.16  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.16[]  ::  number  (n=1)  e.g. 16
+settings.scheduleSettings.matchupPeriods.17  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.17[]  ::  number  (n=1)  e.g. 17
+settings.scheduleSettings.matchupPeriods.1[]  ::  number  (n=1)  e.g. 1
+settings.scheduleSettings.matchupPeriods.2  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.2[]  ::  number  (n=1)  e.g. 2
+settings.scheduleSettings.matchupPeriods.3  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.3[]  ::  number  (n=1)  e.g. 3
+settings.scheduleSettings.matchupPeriods.4  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.4[]  ::  number  (n=1)  e.g. 4
+settings.scheduleSettings.matchupPeriods.5  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.5[]  ::  number  (n=1)  e.g. 5
+settings.scheduleSettings.matchupPeriods.6  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.6[]  ::  number  (n=1)  e.g. 6
+settings.scheduleSettings.matchupPeriods.7  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.7[]  ::  number  (n=1)  e.g. 7
+settings.scheduleSettings.matchupPeriods.8  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.8[]  ::  number  (n=1)  e.g. 8
+settings.scheduleSettings.matchupPeriods.9  ::  array(len=1)  (n=1)
+settings.scheduleSettings.matchupPeriods.9[]  ::  number  (n=1)  e.g. 9
+settings.scheduleSettings.periodTypeId  ::  number  (n=1)  e.g. 1
+settings.scheduleSettings.playoffMatchupPeriodLength  ::  number  (n=1)  e.g. 1
+settings.scheduleSettings.playoffReseed  ::  boolean  (n=1)  e.g. false
+settings.scheduleSettings.playoffSeedingRule  ::  string  (n=1)  e.g. "TOTAL_POINTS_SCORED"
+settings.scheduleSettings.playoffSeedingRuleBy  ::  number  (n=1)  e.g. 0
+settings.scheduleSettings.playoffTeamCount  ::  number  (n=1)  e.g. 6
+settings.scheduleSettings.variablePlayoffMatchupPeriodLength  ::  boolean  (n=1)  e.g. false
+settings.scoringSettings  ::  object  (n=1)
+settings.scoringSettings.allowOutOfPositionScoring  ::  boolean  (n=1)  e.g. false
+settings.scoringSettings.homeTeamBonus  ::  number  (n=1)  e.g. 0
+settings.scoringSettings.matchupTieRule  ::  string  (n=1)  e.g. "SLOT_POINTS"
+settings.scoringSettings.matchupTieRuleBy  ::  number  (n=1)  e.g. 20
+settings.scoringSettings.playerRankType  ::  string  (n=1)  e.g. "STANDARD"
+settings.scoringSettings.playoffHomeTeamBonus  ::  number  (n=1)  e.g. 0
+settings.scoringSettings.playoffMatchupTieRule  ::  string  (n=1)  e.g. "NONE"
+settings.scoringSettings.playoffMatchupTieRuleBy  ::  number  (n=1)  e.g. 0
+settings.scoringSettings.scoringItems  ::  array(len=40)  (n=1)
+settings.scoringSettings.scoringItems[]  ::  object  (n=25)
+settings.scoringSettings.scoringItems[].isReverseItem  ::  boolean  (n=25)  e.g. false
+settings.scoringSettings.scoringItems[].leagueRanking  ::  number  (n=25)  e.g. 0
+settings.scoringSettings.scoringItems[].leagueTotal  ::  number  (n=25)  e.g. 0
+settings.scoringSettings.scoringItems[].points  ::  number  (n=25)  e.g. 0, 1, 6, -1, -2, -3
+settings.scoringSettings.scoringItems[].pointsOverrides  ::  object  (n=16)
+settings.scoringSettings.scoringItems[].pointsOverrides.1  ::  number  (n=4)  e.g. 1, 6, 0.5, 0.1
+settings.scoringSettings.scoringItems[].pointsOverrides.15  ::  number  (n=4)  e.g. 1, 6, 0.5, 0.1
+settings.scoringSettings.scoringItems[].pointsOverrides.16  ::  number  (n=12)  e.g. -1, 4, 6, 5, 2, -10
+settings.scoringSettings.scoringItems[].pointsOverrides.2  ::  number  (n=4)  e.g. 1, 6, 0.5, 0.1
+settings.scoringSettings.scoringItems[].pointsOverrides.3  ::  number  (n=4)  e.g. 1, 6, 0.5, 0.1
+settings.scoringSettings.scoringItems[].pointsOverrides.4  ::  number  (n=4)  e.g. 1, 6, 0.1
+settings.scoringSettings.scoringItems[].statId  ::  number  (n=25)  e.g. 45, 122, 91, 43, 15, 53
+settings.scoringSettings.scoringType  ::  string  (n=1)  e.g. "H2H_POINTS"
+settings.size  ::  number  (n=1)  e.g. 10
+settings.tradeSettings  ::  object  (n=1)
+settings.tradeSettings.allowOutOfUniverse  ::  boolean  (n=1)  e.g. false
+settings.tradeSettings.deadlineDate  ::  number  (n=1)  e.g. 1796371200000
+settings.tradeSettings.max  ::  number  (n=1)  e.g. -1
+settings.tradeSettings.revisionHours  ::  number  (n=1)  e.g. 24
+settings.tradeSettings.vetoVotesRequired  ::  number  (n=1)  e.g. 6
+status  ::  object  (n=1)
+status.activatedDate  ::  number  (n=1)  e.g. 1782782021240
+status.createdAsLeagueType  ::  number  (n=1)  e.g. 0
+status.currentLeagueType  ::  number  (n=1)  e.g. 0
+status.currentMatchupPeriod  ::  number  (n=1)  e.g. 1
+status.finalScoringPeriod  ::  number  (n=1)  e.g. 17
+status.firstScoringPeriod  ::  number  (n=1)  e.g. 1
+status.isActive  ::  boolean  (n=1)  e.g. true
+status.isExpired  ::  boolean  (n=1)  e.g. false
+status.isFull  ::  boolean  (n=1)  e.g. true
+status.isPlayoffMatchupEdited  ::  boolean  (n=1)  e.g. false
+status.isToBeDeleted  ::  boolean  (n=1)  e.g. false
+status.isViewable  ::  boolean  (n=1)  e.g. true
+status.isWaiverOrderEdited  ::  boolean  (n=1)  e.g. false
+status.latestScoringPeriod  ::  number  (n=1)  e.g. 1
+status.previousSeasons  ::  array(len=21)  (n=1)
+status.previousSeasons[]  ::  number  (n=21)  e.g. 2005, 2006, 2007, 2008, 2009, 2010
+status.standingsUpdateDate  ::  number  (n=1)  e.g. 1788053973781
+status.teamsJoined  ::  number  (n=1)  e.g. 10
+status.transactionScoringPeriod  ::  number  (n=1)  e.g. 1
+status.waiverLastExecutionDate  ::  number  (n=1)  e.g. 1788073427884
+status.waiverProcessStatus  ::  object  (n=1)

@@ -1,0 +1,258 @@
+[
+  {
+    "label": "mTeam",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mTeam",
+    "status": 200,
+    "ms": 317,
+    "bytes": 38991,
+    "ok": true
+  },
+  {
+    "label": "mRoster",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mRoster",
+    "status": 200,
+    "ms": 150,
+    "bytes": 1084122,
+    "ok": true
+  },
+  {
+    "label": "mMatchup",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mMatchup",
+    "status": 200,
+    "ms": 173,
+    "bytes": 532623,
+    "ok": true
+  },
+  {
+    "label": "mMatchupScore",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mMatchupScore",
+    "status": 200,
+    "ms": 113,
+    "bytes": 231060,
+    "ok": true
+  },
+  {
+    "label": "mStandings",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mStandings",
+    "status": 200,
+    "ms": 85,
+    "bytes": 13531,
+    "ok": true
+  },
+  {
+    "label": "mSettings",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mSettings",
+    "status": 200,
+    "ms": 54,
+    "bytes": 7531,
+    "ok": true
+  },
+  {
+    "label": "mTransactions2",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mTransactions2",
+    "status": 200,
+    "ms": 67,
+    "bytes": 67759,
+    "ok": true
+  },
+  {
+    "label": "mMatchup_sp1",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mMatchup&scoringPeriodId=1",
+    "status": 200,
+    "ms": 114,
+    "bytes": 532623,
+    "ok": true
+  },
+  {
+    "label": "mMatchupScore_sp1",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mMatchupScore&scoringPeriodId=1",
+    "status": 200,
+    "ms": 102,
+    "bytes": 231060,
+    "ok": true
+  },
+  {
+    "label": "mRoster_sp1",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mRoster&scoringPeriodId=1",
+    "status": 200,
+    "ms": 130,
+    "bytes": 1084122,
+    "ok": true
+  },
+  {
+    "label": "mBoxscore_sp1",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mBoxscore&scoringPeriodId=1",
+    "status": 200,
+    "ms": 116,
+    "bytes": 242818,
+    "ok": true
+  },
+  {
+    "label": "mTransactions2_sp1",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mTransactions2&scoringPeriodId=1",
+    "status": 200,
+    "ms": 66,
+    "bytes": 67759,
+    "ok": true
+  },
+  {
+    "label": "multiview",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mTeam&view=mRoster&view=mMatchup&view=mSettings&view=mStandings",
+    "status": 200,
+    "ms": 118,
+    "bytes": 1463470,
+    "ok": true
+  },
+  {
+    "label": "no_view",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052",
+    "status": 200,
+    "ms": 381,
+    "bytes": 2381,
+    "ok": true
+  },
+  {
+    "label": "mPendingTransactions",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mPendingTransactions",
+    "status": 200,
+    "ms": 388,
+    "bytes": 751,
+    "ok": true
+  },
+  {
+    "label": "mNav",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=mNav",
+    "status": 200,
+    "ms": 751,
+    "bytes": 5428,
+    "ok": true
+  },
+  {
+    "label": "history_2012",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2012&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 58,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2013",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2013&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 61,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2014",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2014&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 58,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2015",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2015&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 58,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2016",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2016&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 58,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2017",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2017&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 57,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2018",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2018&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 61,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2019",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2019&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 66,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2020",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2020&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 62,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2021",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2021&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 73,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2022",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2022&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 63,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2023",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2023&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 70,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2024",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2024&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 245,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2025",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2025&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 109,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "history_2026",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/114052?seasonId=2026&view=mTeam&view=mSettings",
+    "status": 404,
+    "ms": 60,
+    "bytes": 150,
+    "ok": false
+  },
+  {
+    "label": "kona_player_info",
+    "url": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052?view=kona_player_info",
+    "status": 200,
+    "ms": 138,
+    "bytes": 146652,
+    "ok": true
+  }
+]
