@@ -288,6 +288,31 @@ of 2018–2025 into `/data`, committed as history. That keeps the weekly pipelin
 unauthenticated and public, with the cookies never stored in CI. Your call — I have
 not built anything toward this either way.
 
+**Update, post-backfill:** the above was executed. `scripts/backfill-history.mjs`
+captured all 8 seasons (2018–2025) into `data/history/`, authenticated. Two things
+worth recording that weren't knowable before real data existed:
+
+- **ESPN reuses team IDs consistently for this league.** All 10 `espn_team_id`s map
+  to the same franchise name and the same `primaryOwner` SWID across every season
+  2018–2025 and the live 2026 season. `head_to_head` can safely join on
+  `espn_team_id` — no fallback to owner-SWID needed, resolving the open question
+  in `docs/SCHEMA_PROPOSAL.md`.
+- **Pre-2018 seasons are unreachable even authenticated.** The 2020 payload's
+  `status.previousSeasons` field lists `[2005..2019]`, suggesting 21 seasons of
+  history — but probing `/seasons/{2005,2008,2011,2014,2016,2017}/.../114052`
+  with valid owner cookies returned **404 for all of them**, the same as
+  unauthenticated. `previousSeasons` looks like a stale/carried-over marker on
+  ESPN's side, not a working index. **2018 is the real floor**; there is no
+  further history to recover from this API, authenticated or not.
+- One captured season needs a flag: **2020's payload looks like an empty shell**
+  — `currentMatchupPeriod: 1`, `latestScoringPeriod: 0`, every team's record and
+  points at zero, all matchups `UNDECIDED`, despite `activatedDate` reading
+  2021-02-04 (well after the 2020 NFL season ended). ESPN is returning something
+  that was never finalized or was reset, not the played-out season. It's stored
+  as captured, with a warning in its `manifest.json`, but **should not be trusted
+  for 2020 standings or head-to-head** until/unless a differently-shaped request
+  is found that returns real 2020 results.
+
 ---
 
 ## Where I am still guessing
