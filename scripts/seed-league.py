@@ -72,10 +72,12 @@ values (2026, {sid}, {cnt}, {starter}, {q(labels.get(sid))})
 on conflict (season, lineup_slot_id) do update set
  slot_count=excluded.slot_count, is_starter=excluded.is_starter;""")
 
-# Supplied by the league admin. THREE MEMBERS STILL HAVE NO EMAIL:
-# Ryan Mindell (team 1), byron lafleur (team 1), Jason Campbell (team 10).
-# No is_admin is set yet -- pending confirmation of who administers the site.
+# Supplied by the league admin. Two co-owners are deliberately deferred and
+# have no email yet: byron lafleur (team 1) and Jason Campbell (team 10).
+# Their teams are already reachable via the other co-owner, so nobody is
+# locked out of a team by the omission.
 ALLOWLIST = [
+    ('ryanmindell@gmail.com',   1,  True),   # league admin
     ('sammynye@gmail.com',      6,  False),
     ('bwildfire@gmail.com',     5,  False),
     ('jwildfire@gmail.com',     5,  False),
