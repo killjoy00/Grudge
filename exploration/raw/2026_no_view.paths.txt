@@ -1,0 +1,23 @@
+<root>  ::  object  (n=1)
+gameId  ::  number  (n=1)  e.g. 1
+id  ::  number  (n=1)  e.g. 114052
+members  ::  array(len=13)  (n=1)
+members[]  ::  object  (n=13)
+members[].displayName  ::  string  (n=13)  e.g. "Killjoy00", "TWildfir", "Garycamero", "ncstatered", "sam835", "Jopocalypse"
+members[].id  ::  string  (n=13)  e.g. "{164FA15F-6CCC-4240-8ED4-940DC77B6F1A}", "{231A183A-FC2C-11D1-9B26-00A0C9862BBB}", "{263AC2DB-973C-437A-9AD6-639EA82FE087}", "{29F94359-438E-4D04-8E73-1C1D7352365D}", "{35509590-1CD7-40F0-9580-6E08008E8F07}", "{4000AA98-F983-11D3-820C-00A0C9E58E2D}"
+members[].isLeagueManager  ::  boolean  (n=13)  e.g. false
+scoringPeriodId  ::  number  (n=1)  e.g. 1
+seasonId  ::  number  (n=1)  e.g. 2026
+segmentId  ::  number  (n=1)  e.g. 0
+settings  ::  object  (n=1)
+settings.name  ::  string  (n=1)  e.g. "UNC Grudge Match"
+status  ::  object  (n=1)
+status.currentMatchupPeriod  ::  number  (n=1)  e.g. 1
+status.isActive  ::  boolean  (n=1)  e.g. true
+status.latestScoringPeriod  ::  number  (n=1)  e.g. 1
+teams  ::  array(len=10)  (n=1)
+teams[]  ::  object  (n=10)
+teams[].abbrev  ::  string  (n=10)  e.g. "NYs", "HANN", "8008", "PNG", "PHPB", "PRNN"
+teams[].id  ::  number  (n=10)  e.g. 1, 2, 3, 4, 5, 6
+teams[].owners  ::  array(len=2)|array(len=1)  (n=10)
+teams[].owners[]  ::  string  (n=13)  e.g. "{164FA15F-6CCC-4240-8ED4-940DC77B6F1A}", "{E35025E4-F300-48D8-9AF1-EEE1911BFD65}", "{6F8679F7-317A-4DFC-98F4-65FB661DF63E}", "{4000AA98-F983-11D3-820C-00A0C9E58E2D}", "{FCD720A2-C400-4A6A-A063-4AFCD4A994C8}", "{C14C41B3-F4B1-11D1-9B25-00A0C9862BBB}"

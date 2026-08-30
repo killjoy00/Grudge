@@ -1,0 +1,157 @@
+{
+  "gameId": 1,
+  "id": 114052,
+  "members": [
+    {
+      "displayName": "Killjoy00",
+      "id": "{164FA15F-6CCC-4240-8ED4-940DC77B6F1A}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "TWildfir",
+      "id": "{231A183A-FC2C-11D1-9B26-00A0C9862BBB}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "Garycamero",
+      "id": "{263AC2DB-973C-437A-9AD6-639EA82FE087}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "ncstatered",
+      "id": "{29F94359-438E-4D04-8E73-1C1D7352365D}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "sam835",
+      "id": "{35509590-1CD7-40F0-9580-6E08008E8F07}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "Jopocalypse",
+      "id": "{4000AA98-F983-11D3-820C-00A0C9E58E2D}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "killernate123",
+      "id": "{6F8679F7-317A-4DFC-98F4-65FB661DF63E}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "johnrey80",
+      "id": "{B2B18A17-9284-492C-93E0-B6A5E65FC5AB}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "lidboy",
+      "id": "{C14C41B3-F4B1-11D1-9B25-00A0C9862BBB}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "DownThat40",
+      "id": "{C8AA1E68-6333-4545-9A17-1E6B65305BAB}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "lafleur_81",
+      "id": "{E35025E4-F300-48D8-9AF1-EEE1911BFD65}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "thecrisper",
+      "id": "{E866765C-A1B5-11D2-9B36-00A0C9862BBB}",
+      "isLeagueManager": false
+    },
+    {
+      "displayName": "UNCPenguin",
+      "id": "{FCD720A2-C400-4A6A-A063-4AFCD4A994C8}",
+      "isLeagueManager": false
+    }
+  ],
+  "scoringPeriodId": 1,
+  "seasonId": 2026,
+  "segmentId": 0,
+  "settings": {
+    "name": "UNC Grudge Match"
+  },
+  "status": {
+    "currentMatchupPeriod": 1,
+    "isActive": true,
+    "latestScoringPeriod": 1
+  },
+  "teams": [
+    {
+      "abbrev": "NYs",
+      "id": 1,
+      "owners": [
+        "{164FA15F-6CCC-4240-8ED4-940DC77B6F1A}",
+        "{E35025E4-F300-48D8-9AF1-EEE1911BFD65}"
+      ]
+    },
+    {
+      "abbrev": "HANN",
+      "id": 2,
+      "owners": [
+        "{6F8679F7-317A-4DFC-98F4-65FB661DF63E}"
+      ]
+    },
+    {
+      "abbrev": "8008",
+      "id": 3,
+      "owners": [
+        "{4000AA98-F983-11D3-820C-00A0C9E58E2D}"
+      ]
+    },
+    {
+      "abbrev": "PNG",
+      "id": 4,
+      "owners": [
+        "{FCD720A2-C400-4A6A-A063-4AFCD4A994C8}"
+      ]
+    },
+    {
+      "abbrev": "PHPB",
+      "id": 5,
+      "owners": [
+        "{C14C41B3-F4B1-11D1-9B25-00A0C9862BBB}",
+        "{231A183A-FC2C-11D1-9B26-00A0C9862BBB}"
+      ]
+    },
+    {
+      "abbrev": "PRNN",
+      "id": 6,
+      "owners": [
+        "{35509590-1CD7-40F0-9580-6E08008E8F07}"
+      ]
+    },
+    {
+      "abbrev": "Yups",
+      "id": 8,
+      "owners": [
+        "{E866765C-A1B5-11D2-9B36-00A0C9862BBB}"
+      ]
+    },
+    {
+      "abbrev": "JAM",
+      "id": 9,
+      "owners": [
+        "{B2B18A17-9284-492C-93E0-B6A5E65FC5AB}"
+      ]
+    },
+    {
+      "abbrev": "CTE",
+      "id": 10,
+      "owners": [
+        "{29F94359-438E-4D04-8E73-1C1D7352365D}",
+        "{C8AA1E68-6333-4545-9A17-1E6B65305BAB}"
+      ]
+    },
+    {
+      "abbrev": "Gary",
+      "id": 11,
+      "owners": [
+        "{263AC2DB-973C-437A-9AD6-639EA82FE087}"
+      ]
+    }
+  ]
+}

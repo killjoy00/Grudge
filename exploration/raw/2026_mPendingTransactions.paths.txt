@@ -1,0 +1,32 @@
+<root>  ::  object  (n=1)
+draftDetail  ::  object  (n=1)
+draftDetail.drafted  ::  boolean  (n=1)  e.g. true
+draftDetail.inProgress  ::  boolean  (n=1)  e.g. false
+gameId  ::  number  (n=1)  e.g. 1
+id  ::  number  (n=1)  e.g. 114052
+pendingTransactions  ::  array(len=0)  (n=1)
+scoringPeriodId  ::  number  (n=1)  e.g. 1
+seasonId  ::  number  (n=1)  e.g. 2026
+segmentId  ::  number  (n=1)  e.g. 0
+status  ::  object  (n=1)
+status.activatedDate  ::  number  (n=1)  e.g. 1782782021240
+status.createdAsLeagueType  ::  number  (n=1)  e.g. 0
+status.currentLeagueType  ::  number  (n=1)  e.g. 0
+status.currentMatchupPeriod  ::  number  (n=1)  e.g. 1
+status.finalScoringPeriod  ::  number  (n=1)  e.g. 17
+status.firstScoringPeriod  ::  number  (n=1)  e.g. 1
+status.isActive  ::  boolean  (n=1)  e.g. true
+status.isExpired  ::  boolean  (n=1)  e.g. false
+status.isFull  ::  boolean  (n=1)  e.g. true
+status.isPlayoffMatchupEdited  ::  boolean  (n=1)  e.g. false
+status.isToBeDeleted  ::  boolean  (n=1)  e.g. false
+status.isViewable  ::  boolean  (n=1)  e.g. true
+status.isWaiverOrderEdited  ::  boolean  (n=1)  e.g. false
+status.latestScoringPeriod  ::  number  (n=1)  e.g. 1
+status.previousSeasons  ::  array(len=21)  (n=1)
+status.previousSeasons[]  ::  number  (n=21)  e.g. 2005, 2006, 2007, 2008, 2009, 2010
+status.standingsUpdateDate  ::  number  (n=1)  e.g. 1788053973781
+status.teamsJoined  ::  number  (n=1)  e.g. 10
+status.transactionScoringPeriod  ::  number  (n=1)  e.g. 1
+status.waiverLastExecutionDate  ::  number  (n=1)  e.g. 1788073427884
+status.waiverProcessStatus  ::  object  (n=1)
