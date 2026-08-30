@@ -1017,6 +1017,12 @@ grant select, insert, update, delete on public.comments          to authenticate
 grant select on public.prediction_leaderboard to authenticated, app_user;
 grant select on public.head_to_head           to authenticated, app_user;
 
+-- Sequence grants. transaction_items uses bigserial, so INSERT needs USAGE on
+-- its sequence as well as on the table -- a table grant alone yields
+-- "permission denied for sequence". Caught only when the first season
+-- carrying transactions was loaded; the historical seasons have none.
+grant usage, select on all sequences in schema public to app_pipeline;
+
 -- prediction_scores: app_pipeline writes these every Tuesday when the pipeline
 -- scores the week's picks. authenticated gets SELECT only (above) -- users have
 -- no write path to their own score under any circumstance, by design.
