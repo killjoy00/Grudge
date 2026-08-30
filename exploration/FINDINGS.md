@@ -304,14 +304,14 @@ worth recording that weren't knowable before real data existed:
   unauthenticated. `previousSeasons` looks like a stale/carried-over marker on
   ESPN's side, not a working index. **2018 is the real floor**; there is no
   further history to recover from this API, authenticated or not.
-- One captured season needs a flag: **2020's payload looks like an empty shell**
-  — `currentMatchupPeriod: 1`, `latestScoringPeriod: 0`, every team's record and
-  points at zero, all matchups `UNDECIDED`, despite `activatedDate` reading
-  2021-02-04 (well after the 2020 NFL season ended). ESPN is returning something
-  that was never finalized or was reset, not the played-out season. It's stored
-  as captured, with a warning in its `manifest.json`, but **should not be trusted
-  for 2020 standings or head-to-head** until/unless a differently-shaped request
-  is found that returns real 2020 results.
+- **Confirmed by the league admin: the league did not play a 2020 season** —
+  explains the empty-shell payload (`currentMatchupPeriod: 1`,
+  `latestScoringPeriod: 0`, every record and score at zero, all matchups
+  `UNDECIDED`). This isn't a capture bug or a request-shape problem; ESPN kept
+  the league's 2020 slot allocated but nothing was ever played into it. Data is
+  captured as-is for completeness. `season = 2020` should simply be excluded
+  from standings, head-to-head, and any weekly feature — no fix needed, since
+  there's nothing to fix.
 
 ---
 

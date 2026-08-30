@@ -26,6 +26,6 @@
     "17": 65
   },
   "warnings": [
-    "schedule present but no matchup has a winner -- season may be unplayed"
+    "League did not play a 2020 season (confirmed by league admin). Season shell exists in ESPN but was never populated -- all scores, records, and matchup winners are zero/UNDECIDED because no games were played, not due to a capture error. Exclude season=2020 from standings, head-to-head, and any weekly feature."
   ]
 }

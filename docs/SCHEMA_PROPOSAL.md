@@ -452,12 +452,13 @@ against the history backfill (`data/history/2018-2025`): all 10 team IDs map to
 the same franchise name and the same `primaryOwner` SWID in every season 2018-2025
 plus the live 2026 season. The join as written is correct.
 
-One caveat the same data surfaced: **2020's captured payload looks unfinalized**
-(`currentMatchupPeriod: 1`, every team's record and points at zero, no matchup
-decided) despite the season having clearly been played in the real world. It's
-in `data/history/2020` with a warning in its `manifest.json`. This view should
-either exclude `season = 2020` or we find a request shape that returns 2020's
-real results — flagging rather than deciding, since I haven't looked for one yet.
+One thing this view must exclude: **the league didn't play a 2020 season**
+(confirmed by the league admin). `data/history/2020` is captured as an empty
+shell — every score and record at zero, no matchup decided — because that's
+what ESPN actually has for it, not a fetch error. `head_to_head`, and every
+other seasonal aggregate, should filter `season <> 2020` or simply rely on
+`weeks.results_complete` never going true for it, which happens automatically
+since no matchup in that season ever gets a real winner.
 
 ---
 
@@ -805,6 +806,6 @@ psql session running as the owner cannot quietly bypass every policy above.
   from the projected-weekly rows' shape, not observed.
 - ~~Whether ESPN reuses team IDs across seasons~~ — **resolved**, see §head_to_head
   above. Yes, consistently, for all 10 teams across all 8 imported seasons.
-- **New from the backfill:** `data/history/2020` looks unfinalized (zero scores,
-  no decided matchups) despite the season having been played. Not yet
-  root-caused — see `exploration/FINDINGS.md` §9.
+- ~~`data/history/2020` looks unfinalized~~ — **resolved**: the league simply
+  didn't play in 2020, confirmed by the league admin. Exclude that season from
+  every aggregate.
