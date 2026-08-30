@@ -28,14 +28,20 @@ sign-in built in
 
 **The hard requirement survives the swap.** *"Users cannot write predictions for
 a locked week, enforced in the DB, not the UI"* was the reason Postgres RLS was
-non-negotiable in the first place. Neon has an equivalent to Supabase's
-`auth.uid()`-in-RLS integration — **Neon RLS Authorize** — which validates a JWT
-from an external auth provider (via the `pg_session_jwt` extension) and exposes
-the authenticated user's ID to policies as **`auth.user_id()`**, confirmed from
-Neon's own docs
-([neon.com/docs/guides/rls-tutorial](https://neon.com/docs/guides/rls-tutorial)).
-Every policy below is `auth.uid()` from the original design, renamed to
-`auth.user_id()` — the security model is unchanged, only the function name is.
+non-negotiable in the first place. That is unchanged: the policies are the same
+ones the Supabase draft had, and the lock is still enforced by
+`week_is_locked()` inside both an RLS policy and a trigger.
+
+What did change is **how a policy learns who the caller is**. The original plan
+was Neon RLS Authorize — Neon validates a Clerk JWT via the `pg_session_jwt`
+extension and exposes the subject as `auth.user_id()`. That extension is real
+and installed, and `auth.user_id()` does return `text` as assumed. But **Neon's
+Data API rejects every Clerk token with `jwk not found`**, including tokens whose
+`kid` provably matches the key its own configured JWKS URL serves. See
+§`app.current_user_id()` for the full diagnosis. So policies now call
+`app.current_user_id()`, which prefers a per-request session setting written by
+the server and falls back to `auth.user_id()` — if Neon ever fixes the Data API,
+that path starts working with no schema change.
 
 **One real architectural difference, not just a rename.** Supabase's version of
 signup-gating was a trigger on Postgres's own `auth.users` table, which doesn't
@@ -59,20 +65,14 @@ both improvements once you see them:
    one, and carries no Postgres-enforced foreign key to anything, since the
    "users" table now lives outside this database).
 
-**What I have NOT verified yet, because it needs live accounts, not docs:** the
-exact `pg_session_jwt` extension setup and JWKS registration steps, how a
-Next.js server component actually opens a database connection carrying the
-Clerk-issued JWT so `auth.user_id()` resolves correctly, and `auth.user_id()`'s
-precise return type (assumed `text` below, matching Clerk's string-shaped user
-IDs like `user_2abc...` — if it turns out to return something else, every
-comparison against `profiles.id` needs a matching cast, a small fix). Docs
-describe the Drizzle-ORM path in most detail; raw-SQL / plain `pg` usage is
-less documented.
-**I'd like to verify this against a real Neon + Clerk project before finalizing
-SETUP.md** the way I verified the Supabase RLS design against a real local
-Postgres — same discipline, just needs your accounts created first. The security
-*model* below is proven with a local attack suite either way (see §RLS attack
-suite); what's unverified is purely the provisioning mechanics.
+**Verified against the live project**, not just docs: `pg_session_jwt` 0.5.0 is
+installed and `auth.user_id()` returns `text`, matching Clerk's string user IDs;
+Clerk mints session JWTs carrying the expected `sub`; the whole schema applies
+cleanly to Neon (Postgres 18.6); and as `authenticated` the database reads the
+public mirror tables, returns zero rows of `league_allowlist`, and refuses a
+prediction insert. What does **not** work is Neon's Data API accepting a Clerk
+JWT — diagnosed at length in §`app.current_user_id()`, and routed around rather
+than assumed away.
 
 **Caveat carried over — custom SMTP is still required, just for one thing now.**
 Clerk sends its own magic-link emails, so that's covered. You still need Resend
@@ -129,6 +129,28 @@ first. If these get split into numbered migration files, `app_pipeline`'s
 It is a Neon connection string, not a JWT — the pipeline talks to Postgres
 directly and never goes through Clerk or Neon RLS Authorize at all, since it
 isn't acting as any particular league member.
+
+**The web app connects as a third role, `app_user`** — emphatically *not*
+`app_pipeline`, which would bypass every policy below:
+
+```sql
+create role app_user with login password '<generated, stored as APP_DATABASE_URL>';
+```
+
+**Why not just make `app_user` a member of `authenticated`?** That was the first
+design, and it is what you would do on stock Postgres — policy matching follows
+role membership, so one `... to authenticated` policy would cover both. Neon
+owns the `authenticated` role once the Data API is enabled: `GRANT authenticated
+TO app_user` and even `ALTER ROLE authenticated` both fail with *permission
+denied to alter role* as the database owner. So every policy and grant names
+both roles explicitly. `app_user` has no `BYPASSRLS` and is fully subject to
+them; `authenticated` stays named so the Neon JWT path still works untouched if
+it is ever fixed.
+
+Per request, after verifying the Clerk session, the server runs
+`SET LOCAL app.user_id = '<clerk id>'` in the same transaction as its queries.
+`SET LOCAL` matters: it is scoped to the transaction, so a pooled connection
+cannot leak one user's identity into the next request.
 
 **Every ESPN table carries `season`.** History imported from 2018-2025 lands in
 the *same* tables as 2026. Cross-season rivalry records then become an ordinary
@@ -529,6 +551,67 @@ since no matchup in that season ever gets a real winner.
 
 ## C. User data — and the lock
 
+### Who is the current user? — `app.current_user_id()`
+
+Every policy below asks this one question. It has two possible answers and
+tries them in order, which is what makes the design portable:
+
+1. **`app.user_id`, a per-request session setting.** The Next.js server
+   verifies the Clerk session (which it does on every request regardless),
+   then issues `SET LOCAL app.user_id = '<clerk id>'` inside the same
+   transaction as the query. This is the path we actually use.
+2. **`auth.user_id()`, a Neon-validated Clerk JWT.** Used automatically if a
+   request ever arrives through Neon's Data API with a JWT Neon has verified.
+
+**Why not path 2 alone, as originally designed?** Neon's Data API refuses every
+Clerk token with `jwk not found`, including tokens whose `kid` provably matches
+the key its own configured JWKS URL serves. Two real misconfigurations were
+found and fixed along the way (a deprecated `role_names` argument that excluded
+the `authenticator` role, and a competing Better Auth provider) — after both,
+the behavior is unchanged, and a deliberately bogus `kid` produces the identical
+error, meaning no key set is loaded at all. That is Neon-side. Path 1 removes
+the dependency entirely and works on any Postgres.
+
+**Does path 1 weaken the guarantee?** No, and this is the important part. Your
+requirement was that a locked week is unwritable *in the database, not the UI*.
+That is enforced by `week_is_locked()` inside both the RLS policy and the
+`enforce_prediction_lock` trigger, and neither consults the caller's identity to
+decide whether a week is locked. A browser still cannot reach Postgres at all;
+it talks to your server, which holds the only credential. What path 1 trusts is
+the server, and the server is already the thing verifying Clerk sessions — a
+compromised server defeats path 2 just as thoroughly.
+
+```sql
+create schema if not exists app;
+
+create or replace function app.current_user_id()
+returns text language plpgsql stable as $$
+declare v text;
+begin
+  -- Path 1: set per-request by the server after verifying the Clerk session.
+  v := nullif(current_setting('app.user_id', true), '');
+  if v is not null then return v; end if;
+
+  -- Path 2: a Clerk JWT that Neon itself validated. Wrapped because a role
+  -- without USAGE on schema auth raises rather than returning null, and an
+  -- identity lookup must fail closed (null), never abort the whole query.
+  begin
+    v := nullif(auth.user_id(), '');
+  exception when others then
+    v := null;
+  end;
+  return v;
+end $$;
+
+grant usage   on schema app                  to authenticated, app_user;
+grant execute on function app.current_user_id() to authenticated, app_user;
+```
+
+Both paths return `null` when identity is unknown, and every policy below
+compares that against a row's `user_id` — `null = anything` is `null`, which
+RLS treats as "no", so an unidentified caller matches no rows.
+
+
 ### The allowlist is two gates now, not one
 
 **Gate 1 — Clerk itself, no SQL.** Sign-up & Sign-in → Restrictions → Allowlist
@@ -629,10 +712,10 @@ alter table public.profiles enable row level security;
 alter table public.profiles force  row level security;
 
 create policy profiles_select on public.profiles
-  for select to authenticated using (true);
+  for select to authenticated, app_user using (true);
 
-create policy profiles_update on public.profiles for update to authenticated
-  using (auth.user_id() = id) with check (auth.user_id() = id);
+create policy profiles_update on public.profiles for update to authenticated, app_user
+  using (app.current_user_id() = id) with check (app.current_user_id() = id);
 ```
 
 That satisfies "users write only their own rows" *and still lets any user set
@@ -642,13 +725,13 @@ defences layered on top:
 
 ```sql
 -- 1. column-level grant: authenticated simply cannot write these columns
-revoke update on public.profiles from authenticated;
-grant update (display_name) on public.profiles to authenticated;
+revoke update on public.profiles from authenticated, app_user;
+grant update (display_name) on public.profiles to authenticated, app_user;
 
 -- 2. trigger, in case a future grant is widened by accident.
--- Guarded on auth.user_id() being null so a non-Clerk-authenticated connection
+-- Guarded on app.current_user_id() being null so a non-Clerk-authenticated connection
 -- (app_pipeline, or provision_profile()'s own SECURITY DEFINER context) is not
--- blocked by this check. UNVERIFIED: whether auth.user_id() actually returns
+-- blocked by this check. UNVERIFIED: whether app.current_user_id() actually returns
 -- null (vs. erroring) on a connection with no Clerk JWT attached is Neon RLS
 -- Authorize behavior I have not confirmed against a live project yet -- see the
 -- stack-choice note at the top of this document. Low real-world risk either
@@ -660,7 +743,7 @@ grant update (display_name) on public.profiles to authenticated;
 create or replace function public.prevent_profile_escalation()
 returns trigger language plpgsql security definer set search_path = public, auth as $$
 begin
-  if auth.user_id() is not null and (
+  if app.current_user_id() is not null and (
        new.is_admin     is distinct from old.is_admin
     or new.espn_team_id is distinct from old.espn_team_id
     or new.espn_swid    is distinct from old.espn_swid
@@ -679,8 +762,8 @@ create trigger profiles_no_escalation
 
 ```sql
 create or replace function public.is_admin()
-returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce((select is_admin from public.profiles where id = auth.user_id()), false);
+returns boolean language sql stable security definer set search_path = public, app as $$
+  select coalesce((select is_admin from public.profiles where id = app.current_user_id()), false);
 $$;
 
 -- Returns TRUE (locked) when the week is unknown. An unknown week must never be
@@ -742,18 +825,18 @@ alter table public.predictions enable row level security;
 
 -- Own picks always visible; everyone else's only once the week locks, so nobody
 -- can copy picks before kickoff.
-create policy predictions_select on public.predictions for select to authenticated
-  using (auth.user_id() = user_id or public.week_is_locked(season, week));
+create policy predictions_select on public.predictions for select to authenticated, app_user
+  using (app.current_user_id() = user_id or public.week_is_locked(season, week));
 
-create policy predictions_insert on public.predictions for insert to authenticated
-  with check (auth.user_id() = user_id and not public.week_is_locked(season, week));
+create policy predictions_insert on public.predictions for insert to authenticated, app_user
+  with check (app.current_user_id() = user_id and not public.week_is_locked(season, week));
 
-create policy predictions_update on public.predictions for update to authenticated
-  using      (auth.user_id() = user_id and not public.week_is_locked(season, week))
-  with check (auth.user_id() = user_id and not public.week_is_locked(season, week));
+create policy predictions_update on public.predictions for update to authenticated, app_user
+  using      (app.current_user_id() = user_id and not public.week_is_locked(season, week))
+  with check (app.current_user_id() = user_id and not public.week_is_locked(season, week));
 
-create policy predictions_delete on public.predictions for delete to authenticated
-  using (auth.user_id() = user_id and not public.week_is_locked(season, week));
+create policy predictions_delete on public.predictions for delete to authenticated, app_user
+  using (app.current_user_id() = user_id and not public.week_is_locked(season, week));
 
 -- Read-only for app_pipeline: it needs to see who picked what in order to
 -- score the week on Tuesday, but (as noted at prediction_scores below) never
@@ -787,7 +870,7 @@ create table public.prediction_scores (
 );
 alter table public.prediction_scores enable row level security;
 create policy prediction_scores_select on public.prediction_scores
-  for select to authenticated using (true);
+  for select to authenticated, app_user using (true);
 -- no insert/update/delete policies: app_pipeline (BYPASSRLS) only.
 
 create view public.prediction_leaderboard as
@@ -823,13 +906,13 @@ create table public.comments (
 create index comments_thread on public.comments (season, week, created_at);
 
 alter table public.comments enable row level security;
-create policy comments_select on public.comments for select to authenticated using (true);
-create policy comments_insert on public.comments for insert to authenticated
-  with check (auth.user_id() = user_id);
-create policy comments_update on public.comments for update to authenticated
-  using (auth.user_id() = user_id) with check (auth.user_id() = user_id);
-create policy comments_delete on public.comments for delete to authenticated
-  using (auth.user_id() = user_id or public.is_admin());
+create policy comments_select on public.comments for select to authenticated, app_user using (true);
+create policy comments_insert on public.comments for insert to authenticated, app_user
+  with check (app.current_user_id() = user_id);
+create policy comments_update on public.comments for update to authenticated, app_user
+  using (app.current_user_id() = user_id) with check (app.current_user_id() = user_id);
+create policy comments_delete on public.comments for delete to authenticated, app_user
+  using (app.current_user_id() = user_id or public.is_admin());
 ```
 
 ### Read-only posture for every mirror + computed table
@@ -871,24 +954,24 @@ begin
     execute format('alter table public.%I enable row level security', t);
     execute format('alter table public.%I force row level security', t);
     execute format(
-      'create policy %I on public.%I for select to authenticated using (true)',
+      'create policy %I on public.%I for select to authenticated, app_user using (true)',
       t || '_read', t);
     execute format(
-      'revoke insert, update, delete on public.%I from authenticated', t);
+      'revoke insert, update, delete on public.%I from authenticated, app_user', t);
     -- The grant that makes the SELECT policy above actually usable.
-    execute format('grant select on public.%I to authenticated', t);
+    execute format('grant select on public.%I to authenticated, app_user', t);
     execute format(
       'grant select, insert, update, delete on public.%I to app_pipeline', t);
   end loop;
 end $$;
 
--- Every policy below references auth.user_id() or is_admin() (which calls it),
+-- Every policy below references app.current_user_id() or is_admin() (which calls it),
 -- and an RLS policy expression is evaluated as the *querying* role -- so
 -- `authenticated` needs to be able to call it, or every policy errors instead
 -- of filtering. Neon's console grants this when RLS is enabled there; issued
 -- explicitly so applying this schema by hand is sufficient on its own.
-grant usage   on schema auth             to authenticated;
-grant execute on function auth.user_id() to authenticated;
+grant usage   on schema auth             to authenticated, app_user;
+grant execute on function app.current_user_id() to authenticated, app_user;
 
 -- Admin-only. Not readable by regular members: it contains everyone's email.
 -- app_pipeline needs no grant here: only provision_profile() (SECURITY
@@ -896,11 +979,11 @@ grant execute on function auth.user_id() to authenticated;
 alter table public.league_allowlist enable row level security;
 alter table public.league_allowlist force row level security;
 create policy allowlist_admin_read on public.league_allowlist
-  for select to authenticated using (public.is_admin());
-revoke insert, update, delete on public.league_allowlist from authenticated;
+  for select to authenticated, app_user using (public.is_admin());
+revoke insert, update, delete on public.league_allowlist from authenticated, app_user;
 -- SELECT granted, but the policy restricts it to admins -- grant opens the
 -- door, policy decides who walks through.
-grant select on public.league_allowlist to authenticated;
+grant select on public.league_allowlist to authenticated, app_user;
 
 -- Ownership snapshots are an admin feature (Step 8), gated in the DB as well as
 -- the route, so a non-admin querying it directly gets nothing.
@@ -908,9 +991,9 @@ grant select on public.league_allowlist to authenticated;
 alter table public.player_ownership_snapshots enable row level security;
 alter table public.player_ownership_snapshots force row level security;
 create policy ownership_admin_read on public.player_ownership_snapshots
-  for select to authenticated using (public.is_admin());
-revoke insert, update, delete on public.player_ownership_snapshots from authenticated;
-grant select on public.player_ownership_snapshots to authenticated;
+  for select to authenticated, app_user using (public.is_admin());
+revoke insert, update, delete on public.player_ownership_snapshots from authenticated, app_user;
+grant select on public.player_ownership_snapshots to authenticated, app_user;
 grant select, insert, update, delete on public.player_ownership_snapshots to app_pipeline;
 
 -- profiles / predictions / comments keep their own policies from above.
@@ -923,16 +1006,16 @@ alter table public.comments          force row level security;
 -- do, because the policies above are what narrow it: e.g. DELETE is granted on
 -- predictions, but predictions_delete restricts it to your own rows in an
 -- unlocked week. Grant opens the door; policy decides who walks through.
-grant select                         on public.profiles          to authenticated;
-grant update (display_name)          on public.profiles          to authenticated;
-grant select, insert, update, delete on public.predictions       to authenticated;
-grant select                         on public.prediction_scores to authenticated;
-grant select, insert, update, delete on public.comments          to authenticated;
+grant select                         on public.profiles          to authenticated, app_user;
+grant update (display_name)          on public.profiles          to authenticated, app_user;
+grant select, insert, update, delete on public.predictions       to authenticated, app_user;
+grant select                         on public.prediction_scores to authenticated, app_user;
+grant select, insert, update, delete on public.comments          to authenticated, app_user;
 
 -- The view has no RLS of its own -- it reads through to predictions and
 -- profiles, whose policies apply to the querying role.
-grant select on public.prediction_leaderboard to authenticated;
-grant select on public.head_to_head           to authenticated;
+grant select on public.prediction_leaderboard to authenticated, app_user;
+grant select on public.head_to_head           to authenticated, app_user;
 
 -- prediction_scores: app_pipeline writes these every Tuesday when the pipeline
 -- scores the week's picks. authenticated gets SELECT only (above) -- users have

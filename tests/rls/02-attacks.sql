@@ -7,15 +7,15 @@
 --   * a silent 0 ROWS     (policy filtered the row out -- no error at all)
 -- Only checking for errors would miss every policy bug of the second kind.
 --
--- Ported from the Supabase-shaped version of this suite when the stack moved
--- to Neon + Clerk. What changed: profiles.id is now a Clerk-style text user
--- id, not a Postgres uuid; there is no auth.users table to insert into, so
--- the old "signup" tests (which exercised a trigger on it) are replaced with
--- tests of provision_profile(), the function a Clerk webhook would call.
--- What did NOT change: every policy, trigger, and lock-enforcement mechanism
--- below is the same logic as before, just auth.uid() renamed to
--- auth.user_id() throughout -- these tests are why that claim isn't just
--- assumed.
+-- Identity is driven through `app.user_id`, the per-request session setting
+-- the Next.js server writes after verifying a Clerk session -- the same
+-- mechanism production uses, so these tests exercise the real path rather than
+-- a simulation of one. (app.current_user_id() also falls back to a
+-- Neon-validated JWT; that path is unavailable -- see the schema doc.)
+--
+-- Every policy, trigger and lock-enforcement mechanism here carries through
+-- unchanged from the Supabase draft. These tests are why that is checked
+-- rather than asserted.
 
 create schema if not exists test;
 
@@ -79,10 +79,10 @@ exception when others then
   perform test.record(p_label, false, 'unexpectedly FAILED: ' || sqlerrm);
 end $$;
 
-grant usage on schema test to authenticated, app_pipeline;
-grant select, insert on test.results to authenticated, app_pipeline;
-grant usage, select on sequence test.results_id_seq to authenticated, app_pipeline;
-grant execute on all functions in schema test to authenticated, app_pipeline;
+grant usage on schema test to authenticated, app_user, app_pipeline;
+grant select, insert on test.results to authenticated, app_user, app_pipeline;
+grant usage, select on sequence test.results_id_seq to authenticated, app_user, app_pipeline;
+grant execute on all functions in schema test to authenticated, app_user, app_pipeline;
 
 -- Clerk-style user ids (Clerk's real ones look like "user_2abc...").
 -- \set is a psql client-side substitution, not SQL -- it happens before the
@@ -122,19 +122,19 @@ select test.expect_error(
   'T5  ATTACK call provision_profile directly as a plain session (no grant)');
 
 -- ====================================================== as a NON-ADMIN user ==
-set role authenticated;
-set request.jwt.claim.sub = :'owner_id';
+set role app_user;
+set app.user_id = :'owner_id';
 
 select test.expect_error(
-  $$update public.profiles set is_admin = true where id = auth.user_id()$$,
+  $$update public.profiles set is_admin = true where id = app.current_user_id()$$,
   'T6  ATTACK self-elevate to admin');
 
 select test.expect_error(
-  $$update public.profiles set espn_team_id = 99 where id = auth.user_id()$$,
+  $$update public.profiles set espn_team_id = 99 where id = app.current_user_id()$$,
   'T7  ATTACK reassign own ESPN team');
 
 select test.expect_rowcount(
-  $$update public.profiles set display_name = 'Ryan M.' where id = auth.user_id()$$, 1,
+  $$update public.profiles set display_name = 'Ryan M.' where id = app.current_user_id()$$, 1,
   'T8  legitimate display_name change works');
 
 select test.expect_rowcount(
@@ -149,17 +149,17 @@ select test.expect_count(
 -- ============================================================= predictions ==
 select test.expect_ok(
   $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
-    values (auth.user_id(),2026,1,1,6)$$,
+    values (app.current_user_id(),2026,1,1,6)$$,
   'T11 pick in an OPEN week is allowed');
 
 select test.expect_error(
   $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
-    values (auth.user_id(),2026,2,11,1)$$,
+    values (app.current_user_id(),2026,2,11,1)$$,
   'T12 ATTACK pick in a LOCKED week');
 
 select test.expect_error(
   $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
-    values (auth.user_id(),2026,1,2,6)$$,
+    values (app.current_user_id(),2026,1,2,6)$$,
   'T13 ATTACK pick a team that is not in the matchup');
 
 select test.expect_error(
@@ -169,12 +169,12 @@ select test.expect_error(
 
 select test.expect_error(
   $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
-    values (auth.user_id(),2026,99,1,6)$$,
+    values (app.current_user_id(),2026,99,1,6)$$,
   'T15 ATTACK unknown week (lock helper must fail CLOSED)');
 
 select test.expect_error(
   $$insert into public.prediction_scores (prediction_id,is_correct,points)
-    select id,true,100 from public.predictions where user_id = auth.user_id() limit 1$$,
+    select id,true,100 from public.predictions where user_id = app.current_user_id() limit 1$$,
   'T16 ATTACK award yourself prediction points');
 
 -- Seed a locked-week pick as the connecting superuser (unrestricted, bypasses
@@ -183,7 +183,7 @@ select test.expect_error(
 -- access to predictions: nothing in the real design needs it, since the
 -- pipeline's only write path into this table's orbit is prediction_scores,
 -- populated by scoring picks after the fact, never predictions rows themselves.
-reset role; reset request.jwt.claim.sub;
+reset role; reset app.user_id;
 set app.allow_locked_writes = 'on';
 insert into public.predictions (id,user_id,season,week,espn_matchup_id,predicted_winner_team_id)
 values ('aaaaaaaa-0000-0000-0000-000000000001', :'owner_id', 2026,2,11,1);
@@ -192,8 +192,8 @@ reset app.allow_locked_writes;
 insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
 values (:'admin_id', 2026,1,1,1);
 
-set role authenticated;
-set request.jwt.claim.sub = :'owner_id';
+set role app_user;
+set app.user_id = :'owner_id';
 
 select test.expect_rowcount(
   $$update public.predictions set predicted_winner_team_id = 6
@@ -214,7 +214,7 @@ select test.expect_count(
   'T20 locked-week picks become visible to everyone');
 
 -- ========================================================== as an ADMIN user ==
-set request.jwt.claim.sub = :'admin_id';
+set app.user_id = :'admin_id';
 
 select test.expect_count(
   $$select count(*) from public.league_allowlist$$, 2,
@@ -224,8 +224,26 @@ select test.expect_error(
   format($$update public.profiles set is_admin = true where id = '%s'$$, :'owner_id'),
   'T22 even an admin cannot grant admin via the client');
 
+-- ============================================ identity cannot leak across requests ==
+-- SET LOCAL scopes app.user_id to the transaction, so a pooled connection
+-- cannot carry one request's identity into the next. Simulate the next request
+-- by clearing it: the same session must immediately stop being anybody.
+reset app.user_id;
+
+-- Week 1 is OPEN, so its picks are visible only to their owner. Week 2 is
+-- LOCKED and deliberately public (T20), so it must be excluded here -- counting
+-- all predictions would fail against correct behavior.
+select test.expect_count(
+  $$select count(*) from public.predictions where week = 1$$, 0,
+  'T25 identity cleared -> open-week picks invisible (no leak to next request)');
+
+select test.expect_error(
+  $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+    values ('user_test_owner_0001',2026,1,2,11)$$,
+  'T26 identity cleared -> cannot write as the previous user');
+
 -- ================================================================== summary ==
-reset role; reset request.jwt.claim.sub;
+reset role; reset app.user_id;
 
 select test.expect_count(
   $$select count(*) from public.team_owners where season=2026 and espn_team_id=1$$, 2,

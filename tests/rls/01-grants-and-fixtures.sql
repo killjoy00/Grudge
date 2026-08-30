@@ -11,16 +11,16 @@
 -- The GRANT dance is what matters on `profiles`, where an UPDATE policy DOES
 -- exist and RLS has no per-column granularity -- there, the column-level
 -- GRANT is the only thing stopping a full-row update.
-grant usage on schema public to authenticated;
-grant select, insert, update, delete on all tables in schema public to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+grant usage on schema public to authenticated, app_user;
+grant select, insert, update, delete on all tables in schema public to authenticated, app_user;
+grant usage, select on all sequences in schema public to authenticated, app_user;
 
-revoke update on public.profiles from authenticated;
-grant  update (display_name) on public.profiles to authenticated;
+revoke update on public.profiles from authenticated, app_user;
+grant  update (display_name) on public.profiles to authenticated, app_user;
 
 revoke insert, update, delete
   on public.prediction_scores, public.league_allowlist, public.player_ownership_snapshots
-  from authenticated;
+  from authenticated, app_user;
 
 do $$ declare t text; begin
   foreach t in array array[
@@ -29,7 +29,7 @@ do $$ declare t text; begin
     'transaction_items','faab_ledger','power_rankings','luck_index',
     'playoff_odds','weekly_awards'
   ] loop
-    execute format('revoke insert, update, delete on public.%I from authenticated', t);
+    execute format('revoke insert, update, delete on public.%I from authenticated, app_user', t);
   end loop;
 end $$;
 

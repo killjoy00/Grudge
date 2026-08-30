@@ -45,7 +45,13 @@ import re, sys, pathlib
 root, work = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 md = (root / 'docs' / 'SCHEMA_PROPOSAL.md').read_text()
 blocks = re.findall(r'```sql\n(.*?)```', md, re.S)
-(work / 'schema.sql').write_text('\n\n'.join(blocks))
+sql = '\n\n'.join(blocks)
+# The two CREATE ROLE lines carry placeholder passwords meant for the real
+# deployment; the test stub creates these roles itself, without passwords.
+import re as _re
+sql = _re.sub(r"create role app_pipeline[^;]*;", "", sql)
+sql = _re.sub(r"create role app_user[^;]*;", "", sql)
+(work / 'schema.sql').write_text(sql)
 print(f"    {len(blocks)} SQL blocks, {sum(b.count(chr(10)) for b in blocks)} lines")
 PY
 
