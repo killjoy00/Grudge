@@ -28,3 +28,26 @@ else, so it cannot drift from the schema it is meant to restore.
 The whole cycle was validated on a local Postgres before being run against the
 live database: 30 policies dropped, role dropped and recreated, policies
 re-applied, and the 24-check attack suite passed unchanged afterwards.
+
+## Neon Data API + Clerk: two real traps
+
+Both cost hours; both are invisible from the error message, which is always
+the unhelpful `{"message":"jwk not found"}`.
+
+**1. `role_names` is deprecated and silently narrowing.** Passing
+`role_names: ["authenticated"]` to `POST /projects/{id}/jwks` looks correct but
+excludes `authenticator` -- the role PostgREST actually connects as. Omit the
+field entirely; the default maps `authenticator`, `authenticated` and
+`anonymous`. Likewise omit `jwt_audience` rather than passing `""`, which the
+API rejects with "jwt audience must not be empty".
+
+**2. "Use Managed Better Auth" wins over your own provider.** Leaving that
+checkbox ticked while enabling the Data API creates a `better_auth` integration
+(visible at `GET /projects/{id}/auth/integrations`) whose JWKS URL points at
+Neon's own `*.neonauth.*` host. The Data API then validates every token against
+*that* key set, so a Clerk token fails with `jwk not found` -- and so does a
+deliberately bogus one, which is the tell: if a garbage `kid` and a real `kid`
+produce the identical error, no usable key set is loaded at all.
+
+Remove it with `DELETE /projects/{id}/auth/integration/better_auth`, then
+restart the compute so the Data API reloads.
