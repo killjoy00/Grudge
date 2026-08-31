@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Runs against the seven real seasons archived in data/history/, so this
+      # checks the normalizer and the feature models against actual ESPN
+      # payloads rather than fixtures written to match my own assumptions.
+      - name: Pipeline tests
+        run: npx tsx --test pipeline/*.test.ts
+
+      # /history is prerendered at build time, so the build genuinely queries
+      # Neon -- a placeholder URL no longer gets us through. The credential used
+      # is app_user with no session identity, which by design can read only
+      # public league data: the allowlist, predictions and comments all return
+      # zero rows to it. Clerk keys stay placeholders; nothing here calls Clerk.
+      #
+      # Failing the build when the database is unreachable is the behaviour we
+      # want in production too. The alternative -- rendering empty pages into
+      # the static output -- would publish a blank standings page after a
+      # transient Neon hiccup, which is far worse than a red build.
+      - name: Build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+          CLERK_SECRET_KEY: sk_test_placeholder
+          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+        run: |
+          if [ -z "$APP_DATABASE_URL" ]; then
+            echo "::warning::APP_DATABASE_URL secret is not set -- skipping the build check. Typecheck still ran. Add the secret to restore full CI coverage."
+            exit 0
+          fi
+          npx next build
+
+  rls:
+    name: RLS attack suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # The suite spins up its own throwaway Postgres and applies the schema
+      # straight out of docs/SCHEMA_PROPOSAL.md, so the document and the thing
+      # being tested cannot drift apart.
+      - name: Install PostgreSQL
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql postgresql-contrib
+
+      - name: Run attack suite
+        run: |
+          export PGBIN=$(ls -d /usr/lib/postgresql/*/bin | tail -1)
+          ./tests/rls/run.sh

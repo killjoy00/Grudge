@@ -1,0 +1,29 @@
+{
+  "name": "grudge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "pipeline": "tsx pipeline/run.ts",
+    "features": "tsx pipeline/compute.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test pipeline/*.test.ts"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.8.3",
+    "@neondatabase/serverless": "^1.0.2",
+    "next": "^15.5.24",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
