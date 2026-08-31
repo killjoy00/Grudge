@@ -1,6 +1,6 @@
-import { getPowerRankings, getPlayedSeasons } from '../../lib/queries.ts';
+import { getCachedPlayedSeasons, getCachedPowerRankings } from '../../lib/cached-queries.ts';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 interface Components {
   winPct: number; pointsForPerGame: number; pointsAgainstPerGame: number;
@@ -10,12 +10,12 @@ interface Components {
 export default async function Rankings({
   searchParams,
 }: { searchParams: Promise<{ season?: string }> }) {
-  const seasons = await getPlayedSeasons();
+  const seasons = await getCachedPlayedSeasons();
   const sp = await searchParams;
   const season = Number(sp.season) || seasons[0]?.season;
   if (!season) return <p className="empty">No completed seasons yet.</p>;
 
-  const rows = await getPowerRankings(season);
+  const rows = await getCachedPowerRankings(season);
   const top = rows[0] ? Number(rows[0].score) : 1;
 
   return (

@@ -31,27 +31,16 @@ jobs:
       - name: Pipeline tests
         run: npx tsx --test pipeline/*.test.ts lib/*.test.ts
 
-      # /history is prerendered at build time, so the build genuinely queries
-      # Neon -- a placeholder URL no longer gets us through. The credential used
-      # is app_user with no session identity, which by design can read only
-      # public league data: the allowlist, predictions and comments all return
-      # zero rows to it. Clerk keys stay placeholders; nothing here calls Clerk.
-      #
-      # Failing the build when the database is unreachable is the behaviour we
-      # want in production too. The alternative -- rendering empty pages into
-      # the static output -- would publish a blank standings page after a
-      # transient Neon hiccup, which is far worse than a red build.
+      # Database reads are deferred until request time, so CI can always verify
+      # the production build without holding a live application credential.
+      # This is intentional: a transient Neon outage must not block deployment
+      # of otherwise valid code. Runtime requests still fail loudly if Vercel's
+      # APP_DATABASE_URL is absent or invalid.
       - name: Build
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
           CLERK_SECRET_KEY: sk_test_placeholder
-          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
-        run: |
-          if [ -z "$APP_DATABASE_URL" ]; then
-            echo "::warning::APP_DATABASE_URL secret is not set -- skipping the build check. Typecheck still ran. Add the secret to restore full CI coverage."
-            exit 0
-          fi
-          npx next build
+        run: npm run build
 
   rls:
     name: RLS attack suite

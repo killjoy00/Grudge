@@ -244,12 +244,22 @@ export async function getComments(season: number, week: number) {
   const [rows] = await asUser<{
     id: string; user_id: string; body: string; parent_id: string | null;
     created_at: string; updated_at: string; display_name: string | null;
+    is_deleted: boolean;
   }>((q) => [
-    q(`select c.id, c.user_id, c.body, c.parent_id, c.created_at, c.updated_at,
-              p.display_name
+    q(`select c.id, c.user_id,
+              case when c.deleted_at is null then c.body else '' end as body,
+              c.parent_id, c.created_at, c.updated_at, p.display_name,
+              (c.deleted_at is not null) as is_deleted
          from public.comments c
          left join public.profiles p on p.id = c.user_id
-        where c.season = $1 and c.week = $2 and c.deleted_at is null
+        where c.season = $1 and c.week = $2
+          and (
+            c.deleted_at is null
+            or exists (
+              select 1 from public.comments reply
+               where reply.parent_id = c.id and reply.deleted_at is null
+            )
+          )
         order by c.created_at`, [season, week]),
   ]);
   return rows ?? [];

@@ -33,6 +33,7 @@ export default async function Predictions() {
           {lockAt && ` — ${new Date(lockAt).toLocaleString(undefined, {
             weekday: 'short', month: 'short', day: 'numeric',
             hour: 'numeric', minute: '2-digit',
+            timeZone: 'America/New_York', timeZoneName: 'short',
           })}`}
         </p>
       ) : (
