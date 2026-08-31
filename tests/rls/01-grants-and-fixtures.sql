@@ -64,3 +64,15 @@ insert into public.matchups (season, espn_matchup_id, week, home_team_id, away_t
 insert into public.league_allowlist (email, espn_team_id, season, is_admin) values
   ('owner@example.com', 1, 2026, false),
   ('boss@example.com',  6, 2026, true);
+
+-- Free-agent pool fixture (Step 8). A NEGATIVE player id on purpose: D/ST units
+-- come back from ESPN as -16017 and friends, so anything that assumed a
+-- positive id would drop every defence from the pool.
+insert into public.players (espn_player_id, full_name, default_position_id, pro_team_id) values
+  (4685415, 'Travis Hunter', 3, 30),
+  (-16017,  'Patriots D/ST', 16, 17);
+
+insert into public.player_ownership_snapshots
+  (season, week, espn_player_id, percent_owned, percent_change, status, on_team_id) values
+  (2026, 1, 4685415, 73.40, 0.63, 'WAIVERS', 0),
+  (2026, 1, -16017,  41.20, -1.10, 'WAIVERS', 0);

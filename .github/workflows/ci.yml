@@ -72,3 +72,37 @@ jobs:
         run: |
           export PGBIN=$(ls -d /usr/lib/postgresql/*/bin | tail -1)
           ./tests/rls/run.sh
+
+  # Proves admin gating with a real non-admin Clerk session against the actual
+  # API routes -- not by checking that the UI hides a link. Needs live Clerk and
+  # database credentials, so it cannot run on a fork's pull request; it warns
+  # rather than failing when the secrets are absent, because a red X that every
+  # contributor learns to ignore protects nothing.
+  #
+  # The database-level equivalents (T27-T32) run unconditionally in the job
+  # above and need no secrets at all.
+  admin-gating:
+    name: Admin gating (live session)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Verify non-admin cannot reach admin routes
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          if [ -z "$CLERK_SECRET_KEY" ] || [ -z "$APP_DATABASE_URL" ]; then
+            echo "::warning::CLERK_SECRET_KEY / APP_DATABASE_URL not set -- admin gating not verified over HTTP. The RLS suite still covers the database layer."
+            exit 0
+          fi
+          npx next build
+          node tests/admin/verify-gating.mjs

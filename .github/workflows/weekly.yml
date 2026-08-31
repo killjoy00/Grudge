@@ -68,6 +68,20 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/score-predictions.ts
 
+      # Free-agent ownership snapshot. Runs BEFORE the commit, with the other
+      # database writes, so a kona_player_info outage fails the week loudly and
+      # writes nothing -- the same contract as everything else here. Placing it
+      # after the deploy step instead would mean a failure leaves the site
+      # serving stale data, which is the worse of the two outcomes.
+      #
+      # Unlike the main load this is not gated on week completeness: a waiver
+      # trend mid-week is the entire point, and there is nothing to be final
+      # about. Two snapshots are needed before any trend exists.
+      - name: Capture free-agent ownership
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx pipeline/ownership.ts
+
       # Only reached if every step above succeeded, so a partial week is never
       # committed. The archive is append-only history: raw payloads exactly as
       # ESPN served them.

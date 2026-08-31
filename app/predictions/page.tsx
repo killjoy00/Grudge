@@ -3,6 +3,7 @@ import {
   CURRENT_SEASON, getOpenWeek, getWeekResults, getMyPicks, getLeaderboard,
 } from '../../lib/queries.ts';
 import { PickForm } from '../../components/PickForm.tsx';
+import { isAdmin } from '../../lib/admin.ts';
 
 // User state -- never cached.
 export const dynamic = 'force-dynamic';
@@ -94,6 +95,16 @@ export default async function Predictions() {
           </table>
         )}
       </div>
+
+      {/* The only entry point to /admin. It is kept off the global nav because
+          resolving admin status in the root layout would make every page on the
+          site render per request. Hiding the link is presentation only -- the
+          route is guarded server-side and the tables are guarded by RLS. */}
+      {(await isAdmin()) && (
+        <p className="note" style={{ textAlign: 'center' }}>
+          <a href="/admin">League admin →</a>
+        </p>
+      )}
     </>
   );
 }
