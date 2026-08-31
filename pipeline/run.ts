@@ -19,7 +19,9 @@
  * writing a partial week that later has to be un-picked. Re-running is always
  * safe: every write is an upsert on the natural key.
  */
-import { mkdirSync, writeFileSync, renameSync, rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
+import {
+  mkdirSync, writeFileSync, renameSync, rmSync, existsSync, readFileSync, readdirSync, realpathSync,
+} from 'node:fs';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,11 +48,67 @@ const log = (...a: unknown[]) => console.log(...a);
 
 /* ------------------------------------------------------------- raw archive */
 
-function writeRaw(path: string, data: unknown) {
+/**
+ * ESPN fields that change on almost every request and mean nothing for this
+ * league's history: analyst rankings, projected draft value, ownership
+ * percentages, news timestamps. Measured, not guessed -- diffing two archives
+ * taken hours apart showed 60 differing values and every one of them was in
+ * here, while scores, rosters and transactions were identical.
+ *
+ * These are still ARCHIVED in full. They are only excluded from the decision
+ * about whether a new snapshot is worth writing.
+ */
+export const VOLATILE_KEYS = new Set([
+  'rankings', 'draftRanksByRankType', 'ownership', 'ratings',
+  'lastNewsDate', 'lastVideoDate', 'seasonOutlook', 'draftAuctionValue',
+]);
+
+/** Deep copy with volatile keys removed, for change detection only. */
+export function stableProjection(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableProjection);
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (VOLATILE_KEYS.has(k)) continue;
+      out[k] = stableProjection(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Write a gzipped raw payload, but ONLY if something meaningful changed.
+ *
+ * Two problems this solves. gzip output is not byte-stable, and ESPN rewrites
+ * analyst rankings continuously -- so a naive comparison would commit a few
+ * hundred KB of noise every single Tuesday, forever, burying the weeks where
+ * something actually happened.
+ *
+ * The comparison therefore runs over stableProjection(), but the file written
+ * is the COMPLETE raw payload: the archive stays faithful to what ESPN served,
+ * and we simply stop taking a new snapshot when nothing we care about moved.
+ *
+ * Returns whether it wrote, which decides whether the manifest -- whose
+ * capturedAt changes by definition -- is worth rewriting.
+ */
+export function writeRaw(path: string, data: unknown): boolean {
+  const full = JSON.stringify(data);
+  if (existsSync(path)) {
+    try {
+      const existing = JSON.parse(gunzipSync(readFileSync(path)).toString());
+      if (JSON.stringify(stableProjection(existing)) === JSON.stringify(stableProjection(data))) {
+        return false;
+      }
+    } catch {
+      // Unreadable or truncated archive -- fall through and rewrite it.
+    }
+  }
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.tmp`;
-  writeFileSync(tmp, gzipSync(JSON.stringify(data), { level: 9 }));
+  writeFileSync(tmp, gzipSync(full, { level: 9 }));
   renameSync(tmp, path); // atomic: no reader ever sees a half-written file
+  return true;
 }
 
 const readRaw = (path: string) => JSON.parse(gunzipSync(readFileSync(path)).toString());
@@ -103,16 +161,28 @@ async function fetchLive(season: number): Promise<SeasonBundle> {
 
   // Archive only after every fetch above succeeded.
   const dir = join(DATA, 'seasons', String(season));
-  writeRaw(join(dir, 'league.json.gz'), league);
+  let wrote = 0;
+  if (writeRaw(join(dir, 'league.json.gz'), league)) wrote++;
   for (const [week, bx] of boxscores) {
-    writeRaw(join(dir, 'boxscores', `sp${String(week).padStart(2, '0')}.json.gz`), bx);
+    if (writeRaw(join(dir, 'boxscores', `sp${String(week).padStart(2, '0')}.json.gz`), bx)) wrote++;
   }
-  writeRaw(join(dir, 'pro-schedule.json.gz'), proGames);
-  writeFileSync(
-    join(dir, 'manifest.json'),
-    JSON.stringify({ season, leagueId: LEAGUE_ID, capturedAt: new Date().toISOString(), completedWeeks: done }, null, 2)
-  );
-  log(`  archived to data/seasons/${season}/`);
+  if (writeRaw(join(dir, 'pro-schedule.json.gz'), proGames)) wrote++;
+
+  // The manifest carries capturedAt, which changes every run by definition.
+  // Rewriting it when nothing else changed would defeat the whole point of
+  // the content check above, so it is only refreshed alongside real changes.
+  if (wrote > 0) {
+    writeFileSync(
+      join(dir, 'manifest.json'),
+      JSON.stringify(
+        { season, leagueId: LEAGUE_ID, capturedAt: new Date().toISOString(), completedWeeks: done },
+        null, 2
+      ) + '\n'
+    );
+    log(`  archived to data/seasons/${season}/ (${wrote} file(s) changed)`);
+  } else {
+    log(`  archive unchanged -- nothing new from ESPN`);
+  }
 
   return { league, boxscores, proGames };
 }
@@ -311,8 +381,25 @@ async function main() {
   await loadSeason(bundle);
 }
 
-main().catch((e) => {
-  console.error(`\npipeline failed: ${e instanceof Error ? e.message : String(e)}`);
-  console.error('Nothing was written -- the run is transactional.');
-  process.exit(1);
-});
+// Only run the pipeline when invoked directly, so tests can import the archive
+// helpers above without kicking off a fetch. Compared as resolved real paths,
+// not basenames: matching on "run.ts" alone would fire for any entry point that
+// happens to share the filename, and symlinked or relative invocations
+// (`tsx ./pipeline/run.ts`) have to keep working.
+function invokedDirectly(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (invokedDirectly()) {
+  main().catch((e) => {
+    console.error(`\npipeline failed: ${e instanceof Error ? e.message : String(e)}`);
+    console.error('Nothing was written -- the run is transactional.');
+    process.exit(1);
+  });
+}

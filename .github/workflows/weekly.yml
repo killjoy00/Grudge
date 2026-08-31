@@ -1,0 +1,121 @@
+name: Weekly pipeline
+
+# Tuesday 12:00 UTC, after Monday Night Football has finished and ESPN has
+# settled the week. Also runnable by hand, which matters: a week that fails
+# because ESPN was down needs a retry without waiting seven days.
+on:
+  schedule:
+    - cron: '0 12 * * 2'
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Season to load (blank = current year)'
+        required: false
+        type: string
+
+# Never let two runs touch the database or push to the branch at once. A
+# manual retry firing while the scheduled run is mid-flight would otherwise
+# race on the data commit.
+concurrency:
+  group: weekly-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Run the test suite BEFORE touching the database. If normalization is
+      # broken, the right outcome is a red build and an untouched database,
+      # not a successful run that writes wrong numbers.
+      - name: Test
+        run: npx tsx --test pipeline/*.test.ts
+
+      # Each step below fails the job on a non-zero exit, and every write is
+      # transactional, so a failure anywhere leaves the database as it was.
+      # There is deliberately no continue-on-error in this workflow.
+      - name: Fetch ESPN data and load
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          if [ -n "${{ inputs.season }}" ]; then
+            npx tsx pipeline/run.ts --season=${{ inputs.season }}
+          else
+            npx tsx pipeline/run.ts
+          fi
+
+      - name: Compute derived features
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx pipeline/compute.ts
+
+      - name: Score predictions
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx pipeline/score-predictions.ts
+
+      # Only reached if every step above succeeded, so a partial week is never
+      # committed. The archive is append-only history: raw payloads exactly as
+      # ESPN served them.
+      - name: Commit raw data
+        id: commit
+        run: |
+          git config user.name  'grudge-pipeline[bot]'
+          git config user.email 'grudge-pipeline[bot]@users.noreply.github.com'
+          git add data/
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new raw data this run."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git commit -m "Weekly data $(date -u +%Y-%m-%d)
+
+          Automated capture from the ESPN v3 API.
+
+          [skip ci]"
+            git push
+          fi
+
+      # Vercel is optional until it is configured, so a missing hook is a
+      # notice rather than a failure -- but a hook that IS set and fails is a
+      # real failure, because the site would silently serve stale data.
+      - name: Trigger Vercel deploy
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::notice::VERCEL_DEPLOY_HOOK_URL not set -- skipping deploy."
+            exit 0
+          fi
+          code=$(curl -sS -X POST -o /tmp/deploy.json -w '%{http_code}' "$HOOK")
+          echo "Vercel responded $code"
+          cat /tmp/deploy.json || true
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Vercel deploy hook failed with HTTP $code"
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Weekly pipeline"
+            echo ""
+            echo "- Result: **${{ job.status }}**"
+            echo "- New raw data committed: **${{ steps.commit.outputs.changed || 'no' }}**"
+            echo "- Run: \`$(date -u +'%Y-%m-%d %H:%M UTC')\`"
+          } >> "$GITHUB_STEP_SUMMARY"
