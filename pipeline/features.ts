@@ -10,6 +10,7 @@
  * site can always be traced back to the rules that produced it.
  */
 import type { MatchupRow, RosterEntryRow } from './normalize.ts';
+import { bestLineup, expandSlots } from './lineup.ts';
 
 export const MODEL_VERSION = '2026.1';
 
@@ -184,11 +185,19 @@ export interface OptimalLineup {
 /**
  * Best legal lineup from the players a team actually rostered that week.
  *
- * Greedy by slot scarcity: fill the most restrictive slots first (a QB-only
- * slot before FLEX), because a greedy pass in the wrong order can strand a
- * player who was the only legal filler for a narrow slot. Eligibility comes
- * from each player's own eligibleSlots, so multi-position players are handled
- * without any position table of ours.
+ * Solved EXACTLY, as a maximum-weight bipartite matching (see lineup.ts).
+ *
+ * This was greedy-by-slot-scarcity until it was measured against an exact
+ * solver over all 1,170 real team-weeks in the archive. It was wrong on 115 of
+ * them -- 9.8% -- by a mean of 3.24 points and as much as 10.0. Every error ran
+ * the same way, understating the ceiling, so "points left on the bench" was
+ * systematically too kind and the worst-bench-decision callout sometimes named
+ * the wrong player. Filling the most restrictive slot first is a good heuristic
+ * and still not optimal: taking the best RB for the FLEX can strand a better
+ * combination that a whole-board solve finds.
+ *
+ * Eligibility comes from each player's own eligibleSlots, so multi-position
+ * players need no position table of ours.
  *
  * ASSUMPTION, stated because it is a real limitation: this optimizes over the
  * players on the roster, so it measures start/sit decisions only. It does not
@@ -208,33 +217,17 @@ export function optimalLineup(
     .filter((e) => e.is_starter)
     .reduce((a, e) => a + (e.applied_points ?? 0), 0);
 
-  // Slots ordered by how few roster players can legally fill them.
-  const candidates = new Map<number, RosterEntryRow[]>();
-  for (const [slot] of slotCapacity) {
-    candidates.set(
-      slot,
-      entries.filter((e) => (eligibleSlots.get(e.espn_player_id) ?? []).includes(slot))
-    );
-  }
-  const slotOrder = [...slotCapacity.keys()].sort(
-    (a, b) => (candidates.get(a)?.length ?? 0) - (candidates.get(b)?.length ?? 0)
+  const solved = bestLineup(
+    entries.map((e) => ({
+      id: e.espn_player_id,
+      points: e.applied_points ?? 0,
+      eligible: eligibleSlots.get(e.espn_player_id) ?? [],
+    })),
+    expandSlots(slotCapacity)
   );
-
-  const used = new Set<number>();
-  const chosen: RosterEntryRow[] = [];
-  for (const slot of slotOrder) {
-    const capacity = slotCapacity.get(slot) ?? 0;
-    const pool = (candidates.get(slot) ?? [])
-      .filter((e) => !used.has(e.espn_player_id))
-      .sort((a, b) => (b.applied_points ?? 0) - (a.applied_points ?? 0));
-    for (let i = 0; i < capacity && i < pool.length; i++) {
-      const pick = pool[i];
-      if (!pick) break;
-      used.add(pick.espn_player_id);
-      chosen.push(pick);
-    }
-  }
-  const optimalPoints = chosen.reduce((a, e) => a + (e.applied_points ?? 0), 0);
+  const startedByOptimal = new Set(solved.assignment.map((a) => a.playerId));
+  const chosen = entries.filter((e) => startedByOptimal.has(e.espn_player_id));
+  const optimalPoints = solved.total;
 
   // Worst bench decision: highest-scoring player left on the bench who the
   // optimal lineup would have started.
