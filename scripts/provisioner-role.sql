@@ -39,4 +39,14 @@ revoke all on function public.provision_profile(text, citext, text)
 grant execute on function public.provision_profile(text, citext, text)
   to app_provisioner;
 
+-- Added by the membership/recap/history migration. Keep this setup script
+-- usable before or after that migration exists.
+do $$
+begin
+  if to_regprocedure('public.sync_profile_membership(citext)') is not null then
+    execute 'revoke all on function public.sync_profile_membership(citext) from public, authenticated, app_user, app_pipeline, app_provisioner';
+    execute 'grant execute on function public.sync_profile_membership(citext) to app_provisioner';
+  end if;
+end $$;
+
 commit;

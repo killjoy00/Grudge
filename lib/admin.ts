@@ -7,12 +7,10 @@ import 'server-only';
  * signed-in user. It is never taken from a Clerk claim, a cookie, a header, a
  * query parameter, or anything else the caller can influence.
  *
- * `profiles.is_admin` is the only source of truth. It is written exactly once,
- * by provision_profile(), from the league allowlist -- a SECURITY DEFINER
- * function that no browser session has EXECUTE on. The profiles_no_escalation
- * trigger then refuses any UPDATE that touches is_admin while a session
- * identity is set, so even a user who somehow obtained UPDATE on their own row
- * cannot promote themselves. Attack tests T6 and T22 cover both halves.
+ * The active league_allowlist row is the source of truth. public.is_admin()
+ * joins it to the signed-in profile inside a SECURITY DEFINER function, so a
+ * demotion takes effect even if the profile's denormalized flag has not yet
+ * refreshed. Browser sessions cannot modify privileged profile columns.
  *
  * DEFENCE IN DEPTH, and why this file is not load-bearing on its own: every
  * admin-only table also carries an RLS policy of `using (public.is_admin())`.
@@ -48,9 +46,9 @@ export async function adminProfile(): Promise<AdminProfile | null> {
   try {
     const [rows] = await asUser<AdminProfile>((q) => [
       q(
-        `select id, display_name, espn_team_id, is_admin
+        `select id, display_name, espn_team_id, true as is_admin
            from public.profiles
-          where id = $1 and is_admin`,
+          where id = $1 and public.is_admin()`,
         [userId]
       ),
     ]);

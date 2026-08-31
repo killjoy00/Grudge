@@ -20,8 +20,11 @@ export default async function Rankings({
 
   return (
     <>
-      <h1>Power rankings</h1>
-      <p className="sub">{season} · through week {rows[0]?.week ?? '—'}</p>
+      <div className="page-hero compact-hero">
+        <div className="eyebrow">{season} · through week {rows[0]?.week ?? '—'}</div>
+        <h1>Power, not luck</h1>
+        <p>Who has actually played like the best team, schedule noise removed.</p>
+      </div>
 
       <div className="card">
         {rows.map((r) => {

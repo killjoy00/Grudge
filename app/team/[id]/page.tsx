@@ -32,29 +32,30 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
 
   return (
     <>
-      <h1>{team.name}</h1>
-      <p className="sub">{team.owners ?? 'Unknown owner'}</p>
+      <div className="page-hero compact-hero">
+        <div className="eyebrow">Franchise file</div>
+        <h1>{team.name}</h1>
+        <p>{team.owners ?? 'Unknown owner'}</p>
+      </div>
 
       {overall && (
-        <div className="card">
-          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
+        <div className="stat-strip three">
             <div>
-              <div className="tsub">All-time</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>
+              <span>All-time</span>
+              <strong>
                 {overall.wins}-{overall.losses}{overall.ties ? `-${overall.ties}` : ''}
-              </div>
+              </strong>
             </div>
             <div>
-              <div className="tsub">Seasons</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{overall.seasons}</div>
+              <span>Seasons</span>
+              <strong>{overall.seasons}</strong>
             </div>
             <div>
-              <div className="tsub">Total points</div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>
+              <span>Total points</span>
+              <strong>
                 {Number(overall.points_for).toLocaleString()}
-              </div>
+              </strong>
             </div>
-          </div>
         </div>
       )}
 

@@ -61,6 +61,8 @@ echo "==> applying schema"
 $PSQL -f "$WORKDIR/schema.sql"
 echo "==> applying grants + fixtures"
 $PSQL -f "$ROOT/tests/rls/01-grants-and-fixtures.sql"
+echo "==> applying membership + history migration"
+$PSQL -f "$ROOT/scripts/migrations/2026-08-31-membership-recaps-history.sql"
 echo "==> running attacks"
 # ON_ERROR_STOP is essential here, not cosmetic: without it psql exits 0 even
 # when the summary block raises, and a failing security suite reports green.

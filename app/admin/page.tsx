@@ -18,13 +18,24 @@ export default async function AdminOverview() {
     getSnapshotCoverage(season),
   ]);
 
+  const activeAllowlist = allowlist.filter((member) => member.is_active);
   const claimed = new Set(members.map((m) => m.email.toLowerCase()));
-  const pending = allowlist.filter((a) => !claimed.has(a.email.toLowerCase()));
+  const pending = activeAllowlist.filter((a) => !claimed.has(a.email.toLowerCase()));
 
   return (
     <>
       <h1>League admin</h1>
-      <p className="sub">{allowlist.length} on the allowlist · {members.length} signed in</p>
+      <p className="sub">
+        {activeAllowlist.length} active · {members.filter((m) => m.is_active).length} signed in
+      </p>
+
+      <div className="card admin-shortcut">
+        <div>
+          <div className="section-kicker">Membership</div>
+          <strong>Add members, assign teams, and synchronize Clerk</strong>
+        </div>
+        <a href="/admin/members" className="btn">Manage members</a>
+      </div>
 
       {pending.length > 0 && (
         <div className="card">
@@ -56,16 +67,15 @@ export default async function AdminOverview() {
                 <tr key={m.id}>
                   <td>{m.display_name ?? m.email}</td>
                   <td>{m.team_name ?? (m.espn_team_id ? `team ${m.espn_team_id}` : '—')}</td>
-                  <td>{m.is_admin ? 'yes' : ''}</td>
+                  <td>{m.is_admin ? 'yes' : ''}{!m.is_active ? ' · inactive' : ''}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="note">
-          Admin status comes from the allowlist and is written once, by
-          provision_profile(). It cannot be changed from the app — a database trigger
-          refuses any update touching it while a session identity is set.
+          The active database allowlist is authoritative. The Members screen
+          updates it and keeps Clerk and existing profiles synchronized.
         </p>
       </div>
 

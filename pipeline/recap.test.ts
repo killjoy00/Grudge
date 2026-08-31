@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseRecipients, renderWeeklyRecap, type WeeklyRecap } from './recap.ts';
+import { renderWeeklyRecap, type WeeklyRecap } from './recap.ts';
 
 const recap: WeeklyRecap = {
   season: 2026,
@@ -15,19 +15,6 @@ const recap: WeeklyRecap = {
   standings: [{ name: 'The <Penguins>', wins: 3, losses: 0, ties: 0, points_for: '340.1' }],
   predictions: [{ display_name: 'Ryan', correct: 8, points: '8', accuracy: '0.8' }],
 };
-
-test('recipient parsing normalizes, deduplicates, and accepts common separators', () => {
-  assert.deepEqual(
-    parseRecipients('Ryan@Example.com, friend@example.com\nRYAN@example.com;third@example.com'),
-    ['ryan@example.com', 'friend@example.com', 'third@example.com']
-  );
-});
-
-test('recipient parsing rejects malformed values without echoing them', () => {
-  assert.throws(() => parseRecipients('good@example.com,not-an-email'), {
-    message: 'RECAP_RECIPIENTS contains an invalid email address.',
-  });
-});
 
 test('the recap contains each section, a text alternative, and escaped league data', () => {
   const rendered = renderWeeklyRecap(recap, 'https://grudge.planitnow.us/');

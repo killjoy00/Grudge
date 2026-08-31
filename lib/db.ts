@@ -87,14 +87,27 @@ export async function asUser<T = Row>(
 
   const batch = [
     // set_config(..., true) is SET LOCAL: transaction-scoped, so it cannot
-    // leak across pooled requests.
-    q('select set_config($1, $2, true)', ['app.user_id', userId]),
+    // leak across pooled requests. The allowlist/profile join is evaluated by
+    // a narrow SECURITY DEFINER helper. A deactivated member therefore gets a
+    // blank identity even while an older Clerk session remains valid.
+    q(
+      `select set_config(
+         $1,
+         case when public.profile_is_active($2) then $2 else '' end,
+         true
+       ) as user_id`,
+      ['app.user_id', userId]
+    ),
     ...build(q),
   ];
   const results = (await (client() as unknown as {
     transaction: (b: unknown[]) => Promise<unknown>;
-  }).transaction(batch)) as T[][];
-  return results.slice(1); // drop the set_config result
+  }).transaction(batch)) as unknown[][];
+  const gate = results[0] as Array<{ user_id?: string }> | undefined;
+  if (gate?.[0]?.user_id !== userId) {
+    throw new Error('league membership inactive or profile not provisioned');
+  }
+  return results.slice(1) as T[][]; // drop the membership/set_config result
 }
 
 /** Read-only queries with no identity. Only public data is reachable. */
@@ -110,9 +123,21 @@ export async function currentProfile() {
   const { userId } = await auth();
   if (!userId) return null;
   const [rows] = await asUser<{
-    id: string; display_name: string | null; espn_team_id: number | null; is_admin: boolean;
+    id: string; email: string; display_name: string | null;
+    espn_team_id: number | null; team_name: string | null;
+    is_admin: boolean; recap_email_enabled: boolean;
   }>((q) => [
-    q('select id, display_name, espn_team_id, is_admin from public.profiles where id = $1', [userId]),
+    q(
+      `select p.id, p.email::text as email, p.display_name, p.espn_team_id,
+              t.name as team_name, public.is_admin() as is_admin,
+              p.recap_email_enabled
+         from public.profiles p
+         left join public.teams t
+           on t.espn_team_id = p.espn_team_id
+          and t.season = (select max(season) from public.teams)
+        where p.id = $1`,
+      [userId]
+    ),
   ]);
   return rows?.[0] ?? null;
 }

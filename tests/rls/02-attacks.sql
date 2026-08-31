@@ -305,6 +305,70 @@ select test.expect_count(
   $$select count(*) from public.player_ownership_snapshots$$, 0,
   'T32 identity cleared -> pool invisible');
 
+-- ================================= membership + recap preference hardening ==
+set app.user_id = :'owner_id';
+
+select test.expect_rowcount(
+  $$update public.profiles set recap_email_enabled = false
+     where id = app.current_user_id()$$, 1,
+  'T33 member can opt their own recap email out');
+
+select test.expect_rowcount(
+  format($$update public.profiles set recap_email_enabled = false where id = '%s'$$, :'admin_id'),
+  0,
+  'T34 ATTACK change another member recap preference');
+
+select test.expect_error(
+  $$insert into public.league_allowlist (email, season, espn_team_id)
+    values ('intruder@example.com', 2026, 11)$$,
+  'T35 ATTACK non-admin add a league member');
+
+-- Seed a send outcome through the only writer, then prove the email-bearing
+-- history remains invisible to an ordinary member.
+reset role; reset app.user_id;
+set role app_pipeline;
+insert into public.recap_deliveries
+  (season, week, profile_id, recipient_email, status, attempt_count, last_attempted_at)
+values (2026, 2, :'admin_id', 'boss@example.com', 'sent', 1, now());
+reset role;
+
+set role app_user;
+set app.user_id = :'owner_id';
+select test.expect_count(
+  $$select count(*) from public.recap_deliveries$$, 0,
+  'T36 ATTACK read recap recipient history as non-admin');
+
+set app.user_id = :'admin_id';
+select test.expect_rowcount(
+  $$insert into public.league_allowlist
+      (email, season, espn_team_id, is_admin, is_active)
+    values ('newmember@example.com', 2026, 11, false, true)$$, 1,
+  'T37 admin can add a league member');
+
+select test.expect_count(
+  $$select count(*) from public.recap_deliveries$$, 1,
+  'T38 admin can read recap delivery history');
+
+select test.expect_error(
+  $$update public.league_allowlist set is_admin = false where email = 'boss@example.com'$$,
+  'T39 last commissioner cannot demote themselves');
+
+select test.expect_rowcount(
+  $$update public.league_allowlist set is_active = false where email = 'owner@example.com'$$, 1,
+  'T40 admin can deactivate a member');
+
+select test.expect_count(
+  format($$select count(*) where public.profile_is_active('%s')$$, :'owner_id'), 0,
+  'T41 deactivated allowlist row immediately closes the membership gate');
+
+-- Historical identity tables are public to read but only the pipeline can
+-- write. A browser cannot rewrite championships or manager tenure.
+set app.user_id = :'admin_id';
+select test.expect_error(
+  $$insert into public.franchises (franchise_key, current_name)
+    values ('fake-franchise', 'Fake')$$,
+  'T42 ATTACK admin cannot rewrite league history');
+
 reset role; reset app.user_id;
 
 \echo ''

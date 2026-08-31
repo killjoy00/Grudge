@@ -27,19 +27,22 @@ export default async function Predictions() {
 
   return (
     <>
-      <h1>Predictions</h1>
-      {open ? (
-        <p className="sub">
+      <div className="page-hero compact-hero">
+        <div className="eyebrow">Call your shot</div>
+        <h1>Predictions</h1>
+        {open ? (
+          <p>
           Week {open.week} · picks lock at first kickoff
           {lockAt && ` — ${new Date(lockAt).toLocaleString(undefined, {
             weekday: 'short', month: 'short', day: 'numeric',
             hour: 'numeric', minute: '2-digit',
             timeZone: 'America/New_York', timeZoneName: 'short',
           })}`}
-        </p>
-      ) : (
-        <p className="sub">No week is open for picks right now.</p>
-      )}
+          </p>
+        ) : (
+          <p>No week is open for picks right now.</p>
+        )}
+      </div>
 
       {open && (
         <div className="card">

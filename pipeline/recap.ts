@@ -60,19 +60,6 @@ const AWARD_LABELS: Record<string, string> = {
   worst_bench: 'Worst bench decision',
 };
 
-export function parseRecipients(raw: string): string[] {
-  const unique = new Set(
-    raw
-      .split(/[\s,;]+/)
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean)
-  );
-  const recipients = [...unique];
-  const invalid = recipients.find((email) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email));
-  if (invalid) throw new Error('RECAP_RECIPIENTS contains an invalid email address.');
-  return recipients;
-}
-
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
     .replaceAll('&', '&amp;')

@@ -2,7 +2,7 @@
 import { usePathname } from 'next/navigation';
 
 const TABS = [
-  ['/', 'This week'],
+  ['/', 'Scoreboard'],
   ['/standings', 'Standings'],
   ['/rankings', 'Power'],
   ['/odds', 'Odds'],
@@ -15,7 +15,8 @@ export function Nav() {
   return (
     <nav className="tabs">
       {TABS.map(([href, label]) => (
-        <a key={href} href={href} className={path === href ? 'on' : ''}>
+        <a key={href} href={href} className={path === href ? 'on' : ''}
+           aria-current={path === href ? 'page' : undefined}>
           {label}
         </a>
       ))}

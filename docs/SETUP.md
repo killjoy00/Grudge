@@ -220,7 +220,6 @@ Note there is **no team 7**, and three teams have two owners — so 13 emails fo
 |---|---|
 | `PIPELINE_DATABASE_URL` | `app_pipeline`'s connection string — generated when I write the migration that creates that role (not yet); until then, `DATABASE_URL` from 2a works for local testing only |
 | `RESEND_API_KEY` | 2d |
-| `RECAP_RECIPIENTS` | comma-separated league member email addresses |
 | `VERCEL_DEPLOY_HOOK_URL` | Task 4c |
 
 Under **Secrets and variables → Actions → Variables**, add:
@@ -233,6 +232,8 @@ Under **Secrets and variables → Actions → Variables**, add:
 No ESPN cookies here — the weekly pipeline is unauthenticated by design, which is
 the main reason the backfill is a separate one-time script. No Clerk secret here
 either — the pipeline talks to Postgres directly and never touches Clerk.
+Recap recipients come from active provisioned profiles; each member controls the
+`recap_email_enabled` preference on `/me`.
 
 ---
 
@@ -287,5 +288,4 @@ links point at the right place.
 | `PROVISIONER_DATABASE_URL` (`app_provisioner`) | ✅ | — | ✅ prod only | ❌ |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | ✅ | — | ✅ prod only | ❌ |
 | `RESEND_API_KEY` | ✅ | ✅ | — | ❌ |
-| `RECAP_RECIPIENTS` | ✅ | ✅ | — | ❌ |
 | `ESPN_SWID` / `ESPN_S2` | ✅ backfill only | ❌ **never** | ❌ | ❌ |

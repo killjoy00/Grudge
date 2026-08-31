@@ -10,6 +10,7 @@
     "pipeline": "tsx pipeline/run.ts",
     "features": "tsx pipeline/compute.ts",
     "recap": "tsx pipeline/send-recap.ts",
+    "history:import": "tsx scripts/import-manual-history.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test pipeline/*.test.ts lib/*.test.ts"
   },

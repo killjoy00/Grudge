@@ -188,6 +188,39 @@ export async function getAllTime() {
   );
 }
 
+/** Human-recovered history grouped by durable franchise identity. */
+export async function getFranchiseHistory() {
+  return asPublic<{
+    franchise_key: string; current_name: string; seasons: number;
+    regular_wins: number; regular_losses: number; regular_ties: number;
+    playoff_wins: number; playoff_losses: number; championships: number;
+    regular_points_for: string | null; first_season: number; last_season: number;
+  }>(
+    `select franchise_key, current_name, seasons, regular_wins, regular_losses,
+            regular_ties, playoff_wins, playoff_losses, championships,
+            round(regular_points_for, 1)::text as regular_points_for,
+            first_season, last_season
+       from public.franchise_history_totals
+      order by championships desc, regular_wins desc, playoff_wins desc, current_name`
+  );
+}
+
+/** The same archive attributed to people through explicit season mappings. */
+export async function getManagerHistory() {
+  return asPublic<{
+    manager_key: string; display_name: string; seasons: number;
+    regular_wins: number; regular_losses: number; regular_ties: number;
+    playoff_wins: number; playoff_losses: number; championships: number;
+    first_season: number; last_season: number;
+  }>(
+    `select manager_key, display_name, seasons, regular_wins, regular_losses,
+            regular_ties, playoff_wins, playoff_losses, championships,
+            first_season, last_season
+       from public.manager_history_totals
+      order by championships desc, regular_wins desc, playoff_wins desc, display_name`
+  );
+}
+
 export async function getRivalries(teamId: number) {
   return asPublic<{
     opp_id: number; name: string; games: number; wins: number; losses: number;

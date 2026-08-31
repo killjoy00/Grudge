@@ -134,7 +134,6 @@ jobs:
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RECAP_RECIPIENTS: ${{ secrets.RECAP_RECIPIENTS }}
           RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
           RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
         run: |
