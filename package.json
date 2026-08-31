@@ -10,10 +10,16 @@
     "test": "tsx --test pipeline/*.test.ts"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2"
+    "@clerk/nextjs": "^7.8.3",
+    "@neondatabase/serverless": "^1.0.2",
+    "next": "^15.5.24",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
