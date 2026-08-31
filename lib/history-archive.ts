@@ -9,8 +9,10 @@
  * into a CSV by hand.
  */
 
-import { parseCsv } from './manual-history.ts';
-import type { ManualSeasonResult } from './manual-history.ts';
+import type { EspnLeague, FranchiseIdMapping } from './espn-archive.ts';
+import { espnManagerSeasons, espnSeasonResults, wasPlayed } from './espn-archive.ts';
+import { expandManagerTenures, parseCsv, parseManagerTenures } from './manual-history.ts';
+import type { ManualManagerSeason, ManualSeasonResult } from './manual-history.ts';
 import { derivePlayoffRecords, PLAYOFF_FIELD } from './playoff-bracket.ts';
 
 export interface StandingRow {
@@ -121,6 +123,8 @@ export function buildSeasonResults(rows: StandingRow[]): ManualSeasonResult[] {
         final_place: team.final_place,
         is_champion: team.final_place === 1,
         is_runner_up: team.final_place === 2,
+        espn_team_id: null,
+        source: 'manual',
         source_note: note,
       });
     }
@@ -128,22 +132,181 @@ export function buildSeasonResults(rows: StandingRow[]): ManualSeasonResult[] {
   return results;
 }
 
+// ------------------------------------------------------------ both eras
+
+export interface ArchiveSources {
+  /** CSV text, in the order the importer's own files appear. */
+  standings: string;
+  tenures: string;
+  franchiseIdMap: string;
+  espnManagerMap: string;
+  espnLeagues: { season: number; league: EspnLeague }[];
+}
+
+export interface LeagueHistory {
+  seasons: ManualSeasonResult[];
+  managerSeasons: ManualManagerSeason[];
+  /** Seasons ESPN created that the league never played -- 2020. */
+  skipped: number[];
+}
+
+/**
+ * Joins the transcribed era to the ESPN era and checks the seam: no season may
+ * come from both sources, and a ledger tenure that runs past 2017 has to be the
+ * account ESPN shows on that franchise.
+ */
+export function buildLeagueHistory(sources: ArchiveSources): LeagueHistory {
+  const manualSeasons = buildSeasonResults(parseStandings(sources.standings));
+  const tenures = parseManagerTenures(sources.tenures);
+  const manualManagers = expandManagerTenures(tenures, manualSeasons);
+
+  const franchiseIds = parseFranchiseIdMap(sources.franchiseIdMap);
+  const managerBySwid = parseEspnManagerMap(sources.espnManagerMap);
+
+  const espnSeasons: ManualSeasonResult[] = [];
+  const espnManagers: ManualManagerSeason[] = [];
+  const skipped: number[] = [];
+
+  for (const { season, league } of [...sources.espnLeagues].sort((a, b) => a.season - b.season)) {
+    if (!wasPlayed(league)) {
+      skipped.push(season);
+      continue;
+    }
+    espnSeasons.push(...espnSeasonResults(league, season, franchiseIds));
+    espnManagers.push(...espnManagerSeasons(league, season, franchiseIds, managerBySwid));
+  }
+
+  const seen = new Set<string>();
+  for (const row of [...manualSeasons, ...espnSeasons]) {
+    const key = `${row.season}:${row.franchise_key}`;
+    if (seen.has(key)) throw new Error(`${key} appears in both eras; the sources overlap.`);
+    seen.add(key);
+  }
+
+  if (espnSeasons.length) {
+    const firstEspn = Math.min(...espnSeasons.map((row) => row.season));
+    for (const tenure of tenures) {
+      if (tenure.end_season !== null) continue;
+      const owners = espnManagers.filter(
+        (row) => row.season === firstEspn && row.franchise_key === tenure.franchise_key
+      );
+      if (owners.length && !owners.some((row) => row.manager_key === tenure.manager_key)) {
+        throw new Error(
+          `${tenure.manager_key} still runs ${tenure.franchise_key} in the ledger, but the ` +
+          `${firstEspn} ESPN owners are ${owners.map((row) => row.manager_key).join(', ')}. ` +
+          'Close the tenure or fix espn-managers.csv.'
+        );
+      }
+    }
+  }
+
+  return {
+    seasons: sortSeasonResults([...manualSeasons, ...espnSeasons]),
+    managerSeasons: sortManagerSeasons([...manualManagers, ...espnManagers]),
+    skipped,
+  };
+}
+
+// --------------------------------------------------------- identity mapping
+
+/** Ties an ESPN team id to a franchise, and an ESPN account to a person. */
+export function parseFranchiseIdMap(text: string): FranchiseIdMapping[] {
+  return parseCsv(text).map((row, index) => {
+    const line = index + 2;
+    const int = (column: string, optional = false) => {
+      const raw = row[column]?.trim() ?? '';
+      if (!raw && optional) return null;
+      const parsed = Number(raw);
+      if (!Number.isInteger(parsed)) throw new Error(`Row ${line}: ${column} must be an integer.`);
+      return parsed;
+    };
+    const mapping: FranchiseIdMapping = {
+      franchise_key: row.franchise_key?.trim() ?? '',
+      espn_team_id: int('espn_team_id')!,
+      start_season: int('start_season')!,
+      end_season: int('end_season', true),
+    };
+    if (!mapping.franchise_key) throw new Error(`Row ${line}: franchise_key is required.`);
+    return mapping;
+  });
+}
+
+export function parseEspnManagerMap(text: string): Map<string, string> {
+  const map = new Map<string, string>();
+  parseCsv(text).forEach((row, index) => {
+    const line = index + 2;
+    const swid = row.swid?.trim();
+    const managerKey = row.manager_key?.trim();
+    if (!swid || !managerKey) throw new Error(`Row ${line}: swid and manager_key are required.`);
+    if (map.has(swid)) throw new Error(`Row ${line}: duplicate ESPN account ${swid}.`);
+    map.set(swid, managerKey);
+  });
+  return map;
+}
+
+/**
+ * Owner labels a manager appeared under in the spreadsheets, so a rename does
+ * not read as a different person. Semicolon-separated, matched case-insensitively.
+ */
+export function parseManagerLabels(text: string): Map<string, string[]> {
+  const labels = new Map<string, string[]>();
+  for (const row of parseCsv(text)) {
+    const key = row.manager_key?.trim();
+    if (!key) continue;
+    const extra = (row.archive_labels ?? '').split(';').map((name) => name.trim()).filter(Boolean);
+    labels.set(key, [row.display_name?.trim() ?? '', ...extra].filter(Boolean));
+  }
+  return labels;
+}
+
+// ------------------------------------------------------------------ writers
+
 export const SEASON_RESULT_COLUMNS = [
-  'season', 'franchise_key', 'team_name', 'regular_wins', 'regular_losses',
-  'regular_ties', 'regular_points_for', 'regular_points_against', 'playoff_wins',
-  'playoff_losses', 'final_place', 'is_champion', 'is_runner_up', 'source_note',
+  'season', 'franchise_key', 'team_name', 'espn_team_id', 'regular_wins',
+  'regular_losses', 'regular_ties', 'regular_points_for', 'regular_points_against',
+  'playoff_wins', 'playoff_losses', 'final_place', 'is_champion', 'is_runner_up',
+  'source', 'source_note',
 ] as const;
 
-export function toSeasonResultsCsv(results: ManualSeasonResult[]): string {
-  const cell = (value: unknown) => {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'boolean') return value ? 'yes' : 'no';
-    const text = String(value);
-    return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-  };
-  const lines = [SEASON_RESULT_COLUMNS.join(',')];
-  for (const row of results) {
-    lines.push(SEASON_RESULT_COLUMNS.map((column) => cell(row[column])).join(','));
-  }
+export const MANAGER_SEASON_COLUMNS = [
+  'season', 'manager_key', 'franchise_key', 'is_primary',
+] as const;
+
+function cell(value: unknown) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'yes' : 'no';
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function toCsv(columns: readonly string[], rows: Record<string, unknown>[]): string {
+  const lines = [columns.join(',')];
+  for (const row of rows) lines.push(columns.map((column) => cell(row[column])).join(','));
   return lines.join('\n') + '\n';
+}
+
+export function toSeasonResultsCsv(results: ManualSeasonResult[]): string {
+  return toCsv(SEASON_RESULT_COLUMNS, results as unknown as Record<string, unknown>[]);
+}
+
+export function toManagerSeasonsCsv(rows: ManualManagerSeason[]): string {
+  return toCsv(MANAGER_SEASON_COLUMNS, rows as unknown as Record<string, unknown>[]);
+}
+
+/** Season, then finish, so a diff of the generated file reads like a table. */
+export function sortSeasonResults(rows: ManualSeasonResult[]): ManualSeasonResult[] {
+  return [...rows].sort(
+    (a, b) => a.season - b.season ||
+      (a.final_place ?? 99) - (b.final_place ?? 99) ||
+      a.franchise_key.localeCompare(b.franchise_key)
+  );
+}
+
+export function sortManagerSeasons(rows: ManualManagerSeason[]): ManualManagerSeason[] {
+  return [...rows].sort(
+    (a, b) => a.season - b.season ||
+      a.franchise_key.localeCompare(b.franchise_key) ||
+      Number(b.is_primary) - Number(a.is_primary) ||
+      a.manager_key.localeCompare(b.manager_key)
+  );
 }

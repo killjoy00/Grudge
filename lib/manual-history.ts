@@ -128,8 +128,15 @@ export interface ManualSeasonResult {
   final_place: number | null;
   is_champion: boolean;
   is_runner_up: boolean;
+  espn_team_id: number | null;
+  source: SeasonSource;
   source_note: string | null;
 }
+
+/** Where a season row came from: a human transcription or ESPN's own archive. */
+export type SeasonSource = 'manual' | 'espn';
+
+const SOURCES: SeasonSource[] = ['manual', 'espn'];
 
 export function parseSeasonResults(text: string): ManualSeasonResult[] {
   const seen = new Set<string>();
@@ -154,6 +161,10 @@ export function parseSeasonResults(text: string): ManualSeasonResult[] {
       if (value < 0) throw new Error(`Row ${line}: ${column} cannot be negative.`);
       return value;
     };
+    const source = (row.source?.trim() || 'manual') as SeasonSource;
+    if (!SOURCES.includes(source)) {
+      throw new Error(`Row ${line}: source must be one of ${SOURCES.join(', ')}.`);
+    }
     return {
       season,
       franchise_key: franchiseKey,
@@ -168,6 +179,8 @@ export function parseSeasonResults(text: string): ManualSeasonResult[] {
       final_place: finalPlace,
       is_champion: champion,
       is_runner_up: runnerUp,
+      espn_team_id: integer(row.espn_team_id ?? '', 'espn_team_id', line, true),
+      source,
       source_note: row.source_note?.trim() || null,
     };
   });

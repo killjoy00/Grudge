@@ -6,6 +6,7 @@ import {
   parseFranchises,
   expandManagerTenures,
   parseManagers,
+  parseManagerSeasons,
   parseManagerTenures,
   parseSeasonResults,
 } from '../lib/manual-history.ts';
@@ -19,22 +20,31 @@ const franchiseFile = value('franchises');
 const seasonFile = value('seasons');
 const managerFile = value('managers');
 const tenureFile = value('tenures');
+const managerSeasonFile = value('manager-seasons');
 
 if (!franchiseFile || !seasonFile) {
   throw new Error(
     'Usage: npm run history:import -- --franchises=franchises.csv --seasons=season-results.csv ' +
-    '[--managers=managers.csv --tenures=manager-tenures.csv] [--dry-run]'
+    '[--managers=managers.csv (--manager-seasons=manager-seasons.csv | --tenures=manager-tenures.csv)] ' +
+    '[--dry-run]'
   );
 }
-if (Boolean(managerFile) !== Boolean(tenureFile)) {
-  throw new Error('--managers and --tenures must be supplied together.');
+if (tenureFile && managerSeasonFile) {
+  throw new Error('Supply either --manager-seasons or --tenures, not both.');
+}
+const assignmentFile = managerSeasonFile ?? tenureFile;
+if (Boolean(managerFile) !== Boolean(assignmentFile)) {
+  throw new Error('--managers needs --manager-seasons (or --tenures), and vice versa.');
 }
 
 const franchises = parseFranchises(readFileSync(franchiseFile, 'utf8'));
 const seasons = parseSeasonResults(readFileSync(seasonFile, 'utf8'));
 const managers = managerFile ? parseManagers(readFileSync(managerFile, 'utf8')) : [];
-const tenures = tenureFile ? parseManagerTenures(readFileSync(tenureFile, 'utf8')) : [];
-const managerSeasons = expandManagerTenures(tenures, seasons);
+const managerSeasons = managerSeasonFile
+  ? parseManagerSeasons(readFileSync(managerSeasonFile, 'utf8'))
+  : tenureFile
+    ? expandManagerTenures(parseManagerTenures(readFileSync(tenureFile, 'utf8')), seasons)
+    : [];
 
 const franchiseKeys = new Set(franchises.map((row) => row.franchise_key));
 for (const row of seasons) {
@@ -53,9 +63,11 @@ for (const row of managerSeasons) {
   }
 }
 
+const years = seasons.map((row) => row.season);
 console.log(
-  `Validated ${franchises.length} franchises, ${seasons.length} season results, ` +
-  `${managers.length} managers, and ${managerSeasons.length} manager assignments.`
+  `Validated ${franchises.length} franchises, ${seasons.length} season results ` +
+  `(${Math.min(...years)}-${Math.max(...years)}), ${managers.length} managers, ` +
+  `and ${managerSeasons.length} manager assignments.`
 );
 if (dryRun) {
   console.log('Dry run: database unchanged.');
@@ -78,12 +90,12 @@ const statements = [
   upsert(
     'public.franchise_seasons',
     [
-      'season', 'franchise_key', 'team_name', 'regular_wins', 'regular_losses',
-      'regular_ties', 'regular_points_for', 'regular_points_against',
+      'season', 'franchise_key', 'team_name', 'espn_team_id', 'regular_wins',
+      'regular_losses', 'regular_ties', 'regular_points_for', 'regular_points_against',
       'playoff_wins', 'playoff_losses', 'final_place', 'is_champion',
       'is_runner_up', 'source', 'source_note',
     ],
-    seasons.map((row) => ({ ...row, source: 'manual' })),
+    seasons,
     ['season', 'franchise_key']
   ),
   upsert(
@@ -95,4 +107,4 @@ const statements = [
 ].filter((statement) => statement !== null);
 
 await runTransaction(connect(), statements);
-console.log('Manual history imported in one transaction.');
+console.log('League history imported in one transaction.');

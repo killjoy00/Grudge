@@ -188,36 +188,60 @@ export async function getAllTime() {
   );
 }
 
-/** Human-recovered history grouped by durable franchise identity. */
+/**
+ * All-time records by durable franchise identity, spanning the transcribed
+ * 2005-2017 seasons and the ESPN era in one table.
+ */
 export async function getFranchiseHistory() {
   return asPublic<{
-    franchise_key: string; current_name: string; seasons: number;
-    regular_wins: number; regular_losses: number; regular_ties: number;
+    franchise_key: string; current_name: string; espn_team_id: number | null;
+    seasons: number; regular_wins: number; regular_losses: number; regular_ties: number;
     playoff_wins: number; playoff_losses: number; championships: number;
-    regular_points_for: string | null; first_season: number; last_season: number;
+    runner_ups: number; playoff_appearances: number; title_seasons: string | null;
+    regular_points_for: string | null; regular_points_against: string | null;
+    first_season: number; last_season: number;
   }>(
-    `select franchise_key, current_name, seasons, regular_wins, regular_losses,
-            regular_ties, playoff_wins, playoff_losses, championships,
+    `select franchise_key, current_name, espn_team_id, seasons, regular_wins,
+            regular_losses, regular_ties, playoff_wins, playoff_losses,
+            championships, runner_ups, playoff_appearances, title_seasons,
             round(regular_points_for, 1)::text as regular_points_for,
+            round(regular_points_against, 1)::text as regular_points_against,
             first_season, last_season
        from public.franchise_history_totals
       order by championships desc, regular_wins desc, playoff_wins desc, current_name`
   );
 }
 
-/** The same archive attributed to people through explicit season mappings. */
+/** The same record attributed to people through explicit season mappings. */
 export async function getManagerHistory() {
   return asPublic<{
     manager_key: string; display_name: string; seasons: number;
     regular_wins: number; regular_losses: number; regular_ties: number;
     playoff_wins: number; playoff_losses: number; championships: number;
-    first_season: number; last_season: number;
+    runner_ups: number; playoff_appearances: number; title_seasons: string | null;
+    regular_points_for: string | null; first_season: number; last_season: number;
   }>(
     `select manager_key, display_name, seasons, regular_wins, regular_losses,
             regular_ties, playoff_wins, playoff_losses, championships,
+            runner_ups, playoff_appearances, title_seasons,
+            round(regular_points_for, 1)::text as regular_points_for,
             first_season, last_season
        from public.manager_history_totals
       order by championships desc, regular_wins desc, playoff_wins desc, display_name`
+  );
+}
+
+/** One row per played season, newest first, for the title roll. */
+export async function getSeasonChampions() {
+  return asPublic<{
+    season: number; champion_key: string | null; champion_name: string | null;
+    champion_team_name: string | null; runner_up_name: string | null;
+    source: string; teams: number;
+  }>(
+    `select season, champion_key, champion_name, champion_team_name,
+            runner_up_name, source, teams
+       from public.season_champions
+      order by season desc`
   );
 }
 
