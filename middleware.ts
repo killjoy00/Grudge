@@ -13,6 +13,12 @@ const isProtected = createRouteMatcher([
   '/predictions(.*)',
   '/me(.*)',
   '/admin(.*)',
+  // '/admin(.*)' does NOT cover '/api/admin/...' -- the matcher is anchored at
+  // the start of the path. Listing it separately keeps an unauthenticated call
+  // to the JSON routes from reaching the handler at all. The handler's own
+  // requireAdminApi() and the RLS policies still stand behind this; it is the
+  // outermost of three layers, not the one that matters most.
+  '/api/admin(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

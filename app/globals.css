@@ -118,3 +118,23 @@ textarea {
 .cmt .when { color: var(--muted); font-size: 12px; margin-left: 6px; }
 .cmt .body { margin-top: 4px; white-space: pre-wrap; font-size: 15px; }
 details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+
+/* ---------------------------------------------------------- admin section */
+/* Visually distinct from the member-facing pages: an admin should always be
+   able to tell at a glance that they are looking at something other members
+   cannot see. */
+.adminbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 0 14px; border-bottom: 1px solid var(--line); margin-bottom: 14px;
+}
+.adminbar a { font-size: 14px; }
+.badge {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--bg); background: var(--warn);
+  padding: 3px 7px; border-radius: 5px;
+}
+ul.plain { list-style: none; margin: 10px 0 0; padding: 0; }
+ul.plain li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+ul.plain li:last-child { border-bottom: 0; }
+.up   { color: var(--win);  font-variant-numeric: tabular-nums; }
+.down { color: var(--loss); font-variant-numeric: tabular-nums; }

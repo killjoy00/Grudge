@@ -301,3 +301,92 @@ export function completedWeeks(league: EspnLeague): number[] {
   const weeks = new Set(matchupRows(league).map((m) => m.week));
   return [...weeks].sort((a, b) => a - b).filter((w) => weekCompleteness(league, w).complete);
 }
+
+/* ------------------------------------------------ free agent pool (Step 8) */
+
+/**
+ * A player in the free-agent / waiver pool, as returned by kona_player_info.
+ *
+ * SCHEMA CONFIDENCE -- read before trusting `status`. The 25 players captured
+ * in Step 1 ALL came back as "WAIVERS", every one with onTeamId 0. The filter
+ * requests FREEAGENT as well and ESPN accepted it (HTTP 200), but that string
+ * has never actually been seen in a response for this league, because the
+ * capture was taken in the preseason when the whole pool sits on waivers.
+ *
+ * So `status` is passed through verbatim rather than being parsed into an
+ * enum, and nothing downstream branches on it being one of a known set. If
+ * ESPN returns something unexpected in September it lands in the column as-is
+ * and shows up in the admin view, instead of being silently coerced.
+ *
+ * Player ids are legitimately NEGATIVE for D/ST units (-16017, -16005, -16012
+ * were all observed), which is why the column is bigint and no `> 0` check
+ * exists anywhere.
+ */
+export interface FreeAgentRow {
+  espn_player_id: number;
+  full_name: string;
+  default_position_id: number | null;
+  pro_team_id: number | null;
+  percent_owned: number | null;
+  percent_change: number | null;
+  percent_started: number | null;
+  auction_value_avg: number | null;
+  avg_draft_position: number | null;
+  status: string | null;
+  on_team_id: number | null;
+}
+
+interface KonaPayload {
+  players?: {
+    id: number;
+    status?: string;
+    onTeamId?: number;
+    player?: {
+      fullName?: string;
+      defaultPositionId?: number;
+      proTeamId?: number;
+      ownership?: {
+        percentOwned?: number;
+        percentChange?: number;
+        percentStarted?: number;
+        auctionValueAverage?: number;
+        averageDraftPosition?: number;
+      };
+    };
+  }[];
+}
+
+/** null rather than 0 for a missing number: "unknown" and "zero" differ here. */
+const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+export function freeAgentRows(payload: unknown): FreeAgentRow[] {
+  const players = (payload as KonaPayload)?.players ?? [];
+  const byId = new Map<number, FreeAgentRow>();
+
+  for (const entry of players) {
+    const p = entry?.player;
+    // A pool entry with no player object or no name is not something we can
+    // key on or display; skipping beats inventing a placeholder row.
+    if (!p?.fullName || typeof entry.id !== 'number') continue;
+    const o = p.ownership ?? {};
+
+    byId.set(entry.id, {
+      espn_player_id: entry.id,
+      full_name: p.fullName,
+      default_position_id: num(p.defaultPositionId),
+      pro_team_id: num(p.proTeamId),
+      percent_owned: num(o.percentOwned),
+      percent_change: num(o.percentChange),
+      percent_started: num(o.percentStarted),
+      auction_value_avg: num(o.auctionValueAverage),
+      avg_draft_position: num(o.averageDraftPosition),
+      status: entry.status ?? null,
+      on_team_id: num(entry.onTeamId),
+    });
+  }
+
+  // Deduplicated by id: ESPN has been observed to repeat an entry across
+  // pages, and the snapshot table's primary key would reject the second copy
+  // mid-transaction rather than at the boundary.
+  return [...byId.values()];
+}

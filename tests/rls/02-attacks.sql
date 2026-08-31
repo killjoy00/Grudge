@@ -259,6 +259,53 @@ select test.expect_ok(
   'T24 app_pipeline (BYPASSRLS) can write the ESPN-mirror tables');
 reset role;
 
+-- =========================================== admin-only tables (Step 8) ==
+-- The free-agent pool is admin-only. These run as app_user with an explicit
+-- role switch, NOT after a bare `reset role` -- the connecting superuser
+-- bypasses RLS unconditionally and would pass every check below regardless of
+-- whether the policy exists at all.
+--
+-- The point of this block is that the DATABASE refuses, not the route guard in
+-- lib/admin.ts. Deleting that guard must leave a non-admin seeing nothing.
+set role app_user;
+set app.user_id = :'owner_id';   -- provisioned non-admin
+
+-- Zero rows, not an error: RLS filters, it does not raise. That distinction
+-- matters because a route that "works but returns nothing" is what a non-admin
+-- must experience if a guard is ever removed.
+select test.expect_count(
+  $$select count(*) from public.player_ownership_snapshots$$, 0,
+  'T27 ATTACK read the free-agent pool as a non-admin');
+
+select test.expect_error(
+  $$insert into public.player_ownership_snapshots (season, week, espn_player_id, percent_owned)
+    values (2026, 1, 4685415, 99.9)$$,
+  'T28 ATTACK write a pool snapshot as a non-admin');
+
+select test.expect_error(
+  $$update public.player_ownership_snapshots set percent_owned = 0 where season = 2026$$,
+  'T29 ATTACK tamper with captured ownership as a non-admin');
+
+-- The positive control. Without it, a policy of `using (false)` would pass
+-- every check above while making the admin page permanently empty.
+set app.user_id = :'admin_id';
+select test.expect_count(
+  $$select count(*) from public.player_ownership_snapshots$$, 2,
+  'T30 admin CAN read the free-agent pool');
+
+-- Admins read the pool; they never write it. That is the pipeline's job, and
+-- an admin session with write access would let the UI corrupt captured history.
+select test.expect_error(
+  $$update public.player_ownership_snapshots set percent_owned = 0 where season = 2026$$,
+  'T31 even an admin cannot rewrite captured ownership');
+
+reset app.user_id;
+select test.expect_count(
+  $$select count(*) from public.player_ownership_snapshots$$, 0,
+  'T32 identity cleared -> pool invisible');
+
+reset role; reset app.user_id;
+
 \echo ''
 \pset format aligned
 select case when ok then 'pass' else 'FAIL' end as status, label, detail
