@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "pipeline": "tsx pipeline/run.ts",
     "features": "tsx pipeline/compute.ts",
     "typecheck": "tsc --noEmit",

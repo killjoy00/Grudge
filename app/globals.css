@@ -41,6 +41,10 @@ header.site {
 .brand { font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .brand span { color: var(--muted); font-weight: 400; font-size: 13px; display: block; }
 .spacer { flex: 1; }
+/* Holds the header's width while Clerk resolves the session in the browser,
+   so the brand does not shift sideways on first paint. Matches the rendered
+   width of both the avatar and the sign-in button. */
+.authslot { display: inline-block; width: 32px; height: 32px; flex: none; }
 
 nav.tabs {
   display: flex; gap: 4px; overflow-x: auto; padding: 8px 14px;

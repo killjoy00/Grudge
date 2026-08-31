@@ -1,8 +1,8 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import { ClerkProvider, SignInButton, UserButton } from '@clerk/nextjs';
-import { auth } from '@clerk/nextjs/server';
+import { ClerkProvider } from '@clerk/nextjs';
 import { Nav } from '../components/Nav.tsx';
+import { AuthButton } from '../components/AuthButton.tsx';
 
 export const metadata: Metadata = {
   title: 'UNC Grudge Match',
@@ -14,13 +14,11 @@ export const metadata: Metadata = {
 // their own container rather than zooming the whole page out.
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Clerk Core 3 removed the <SignedIn>/<SignedOut> components -- they still
-  // export but throw when rendered. The server session is the supported route,
-  // and it suits a server component better anyway: no client boundary just to
-  // decide which button to show.
-  const { userId } = await auth();
-
+// Deliberately NOT async, and deliberately not calling auth(). Any dynamic API
+// used here applies to every route beneath it, which would force the whole site
+// to server-render per request and quietly disable the `revalidate` exports on
+// the league pages. The session is resolved client-side in <AuthButton />.
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="en">
@@ -32,13 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <span>Est. 2018 on record</span>
               </a>
               <div className="spacer" />
-              {userId ? (
-                <UserButton />
-              ) : (
-                <SignInButton mode="modal">
-                  <button>Sign in</button>
-                </SignInButton>
-              )}
+              <AuthButton />
             </div>
             <Nav />
           </header>
