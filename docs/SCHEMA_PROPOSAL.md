@@ -684,7 +684,14 @@ end $$;
 -- BYPASSRLS pipeline role remains in GitHub Actions and never enters Vercel.
 revoke all on function public.provision_profile
   from public, authenticated, app_user, app_pipeline;
-grant execute on function public.provision_profile to app_provisioner;
+-- The base schema can be applied before the deployment-only role is created.
+-- scripts/provisioner-role.sql grants this after Neon creates the role.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'app_provisioner') then
+    execute 'grant execute on function public.provision_profile(text, citext, text) to app_provisioner';
+  end if;
+end $$;
 ```
 
 This also answers *"after login, users pick or are assigned their ESPN team"* —
