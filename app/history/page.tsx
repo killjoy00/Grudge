@@ -33,10 +33,11 @@ export default async function History() {
       <h2>Franchise record</h2>
       {franchises.length === 0 ? (
         <div className="callout">
-          The archive model is ready for 2005–2017. Final standings and playoff
-          bracket screenshots are enough to populate regular-season records,
-          playoff records, finishes, and championships without guessing identity.
-        </div>
+          The 2005–2017 archive is checked in but has not been imported into
+          this database yet. Run <code>npm run history:import</code> (see
+          <code>docs/PRE-2018-HISTORY.md</code>) to fill in thirteen seasons of
+          records, finishes, and championships.
+</div>
       ) : (
         <div className="card">
           <div className="scroll">
