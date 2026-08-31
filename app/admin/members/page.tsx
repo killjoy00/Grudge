@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { MembershipManager } from '../../../components/MembershipManager.tsx';
 import { adminProfile } from '../../../lib/admin.ts';
 import { getAllowlist, getProvisionedMembers } from '../../../lib/admin-queries.ts';
-import { getClerkAllowlist } from '../../../lib/clerk-admin.ts';
+import { getClerkMembers } from '../../../lib/clerk-admin.ts';
 import { getCurrentSeason, getTeams } from '../../../lib/queries.ts';
 
 export const dynamic = 'force-dynamic';
@@ -11,32 +11,33 @@ export const dynamic = 'force-dynamic';
 export default async function MembersPage() {
   if (!(await adminProfile())) notFound();
 
-  const season = await getCurrentSeason();
-  const [allowlist, members, teams, clerkResult] = await Promise.all([
+  const [season, allowlist, members] = await Promise.all([
+    getCurrentSeason(),
     getAllowlist(),
     getProvisionedMembers(),
+  ]);
+  const [teams, clerkResult] = await Promise.all([
     getTeams(season),
-    getClerkAllowlist().then(
+    getClerkMembers(allowlist.map((member) => member.email)).then(
       (entries) => ({ entries, error: false }),
-      () => ({ entries: [], error: true })
+      () => ({ entries: new Map(), error: true })
     ),
   ]);
 
   const profiles = new Map(members.map((member) => [member.email.toLowerCase(), member]));
-  const clerkEmails = new Set(
-    clerkResult.entries.map((entry) => entry.identifier.toLowerCase())
-  );
   const rows = allowlist.map((member) => {
-    const profile = profiles.get(member.email.toLowerCase());
+    const email = member.email.toLowerCase();
+    const profile = profiles.get(email);
+    const clerk = clerkResult.entries.get(email);
     return {
       email: member.email,
       season: member.season ?? season,
       espnTeamId: member.espn_team_id,
       isAdmin: member.is_admin,
       isActive: member.is_active,
-      clerkListed: clerkEmails.has(member.email.toLowerCase()),
+      clerkState: clerk?.state ?? 'missing' as const,
       profileId: profile?.id ?? null,
-      displayName: profile?.display_name ?? null,
+      displayName: profile?.display_name ?? clerk?.displayName ?? null,
       recapEnabled: profile?.recap_email_enabled ?? null,
     };
   });

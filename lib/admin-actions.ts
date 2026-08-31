@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache';
 
 import { adminProfile } from './admin.ts';
 import { asUser } from './db.ts';
-import { syncClerkAllowlist } from './clerk-admin.ts';
-import { syncProfileMembership } from './provisioner.ts';
+import { syncClerkMember } from './clerk-admin.ts';
+import type { ClerkMember } from './clerk-member-state.ts';
+import { provisionProfile, syncProfileMembership } from './provisioner.ts';
 
 export interface AdminActionResult {
   ok: boolean;
@@ -37,10 +38,26 @@ function safeError(error: unknown): string {
   if (/PROVISIONER_DATABASE_URL/i.test(message)) {
     return 'The database membership was saved, but the profile could not refresh. Check PROVISIONER_DATABASE_URL, then use Repair sync.';
   }
-  if (/Clerk|allowlist|Unprocessable Entity|fetch failed/i.test(message)) {
+  if (/Clerk|invitation|Unprocessable Entity|fetch failed/i.test(message)) {
     return 'The database membership was saved, but Clerk did not synchronize. Use Repair sync when Clerk is available.';
   }
   return 'Membership could not be updated. No broader access was granted.';
+}
+
+async function syncMembershipDependencies(
+  email: string,
+  active: boolean,
+  notify: boolean
+): Promise<ClerkMember> {
+  const clerk = await syncClerkMember(email, active, notify);
+  if (active && clerk.userId) {
+    // Repairs a missed user.created webhook as well as refreshing an existing
+    // profile after a team/admin change.
+    await provisionProfile(clerk.userId, email, clerk.displayName);
+  } else {
+    await syncProfileMembership(email);
+  }
+  return clerk;
 }
 
 export async function saveMembership(input: MembershipInput): Promise<AdminActionResult> {
@@ -83,15 +100,22 @@ export async function saveMembership(input: MembershipInput): Promise<AdminActio
 
     // The database is authoritative and is updated first. Deactivation takes
     // effect there immediately even if either downstream synchronizer is down.
-    await syncProfileMembership(email);
-    await syncClerkAllowlist(email, Boolean(input.isActive), Boolean(input.notify));
+    const clerk = await syncMembershipDependencies(
+      email,
+      Boolean(input.isActive),
+      input.notify ?? true
+    );
 
     revalidatePath('/admin');
     revalidatePath('/admin/members');
     revalidatePath('/me');
     return {
       ok: true,
-      message: input.isActive ? 'Membership and Clerk are in sync.' : 'Member deactivated.',
+      message: !input.isActive
+        ? 'Member deactivated; pending invitation links were revoked.'
+        : clerk.state === 'registered'
+          ? 'Membership and the existing Clerk account are in sync.'
+          : 'Membership saved and Clerk invitation sent.',
     };
   } catch (error) {
     revalidatePath('/admin/members');
@@ -115,10 +139,16 @@ export async function repairMembershipSync(emailValue: string): Promise<AdminAct
     const member = rows?.[0];
     if (!member) return { ok: false, error: 'That email is not in the league database.' };
 
-    await syncProfileMembership(email);
-    await syncClerkAllowlist(email, member.is_active, false);
+    const clerk = await syncMembershipDependencies(email, member.is_active, true);
     revalidatePath('/admin/members');
-    return { ok: true, message: 'Database, profile, and Clerk are in sync.' };
+    return {
+      ok: true,
+      message: !member.is_active
+        ? 'Inactive membership confirmed; pending invitation links were revoked.'
+        : clerk.state === 'registered'
+          ? 'Database profile and Clerk account are in sync.'
+          : 'A fresh Clerk invitation was sent.',
+    };
   } catch (error) {
     return { ok: false, error: safeError(error) };
   }

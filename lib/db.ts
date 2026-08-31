@@ -70,6 +70,13 @@ function client() {
 
 type Row = Record<string, unknown>;
 
+export class InactiveMembershipError extends Error {
+  constructor() {
+    super('league membership inactive or profile not provisioned');
+    this.name = 'InactiveMembershipError';
+  }
+}
+
 /**
  * Run queries as the signed-in user, inside one transaction that carries their
  * identity. Throws if there is no Clerk session -- callers must not be able to
@@ -105,7 +112,7 @@ export async function asUser<T = Row>(
   }).transaction(batch)) as unknown[][];
   const gate = results[0] as Array<{ user_id?: string }> | undefined;
   if (gate?.[0]?.user_id !== userId) {
-    throw new Error('league membership inactive or profile not provisioned');
+    throw new InactiveMembershipError();
   }
   return results.slice(1) as T[][]; // drop the membership/set_config result
 }
@@ -122,22 +129,29 @@ export async function asPublic<T = Row>(text: string, params: unknown[] = []): P
 export async function currentProfile() {
   const { userId } = await auth();
   if (!userId) return null;
-  const [rows] = await asUser<{
-    id: string; email: string; display_name: string | null;
-    espn_team_id: number | null; team_name: string | null;
-    is_admin: boolean; recap_email_enabled: boolean;
-  }>((q) => [
-    q(
-      `select p.id, p.email::text as email, p.display_name, p.espn_team_id,
-              t.name as team_name, public.is_admin() as is_admin,
-              p.recap_email_enabled
-         from public.profiles p
-         left join public.teams t
-           on t.espn_team_id = p.espn_team_id
-          and t.season = (select max(season) from public.teams)
-        where p.id = $1`,
-      [userId]
-    ),
-  ]);
-  return rows?.[0] ?? null;
+  try {
+    const [rows] = await asUser<{
+      id: string; email: string; display_name: string | null;
+      espn_team_id: number | null; team_name: string | null;
+      is_admin: boolean; recap_email_enabled: boolean;
+    }>((q) => [
+      q(
+        `select p.id, p.email::text as email, p.display_name, p.espn_team_id,
+                t.name as team_name, public.is_admin() as is_admin,
+                p.recap_email_enabled
+           from public.profiles p
+           left join public.teams t
+             on t.espn_team_id = p.espn_team_id
+            and t.season = (select max(season) from public.teams)
+          where p.id = $1`,
+        [userId]
+      ),
+    ]);
+    return rows?.[0] ?? null;
+  } catch (error) {
+    // A valid Clerk account can briefly exist before the webhook provisions
+    // its database profile. Render the recovery page instead of a 500.
+    if (error instanceof InactiveMembershipError) return null;
+    throw error;
+  }
 }

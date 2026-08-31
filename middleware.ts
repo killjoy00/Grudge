@@ -1,33 +1,21 @@
 /**
- * Clerk middleware.
+ * Clerk middleware verifies the session for every application request.
  *
- * Public pages (standings, rankings, history) render for anyone; the
- * interactive pages require a session. Note the protection here is a
- * convenience redirect -- the actual guarantee is that lib/db.ts sets no
- * identity without a verified session, so an unauthenticated request reaching
- * a protected route anyway would simply see nothing user-owned.
+ * Authorization lives next to each protected resource instead of in a path
+ * matcher: pages call auth.protect() or adminProfile(), server actions call
+ * auth()/adminProfile(), and API handlers call requireAdminApi(). This follows
+ * Clerk's resource-first guidance and avoids the deprecated
+ * createRouteMatcher helper. The database's RLS policies remain the final
+ * authorization boundary.
  */
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
-const isProtected = createRouteMatcher([
-  '/predictions(.*)',
-  '/me(.*)',
-  '/admin(.*)',
-  // '/admin(.*)' does NOT cover '/api/admin/...' -- the matcher is anchored at
-  // the start of the path. Listing it separately keeps an unauthenticated call
-  // to the JSON routes from reaching the handler at all. The handler's own
-  // requireAdminApi() and the RLS policies still stand behind this; it is the
-  // outermost of three layers, not the one that matters most.
-  '/api/admin(.*)',
-]);
-
-// /api/webhooks/clerk is deliberately absent. It has no browser session; its
-// authentication is Clerk's verified webhook signature, checked in the route.
-
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtected(req)) await auth.protect();
-});
+export default clerkMiddleware();
 
 export const config = {
-  matcher: ['/((?!_next|.*\\..*).*)', '/(api|trpc)(.*)'],
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+    '/__clerk/(.*)',
+  ],
 };

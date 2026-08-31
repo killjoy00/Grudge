@@ -9,6 +9,7 @@ import {
   type AdminActionResult,
   type MembershipInput,
 } from '../lib/admin-actions.ts';
+import type { ClerkMemberState } from '../lib/clerk-member-state.ts';
 
 export interface MembershipTeam {
   id: number;
@@ -21,7 +22,7 @@ export interface MembershipRow {
   espnTeamId: number | null;
   isAdmin: boolean;
   isActive: boolean;
-  clerkListed: boolean;
+  clerkState: ClerkMemberState;
   profileId: string | null;
   displayName: string | null;
   recapEnabled: boolean | null;
@@ -41,6 +42,22 @@ function MemberEditor({ row, teams }: { row: MembershipRow; teams: MembershipTea
   const [isAdmin, setIsAdmin] = useState(row.isAdmin);
   const [isActive, setIsActive] = useState(row.isActive);
   const [result, setResult] = useState<AdminActionResult | null>(null);
+  const clerkHealthy = row.isActive
+    ? row.clerkState === 'registered' || row.clerkState === 'invited'
+    : row.clerkState !== 'invited';
+  const clerkLabel = row.isActive
+    ? row.clerkState === 'registered'
+      ? 'Clerk account'
+      : row.clerkState === 'invited'
+        ? 'Invitation pending'
+        : row.clerkState === 'expired'
+          ? 'Invitation expired'
+          : 'Invitation needed'
+    : row.clerkState === 'registered'
+      ? 'Clerk account retained'
+      : row.clerkState === 'invited'
+        ? 'Invite must be revoked'
+        : 'No active invitation';
 
   function run(work: () => Promise<AdminActionResult>) {
     start(async () => {
@@ -61,11 +78,11 @@ function MemberEditor({ row, teams }: { row: MembershipRow; teams: MembershipTea
           <span className={`status-dot ${row.isActive ? 'good' : 'muted'}`}>
             {row.isActive ? 'Active' : 'Inactive'}
           </span>
-          <span className={`status-dot ${row.clerkListed === row.isActive ? 'good' : 'bad'}`}>
-            {row.clerkListed === row.isActive ? 'Clerk synced' : 'Clerk mismatch'}
+          <span className={`status-dot ${clerkHealthy ? (row.isActive ? 'good' : 'muted') : 'bad'}`}>
+            {clerkLabel}
           </span>
-          <span className={`status-dot ${row.profileId ? 'good' : 'muted'}`}>
-            {row.profileId ? 'Signed in' : 'Pending'}
+          <span className={`status-dot ${row.profileId ? 'good' : row.clerkState === 'registered' ? 'bad' : 'muted'}`}>
+            {row.profileId ? 'Profile ready' : row.clerkState === 'registered' ? 'Profile needs repair' : 'Not registered'}
           </span>
         </div>
       </div>
@@ -108,7 +125,7 @@ function MemberEditor({ row, teams }: { row: MembershipRow; teams: MembershipTea
         </button>
         <button type="button" className="btn-quiet" disabled={pending}
                 onClick={() => run(() => repairMembershipSync(row.email))}>
-          Repair sync
+          Repair / resend invite
         </button>
         {row.profileId && (
           <span className="member-recap">
@@ -137,7 +154,6 @@ export function MembershipManager({
   const [email, setEmail] = useState('');
   const [teamId, setTeamId] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [notify, setNotify] = useState(false);
   const [result, setResult] = useState<AdminActionResult | null>(null);
 
   function add(event: React.FormEvent) {
@@ -148,7 +164,7 @@ export function MembershipManager({
       espnTeamId: teamId ? Number(teamId) : null,
       isAdmin,
       isActive: true,
-      notify,
+      notify: true,
     };
     start(async () => {
       const next = await saveMembership(input);
@@ -157,7 +173,6 @@ export function MembershipManager({
         setEmail('');
         setTeamId('');
         setIsAdmin(false);
-        setNotify(false);
         router.refresh();
       }
     });
@@ -167,8 +182,8 @@ export function MembershipManager({
     <>
       {clerkError && (
         <div className="callout warning">
-          Clerk could not be read right now. Database membership is still shown;
-          use Repair sync after Clerk is available.
+          Clerk accounts and invitations could not be read right now. Database
+          membership is still shown; use Repair / resend invite after Clerk is available.
         </div>
       )}
 
@@ -195,10 +210,8 @@ export function MembershipManager({
         <div className="inline-checks">
           <label><input type="checkbox" checked={isAdmin}
                         onChange={(event) => setIsAdmin(event.target.checked)} /> Commissioner</label>
-          <label><input type="checkbox" checked={notify}
-                        onChange={(event) => setNotify(event.target.checked)} /> Send Clerk notification</label>
         </div>
-        <button type="submit" disabled={pending}>{pending ? 'Adding…' : 'Add member'}</button>
+        <button type="submit" disabled={pending}>{pending ? 'Inviting…' : 'Add member & send invite'}</button>
         <Result result={result} />
       </form>
 

@@ -6,10 +6,10 @@
  * because the admin view filters it client-side, and because an endpoint that
  * returns real secrets is the right thing to point an authorization test at.
  *
- * Three independent things have to fail before a non-admin sees this: the
- * middleware matcher, requireAdminApi(), and the allowlist_admin_read RLS
- * policy. The last one is the one that actually holds -- it is enforced by
- * Postgres against a connection with no BYPASSRLS.
+ * Two independent authorization boundaries have to fail before a non-admin
+ * sees this: requireAdminApi() and the allowlist_admin_read RLS policy. Clerk
+ * middleware verifies the session those checks consume. The RLS boundary is
+ * enforced by Postgres against a connection with no BYPASSRLS.
  */
 import { requireAdminApi } from '../../../../lib/admin.ts';
 import { getAllowlist, getProvisionedMembers } from '../../../../lib/admin-queries.ts';

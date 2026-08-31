@@ -9,14 +9,14 @@ import { isAdmin } from '../../lib/admin.ts';
 export const dynamic = 'force-dynamic';
 
 export default async function Predictions() {
-  const { userId } = await auth();
+  const { userId } = await auth.protect();
   const season = await getCurrentSeason();
   const open = await getOpenWeek(season);
 
   const [matchups, picks, board] = await Promise.all([
     open ? getWeekResults(season, open.week) : Promise.resolve([]),
-    open && userId ? getMyPicks(season, open.week) : Promise.resolve([]),
-    userId ? getLeaderboard(season) : Promise.resolve([]),
+    open ? getMyPicks(season, open.week) : Promise.resolve([]),
+    getLeaderboard(season),
   ]);
 
   const initial: Record<number, number> = {};
@@ -75,8 +75,7 @@ export default async function Predictions() {
       <div className="card">
         {board.length === 0 ? (
           <div className="empty">
-            {userId ? 'Nothing scored yet — the Tuesday pipeline fills this in.'
-                    : 'Sign in to see the leaderboard.'}
+            Nothing scored yet — the Tuesday pipeline fills this in.
           </div>
         ) : (
           <table>

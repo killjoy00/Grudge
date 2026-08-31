@@ -1,5 +1,5 @@
 /**
- * Admin overview: who is on the allowlist, who has actually signed in, and
+ * Admin overview: who is on the league roster, who has actually signed in, and
  * whether the weekly ownership capture is running.
  *
  * The "pending" list answers the only support question this league will
@@ -7,10 +7,13 @@
  */
 import { getAllowlist, getProvisionedMembers, getSnapshotCoverage } from '../../lib/admin-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
+import { adminProfile } from '../../lib/admin.ts';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOverview() {
+  if (!(await adminProfile())) notFound();
   const season = await getCurrentSeason();
   const [allowlist, members, coverage] = await Promise.all([
     getAllowlist(),
@@ -32,7 +35,7 @@ export default async function AdminOverview() {
       <div className="card admin-shortcut">
         <div>
           <div className="section-kicker">Membership</div>
-          <strong>Add members, assign teams, and synchronize Clerk</strong>
+          <strong>Add members, assign teams, and send Clerk invitations</strong>
         </div>
         <a href="/admin/members" className="btn">Manage members</a>
       </div>
@@ -41,8 +44,8 @@ export default async function AdminOverview() {
         <div className="card">
           <h2>Not signed in yet</h2>
           <p className="note">
-            On the allowlist but no profile, so they have never completed a magic-link
-            sign-in. Nothing is wrong with their account — they just have not tried.
+            Active in the league database but not provisioned yet. The Members
+            screen shows whether their Clerk invitation is pending or needs repair.
           </p>
           <ul className="plain">
             {pending.map((p) => (
@@ -74,8 +77,8 @@ export default async function AdminOverview() {
           </table>
         </div>
         <p className="note">
-          The active database allowlist is authoritative. The Members screen
-          updates it and keeps Clerk and existing profiles synchronized.
+          The active league roster in Postgres is authoritative. Clerk's free
+          Invite-only mode controls registration; the Members screen sends and repairs invitations.
         </p>
       </div>
 

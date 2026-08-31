@@ -108,35 +108,22 @@ schema keys everything by season.
 
 ---
 
-## Task 2 — Neon + Clerk project (~15 minutes)
+## Task 2 — Neon + Clerk project
 
-**Changed from Supabase.** Supabase's free tier turned out to cap you personally
-at 2 active free projects across every org you administer — a fresh org doesn't
-reset it, confirmed by the error Supabase's own dashboard gave when you tried.
-Neon (Postgres) + Clerk (auth) has no such collision with your other projects,
-and Neon has an equivalent RLS-to-auth integration (Neon RLS Authorize) that
-keeps the "locked week enforced in the DB" guarantee intact — full reasoning
-in `docs/SCHEMA_PROPOSAL.md`.
-
-**Heads up before you start:** I've verified the security *model* against a
-real local Postgres (24/24 attack-suite checks passing), but not yet the exact
-account-setup mechanics below — Neon and Clerk's docs don't fully cover
-raw-SQL / non-Drizzle usage. Steps 2a-2c are safe to do now; **hold off on
-inviting the other 12 members until I've confirmed the Next.js-to-Neon wiring
-against your actual project** — I'll follow up once that's verified rather
-than have you redo an invite flow.
+Neon provides Postgres; Clerk provides authentication. The web connection uses
+an ordinary role and remains subject to RLS. A second ordinary role can execute
+only the two membership provisioning functions. Neither credential can bypass
+RLS, and the pipeline's broader credential never goes into Vercel.
 
 ### 2a. Create the Neon project
 
 1. <https://console.neon.tech> → **New project**.
 2. Name `grudge`, region closest to Vercel's default `iad1` (US East) for
    fast server-component queries.
-3. Free plan — 100 projects per account, so this doesn't compete with anything
-   else you have. Wait ~30 seconds for provisioning.
+3. Choose the Free plan and wait for provisioning.
 4. **Dashboard → Connection Details** → copy the pooled connection string →
-   save as `DATABASE_URL`. This is the *admin* connection (used to run
-   migrations), not `app_pipeline`'s — you'll create that role via migration,
-   with its own generated password, once I write the migration files.
+   save as `DATABASE_URL`. This owner connection is for migrations only and
+   must never be added to Vercel or GitHub Actions.
 
 ### 2b. Create the Clerk application
 
@@ -148,15 +135,85 @@ than have you redo an invite flow.
 3. **API Keys** page → copy the **Publishable key** (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`)
    and **Secret key** (`CLERK_SECRET_KEY`).
 
-### 2c. Turn on the allowlist — but don't add emails yet
+### 2c. Use Clerk Invite-only mode (free), not the paid allowlist
 
-**Configure → Restrictions → Allowlist** → toggle **Enable allowlist**. Leave
-the identifier list empty for now (an enabled allowlist with zero entries
-blocks everyone, which is the correct fail-closed state until I've verified
-the provisioning webhook). I'll tell you exactly when to add the 13 emails —
-right after I confirm a signup actually reaches Postgres correctly.
+Clerk's **Allowlist** is a paid production feature. This app deliberately does
+not call that API. Instead:
 
-### 2d. Custom SMTP for the newsletter only
+1. In the Clerk Dashboard, open the **Development** instance.
+2. Go to **Access mode** (called **Restrictions** in older dashboard layouts).
+3. Select **Invite-only** and save. Its API value is `restricted`.
+4. Do not enable **Allowlist** or **Blocklist**.
+
+The commissioner page creates Clerk application invitations. Clerk emails a
+single-use link, and an uninvited person cannot open the sign-up flow. The
+`league_allowlist` table remains as the app's private roster and ESPN/admin
+mapping; despite its historical name, it is not Clerk's paid allowlist.
+
+### 2d. Create and configure Clerk's Production instance
+
+1. At the top of the Clerk Dashboard, select the **Development** instance menu
+   → **Create production instance**.
+2. Clone the development settings, then switch to **Production** and confirm
+   that **Email only**, passwordless sign-in, and **Invite-only** access were
+   copied. Allowlist must remain disabled.
+3. Add the production domain `grudge.planitnow.us` when prompted and publish the
+   DNS records Clerk shows. A `*.vercel.app` URL cannot be the production domain.
+4. On **API keys**, copy the live `pk_live_...` and `sk_live_...` values. Use
+   these only for Vercel's **Production** environment; Preview and local
+   development continue to use the `pk_test_...` and `sk_test_...` keys.
+5. On **Webhooks**, add
+   `https://grudge.planitnow.us/api/webhooks/clerk`, subscribe to
+   `user.created` and `user.updated`, and copy its signing secret.
+
+Development and Production have separate users, invitations, keys, webhooks,
+and access-mode settings. Creating Production does not copy development users.
+
+### 2e. Create the narrow Neon provisioner role with SQL
+
+Do **not** create `app_provisioner` from Neon's **Roles & Databases** screen.
+Neon grants Console-, CLI-, and API-created roles membership in
+`neon_superuser`; the security check correctly rejects that role.
+
+If you already created it in the Console and received
+`app_provisioner must be an ordinary...`, delete that just-created role from
+**Branches → Roles & Databases**. Then open **SQL Editor**, select the Grudge
+database and owner role, generate a unique password in a password manager, and
+run this after replacing only the password:
+
+```sql
+create role app_provisioner with
+  login
+  password 'REPLACE_WITH_A_UNIQUE_PASSWORD'
+  nosuperuser
+  nocreatedb
+  nocreaterole
+  noreplication
+  nobypassrls;
+```
+
+Run the membership migration as the owner, then run the provisioner grants:
+
+```bash
+NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-08-31-membership-recaps-history.sql
+NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/provisioner-role.sql
+```
+
+Verify the role before constructing its connection string:
+
+```sql
+select r.rolname, r.rolsuper, r.rolcreatedb, r.rolcreaterole,
+       r.rolreplication, r.rolbypassrls,
+       pg_has_role(r.oid, 'neon_superuser', 'member') as inherits_neon_superuser
+  from pg_roles r
+ where r.rolname = 'app_provisioner';
+```
+
+Every boolean must be `false`. In **Connection Details**, select
+`app_provisioner`, select the pooled connection, and save the bare URL as
+`PROVISIONER_DATABASE_URL`.
+
+### 2f. Custom SMTP for the newsletter only
 
 Clerk sends its own magic-link emails, so auth email is already covered — this
 step is *only* for the Tuesday recap, which isn't an auth email at all.
@@ -168,7 +225,7 @@ step is *only* for the Tuesday recap, which isn't an auth email at all.
 
 The Tuesday workflow sends the newsletter after every successful scheduled run.
 
-Put everything from this task in `.env.local` (already gitignored):
+Put development/local values in `.env.local` (already gitignored):
 
 ```bash
 DATABASE_URL=postgresql://neondb_owner:...@ep-xxxx.us-east-1.aws.neon.tech/grudge?sslmode=require
@@ -180,11 +237,10 @@ CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 RESEND_API_KEY=re_...
 ```
 
-### 2e. Send me the allowlist (don't add it to Clerk yet — see the note above)
+### 2g. Populate the league roster, then invite from the app
 
-I need 13 rows — I have the SWIDs and names from Step 1, so email and team is
-enough. This feeds two places once verified: Clerk's own allowlist (2c) and
-the `league_allowlist` table `provision_profile()` reads from:
+The roster needs 13 rows. Email and team are enough. These rows go only into
+Postgres; the Members page creates Clerk invitations as members are activated:
 
 ```
 email,espn_team_id,is_admin
@@ -218,8 +274,11 @@ Note there is **no team 7**, and three teams have two owners — so 13 emails fo
 
 | secret | from |
 |---|---|
-| `PIPELINE_DATABASE_URL` | `app_pipeline`'s connection string — generated when I write the migration that creates that role (not yet); until then, `DATABASE_URL` from 2a works for local testing only |
-| `RESEND_API_KEY` | 2d |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Development instance `pk_test_...`; used only by the live-session CI check |
+| `CLERK_SECRET_KEY` | Development instance `sk_test_...`; used only by the live-session CI check |
+| `APP_DATABASE_URL` | `app_user`'s pooled connection string; used by the test server |
+| `PIPELINE_DATABASE_URL` | `app_pipeline`'s pooled connection string; never use the owner URL here |
+| `RESEND_API_KEY` | 2f |
 | `VERCEL_DEPLOY_HOOK_URL` | Task 4c |
 
 Under **Secrets and variables → Actions → Variables**, add:
@@ -231,7 +290,8 @@ Under **Secrets and variables → Actions → Variables**, add:
 
 No ESPN cookies here — the weekly pipeline is unauthenticated by design, which is
 the main reason the backfill is a separate one-time script. No Clerk secret here
-either — the pipeline talks to Postgres directly and never touches Clerk.
+is used by the weekly pipeline; the development Clerk keys above are only for
+the separate admin-gating CI job, which creates and removes a throwaway user.
 Recap recipients come from active provisioned profiles; each member controls the
 `recap_email_enabled` preference on `/me`.
 
@@ -246,17 +306,19 @@ Nothing to do yet; here so you can see the shape.
 Next.js → **don't deploy yet**, add env vars first.
 
 ### 4b. Environment variables
-**Settings → Environment Variables**, all three environments. The Clerk keys
-are confirmed from Task 2. The owner and pipeline credentials never belong in
-Vercel:
+**Settings → Environment Variables**. The owner and pipeline credentials never
+belong in Vercel. Production must use Clerk's live keys; Preview/Development
+must use the separate development keys:
 
-| name | scope |
-|---|---|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Production, Preview, Development |
-| `CLERK_SECRET_KEY` | Production, Preview, Development |
-| `APP_DATABASE_URL` (`app_user`) | Production, Preview, Development |
-| `PROVISIONER_DATABASE_URL` (`app_provisioner`) | Production only |
-| `CLERK_WEBHOOK_SIGNING_SECRET` | Production only |
+| name | Vercel scope | value |
+|---|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Production | Production instance `pk_live_...` |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Preview, Development | Development instance `pk_test_...` |
+| `CLERK_SECRET_KEY` | Production | Production instance `sk_live_...` |
+| `CLERK_SECRET_KEY` | Preview, Development | Development instance `sk_test_...` |
+| `APP_DATABASE_URL` (`app_user`) | Production, Preview, Development | ordinary pooled app connection |
+| `PROVISIONER_DATABASE_URL` (`app_provisioner`) | Production | narrow pooled provisioner connection |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Production | signing secret for the production endpoint |
 
 ### 4c. Deploy hook
 **Settings → Git → Deploy Hooks** → create one named `weekly-pipeline` on `main`
@@ -270,9 +332,8 @@ record at your `planitnow.us` DNS host:
 Type: CNAME    Name: grudge    Value: cname.vercel-dns.com
 ```
 
-TLS is issued automatically once DNS resolves — usually minutes, up to an hour.
-Then go back to **Clerk → Configure → Domains** and add it there too, so magic
-links point at the right place.
+TLS is issued automatically once DNS resolves. Complete Clerk's production DNS
+check too, then redeploy Vercel so the live keys and webhook are active.
 
 ---
 
@@ -280,8 +341,8 @@ links point at the right place.
 
 | value | laptop `.env.local` | GitHub secret | Vercel | browser |
 |---|:--:|:--:|:--:|:--:|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ✅ | — | ✅ | ✅ (that's what "publishable" means) |
-| `CLERK_SECRET_KEY` | ✅ | — | ✅ | ❌ **never** |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ✅ | ✅ dev key for CI | ✅ | ✅ (that's what "publishable" means) |
+| `CLERK_SECRET_KEY` | ✅ | ✅ dev key for CI | ✅ | ❌ **never** |
 | `DATABASE_URL` (admin/migrations) | ✅ | — | — | ❌ |
 | `APP_DATABASE_URL` (`app_user`) | ✅ | ✅ CI only | ✅ | ❌ |
 | `PIPELINE_DATABASE_URL` (`app_pipeline`) | — | ✅ | — | ❌ **never** — bypasses RLS entirely |

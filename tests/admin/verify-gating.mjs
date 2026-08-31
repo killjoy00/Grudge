@@ -149,25 +149,12 @@ async function main() {
   }
 
   let userId = null;
-  let allowId = null;
   try {
-    // The Clerk instance is restricted to the league, so even the Backend API
-    // refuses to create an arbitrary user -- which is the Step 5 sign-up
-    // restriction doing its job. A synthetic address is added to CLERK's
-    // allowlist for the run and removed in the finally block.
-    //
-    // Note this is Clerk's allowlist, not the league's. Being on it means "may
-    // sign in", nothing more: with no row in public.league_allowlist the user
-    // gets no profile, so they are exactly the threat this test is about -- a
-    // legitimately signed-in member who is not an admin.
+    // Invite-only mode blocks public registration, but Clerk's Backend API can
+    // still create a test user manually. With no row in public.league_allowlist
+    // that user gets no profile, so they are exactly the threat this test is
+    // about: a legitimately signed-in Clerk user who is not a league admin.
     const email = `gating-test-${Date.now()}@example.com`;
-    console.log('\nadding a throwaway address to the Clerk allowlist...');
-    const allow = await clerk('/allowlist_identifiers', {
-      method: 'POST',
-      body: JSON.stringify({ identifier: email, notify: false }),
-    });
-    allowId = allow.id;
-
     console.log('creating a non-admin Clerk user (NOT on the LEAGUE allowlist)...');
     const user = await clerk('/users', {
       method: 'POST',
@@ -273,12 +260,6 @@ async function main() {
     if (userId) {
       await clerk(`/users/${userId}`, { method: 'DELETE' }).catch(() => {});
       console.log(`\ncleaned up test user ${userId}`);
-    }
-    if (allowId) {
-      // Must not survive the run: a leftover entry would leave a stranger's
-      // address permanently able to sign in to the league.
-      await clerk(`/allowlist_identifiers/${allowId}`, { method: 'DELETE' }).catch(() => {});
-      console.log(`cleaned up Clerk allowlist entry ${allowId}`);
     }
     if (server?.pid) {
       // Negative pid = the whole process group, so next-server dies with npx.

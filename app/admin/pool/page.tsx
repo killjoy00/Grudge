@@ -14,6 +14,8 @@
  */
 import { getPool, getPoolOpportunities, getSnapshotCoverage } from '../../../lib/admin-queries.ts';
 import { getCurrentSeason } from '../../../lib/queries.ts';
+import { adminProfile } from '../../../lib/admin.ts';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +33,7 @@ function delta(v: string | null) {
 export default async function Pool({
   searchParams,
 }: { searchParams: Promise<{ week?: string }> }) {
+  if (!(await adminProfile())) notFound();
   const season = await getCurrentSeason();
   const coverage = await getSnapshotCoverage(season);
   const sp = await searchParams;

@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       ? String(error.code)
       : null;
     if (code === '42501') {
-      return Response.json({ error: 'User is not on the league allowlist.' }, { status: 403 });
+      return Response.json({ error: 'User is not on the active league roster.' }, { status: 403 });
     }
     // Keep connection details and member addresses out of Vercel logs while
     // still returning 5xx so Clerk retries a transient database failure.
