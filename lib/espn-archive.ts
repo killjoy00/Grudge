@@ -180,7 +180,7 @@ export function espnSeasonResults(
  */
 export function espnManagerSeasons(
   league: EspnLeague, season: number, mappings: FranchiseIdMapping[],
-  managerBySwid: Map<string, string>
+  managerBySwid: Map<string, string | null>
 ): ManualManagerSeason[] {
   const rows: ManualManagerSeason[] = [];
   for (const team of league.teams ?? []) {
@@ -188,10 +188,12 @@ export function espnManagerSeasons(
     if (owners.length === 0) throw new Error(`${season}: ${team.name} has no owner on file.`);
     const franchise_key = franchiseForTeam(mappings, team.id, season);
     for (const swid of owners) {
-      const manager_key = managerBySwid.get(swid);
-      if (!manager_key) {
+      if (!managerBySwid.has(swid)) {
         throw new Error(`${season}: ESPN account ${swid} (${team.name}) maps to no manager.`);
       }
+      const manager_key = managerBySwid.get(swid);
+      // A blank mapping is an account the league does not credit as a manager.
+      if (!manager_key) continue;
       rows.push({
         season,
         manager_key,

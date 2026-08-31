@@ -231,15 +231,21 @@ export function parseFranchiseIdMap(text: string): FranchiseIdMapping[] {
   });
 }
 
-export function parseEspnManagerMap(text: string): Map<string, string> {
-  const map = new Map<string, string>();
+/**
+ * ESPN account to person. A blank manager_key means the account is deliberately
+ * not tracked as a manager -- a co-owner the league does not credit -- and is
+ * skipped rather than dropping the team or inventing a record. An account
+ * missing from the file entirely is still an error, so a new owner cannot slip
+ * in unnoticed.
+ */
+export function parseEspnManagerMap(text: string): Map<string, string | null> {
+  const map = new Map<string, string | null>();
   parseCsv(text).forEach((row, index) => {
     const line = index + 2;
     const swid = row.swid?.trim();
-    const managerKey = row.manager_key?.trim();
-    if (!swid || !managerKey) throw new Error(`Row ${line}: swid and manager_key are required.`);
+    if (!swid) throw new Error(`Row ${line}: swid is required.`);
     if (map.has(swid)) throw new Error(`Row ${line}: duplicate ESPN account ${swid}.`);
-    map.set(swid, managerKey);
+    map.set(swid, row.manager_key?.trim() || null);
   });
   return map;
 }

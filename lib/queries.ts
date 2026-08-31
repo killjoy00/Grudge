@@ -197,13 +197,14 @@ export async function getFranchiseHistory() {
     franchise_key: string; current_name: string; espn_team_id: number | null;
     seasons: number; regular_wins: number; regular_losses: number; regular_ties: number;
     playoff_wins: number; playoff_losses: number; championships: number;
-    runner_ups: number; playoff_appearances: number; title_seasons: string | null;
+    runner_ups: number; top_four: number; playoff_appearances: number;
+    title_seasons: string | null;
     regular_points_for: string | null; regular_points_against: string | null;
     first_season: number; last_season: number;
   }>(
     `select franchise_key, current_name, espn_team_id, seasons, regular_wins,
             regular_losses, regular_ties, playoff_wins, playoff_losses,
-            championships, runner_ups, playoff_appearances, title_seasons,
+            championships, runner_ups, top_four, playoff_appearances, title_seasons,
             round(regular_points_for, 1)::text as regular_points_for,
             round(regular_points_against, 1)::text as regular_points_against,
             first_season, last_season
@@ -218,16 +219,102 @@ export async function getManagerHistory() {
     manager_key: string; display_name: string; seasons: number;
     regular_wins: number; regular_losses: number; regular_ties: number;
     playoff_wins: number; playoff_losses: number; championships: number;
-    runner_ups: number; playoff_appearances: number; title_seasons: string | null;
+    runner_ups: number; top_four: number; playoff_appearances: number;
+    title_seasons: string | null;
     regular_points_for: string | null; first_season: number; last_season: number;
   }>(
     `select manager_key, display_name, seasons, regular_wins, regular_losses,
             regular_ties, playoff_wins, playoff_losses, championships,
-            runner_ups, playoff_appearances, title_seasons,
+            runner_ups, top_four, playoff_appearances, title_seasons,
             round(regular_points_for, 1)::text as regular_points_for,
             first_season, last_season
        from public.manager_history_totals
       order by championships desc, regular_wins desc, playoff_wins desc, display_name`
+  );
+}
+
+/**
+ * A season's table, from the franchise record rather than the weekly feed, so
+ * 2005-2017 and the ESPN era render through one path. Ordered by the league's
+ * own seeding rule: win percentage, then total points.
+ */
+export async function getSeasonStandings(season: number) {
+  return asPublic<{
+    franchise_key: string; current_name: string; team_name: string;
+    espn_team_id: number | null; wins: number; losses: number; ties: number;
+    points_for: string | null; points_against: string | null;
+    playoff_wins: number; playoff_losses: number; final_place: number | null;
+    is_champion: boolean; is_runner_up: boolean; source: string;
+  }>(
+    `select fs.franchise_key, f.current_name, fs.team_name, fs.espn_team_id,
+            fs.regular_wins as wins, fs.regular_losses as losses, fs.regular_ties as ties,
+            round(fs.regular_points_for, 1)::text as points_for,
+            round(fs.regular_points_against, 1)::text as points_against,
+            fs.playoff_wins, fs.playoff_losses, fs.final_place,
+            fs.is_champion, fs.is_runner_up, fs.source
+       from public.franchise_seasons fs
+       join public.franchises f using (franchise_key)
+      where fs.season = $1
+      order by (fs.regular_wins + fs.regular_ties / 2.0)
+               / nullif(fs.regular_wins + fs.regular_losses + fs.regular_ties, 0) desc,
+               fs.regular_points_for desc`,
+    [season]
+  );
+}
+
+/** Season by season for the franchise that owns an ESPN team id. */
+export async function getFranchiseSeasons(espnTeamId: number) {
+  return asPublic<{
+    season: number; team_name: string; wins: number; losses: number; ties: number;
+    points_for: string | null; points_against: string | null;
+    playoff_wins: number; playoff_losses: number; final_place: number | null;
+    is_champion: boolean; is_runner_up: boolean; manager: string | null;
+  }>(
+    `with target as (
+       select franchise_key from public.franchise_seasons
+        where espn_team_id = $1 limit 1
+     )
+     select fs.season, fs.team_name, fs.regular_wins as wins, fs.regular_losses as losses,
+            fs.regular_ties as ties,
+            round(fs.regular_points_for, 1)::text as points_for,
+            round(fs.regular_points_against, 1)::text as points_against,
+            fs.playoff_wins, fs.playoff_losses, fs.final_place,
+            fs.is_champion, fs.is_runner_up,
+            (select m.display_name
+               from public.manager_franchise_seasons ms
+               join public.managers m using (manager_key)
+              where ms.season = fs.season and ms.franchise_key = fs.franchise_key
+                and ms.is_primary
+              limit 1) as manager
+       from public.franchise_seasons fs
+       join target t on t.franchise_key = fs.franchise_key
+      order by fs.season desc`,
+    [espnTeamId]
+  );
+}
+
+/** Each manager's record while running that franchise, newest tenure first. */
+export async function getFranchiseManagers(espnTeamId: number) {
+  return asPublic<{
+    manager_key: string; display_name: string; seasons: number;
+    regular_wins: number; regular_losses: number; regular_ties: number;
+    playoff_wins: number; playoff_losses: number; championships: number;
+    top_four: number; playoff_appearances: number; regular_points_for: string | null;
+    first_season: number; last_season: number;
+  }>(
+    `with target as (
+       select franchise_key from public.franchise_seasons
+        where espn_team_id = $1 limit 1
+     )
+     select t.manager_key, t.display_name, t.seasons, t.regular_wins, t.regular_losses,
+            t.regular_ties, t.playoff_wins, t.playoff_losses, t.championships,
+            t.top_four, t.playoff_appearances,
+            round(t.regular_points_for, 1)::text as regular_points_for,
+            t.first_season, t.last_season
+       from public.franchise_manager_totals t
+       join target g on g.franchise_key = t.franchise_key
+      order by t.last_season desc, t.first_season desc`,
+    [espnTeamId]
   );
 }
 

@@ -172,6 +172,29 @@ test('a short regular season is caught rather than silently recorded', () => {
   assert.throws(() => espnSeasonResults(league, 2018, twoTeamMap), /regular-season games/);
 });
 
+test('a blank mapping drops the co-owner without dropping the team', () => {
+  const league = espnLeague();
+  league.teams![0]!.owners = ['sw-a', 'sw-ignored'];
+  const rows = espnManagerSeasons(league, 2018, twoTeamMap, new Map([
+    ['sw-a', 'first'], ['sw-ignored', null], ['sw-b', 'other'],
+  ]));
+  const alpha = rows.filter((row) => row.franchise_key === 'alpha');
+  assert.deepEqual(alpha.map((row) => row.manager_key), ['first']);
+  assert.ok(alpha[0]!.is_primary, 'the remaining owner still leads the season');
+});
+
+test('an ignored primary owner is an error, not a season with no manager', () => {
+  const league = espnLeague();
+  league.teams![0]!.owners = ['sw-a', 'sw-ignored'];
+  league.teams![0]!.primaryOwner = 'sw-ignored';
+  assert.throws(
+    () => espnManagerSeasons(league, 2018, twoTeamMap, new Map([
+      ['sw-a', 'first'], ['sw-ignored', null], ['sw-b', 'other'],
+    ])),
+    /primary owners/
+  );
+});
+
 test('an unmapped ESPN team or account stops the import', () => {
   assert.throws(() => franchiseForTeam(twoTeamMap, 7, 2018), /maps to no franchise/);
   assert.throws(
@@ -328,8 +351,14 @@ test('the ESPN identity maps are complete and unambiguous', () => {
     assert.ok(franchiseKeys.has(row.franchise_key), `${row.franchise_key} is undeclared`);
   }
   for (const key of espnManagerMap.values()) {
+    // A blank mapping is an account deliberately not credited as a manager.
+    if (key === null) continue;
     assert.ok(managerKeys.has(key), `${key} is undeclared`);
   }
+  assert.ok(
+    [...espnManagerMap.values()].some((key) => key === null),
+    'the untracked co-owners are still listed, so a new account fails loudly'
+  );
   const ids = franchiseIds.map((row) => row.espn_team_id);
   assert.equal(new Set(ids).size, ids.length, 'an ESPN team id maps to two franchises');
   assert.equal(franchiseIds.length, 10, 'every modern team id has a franchise');

@@ -38,7 +38,12 @@ npm run history:import -- \
   --dry-run                     # drop --dry-run to write
 ```
 
-198 season results and 221 manager assignments across 20 seasons.
+198 season results and 198 manager assignments across 20 seasons.
+
+The manager tables are replaced rather than merged on each import: the derive
+step emits every assignment the archive knows about, so a manager the league
+stops crediting disappears instead of lingering from an earlier run. Supplying
+no manager files, or empty ones, prunes nothing.
 
 Adding a new ESPN season is only `node scripts/backfill-history.mjs`, then
 `npm run history:derive` and the import above — no mapping changes unless
@@ -88,7 +93,7 @@ change hands.
 |---|---|---|---|
 | 1 | `bubbs` | 1 | Ryan throughout: Durham → New York → Austin Bubbs |
 | 2 | `brightleaf-yuppies` | 8 | Jonathan Crisp throughout; Death by Glass Ingestion in 2005 |
-| 3 | `penthouse-panda-bear` | 5 | Jeremy and Ben Wildfire, co-owners throughout |
+| 3 | `penthouse-panda-bear` | 5 | Ben Wildfire throughout; co-owned, credited to ESPN’s primary owner |
 | 4 | `p-rivers-nas-nas` | 6 | Samuel Nye throughout |
 | 5 | `the-penguins` | 4 | Michael Chepul throughout |
 | 6 | `your-worst-nightmares` | 3 | Joe Presley throughout |
@@ -119,18 +124,30 @@ manager appeared under, so a rename does not read as a different person. A test
 checks every transcribed owner label against it, which is the only check the
 ledger's tenure ranges have.
 
-Co-ownership is preserved rather than flattened: both Wildfires carry all their
-shared seasons, as do Jordan Chin and Jason Campbell from 2023. Each season still
-has exactly one primary manager — ESPN's `primaryOwner` decides it from 2018,
-the ledger before that. The two sources disagree on which Wildfire leads (the
-spreadsheet lists Jeremy first, ESPN records Ben), and each era is recorded as
-its own source states.
+Co-owned teams are credited to one manager, the one the league counts. The
+Penthouse Panda Bear has always been co-owned and goes to Ben Wildfire, ESPN's
+primary owner of record; CTE Deniers goes to Jordan Chin. The other account on
+each team sits in `espn-managers.csv` with a **blank** `manager_key`, meaning
+"known, deliberately not credited" — the derivation skips it, while an account
+missing from the file entirely still fails loudly, so a new owner can never slip
+in unnoticed.
+
+Each season therefore has exactly one manager and exactly one primary: ESPN's
+`primaryOwner` decides it from 2018, the ledger before that.
 
 ## What the tables show
 
 `/history` renders franchise records and manager records over everything above,
-plus the championship roll. The views behind them are in
-`scripts/migrations/2026-09-01-unified-history.sql`.
+plus the championship roll. Both record tables sort on any column, and managers
+are split into those holding a team in the latest season and those who have
+moved on. `/standings` renders any season from 2005 on out of the same table --
+archive seasons simply have no luck index, because that needs weekly scores.
+Each franchise page carries its full season-by-season history, its rivalries
+with the most-beaten and most-beaten-by opponents flagged, and the same seasons
+split by manager underneath.
+
+The views behind them are in `scripts/migrations/2026-09-01-unified-history.sql`
+and `scripts/migrations/2026-09-02-history-detail.sql`.
 
 The ESPN team-ID table is still there, and still separate on purpose: it is
 counted from the loaded week-by-week results with playoff weeks included, so it

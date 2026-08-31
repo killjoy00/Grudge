@@ -10,7 +10,7 @@ import {
   parseManagerTenures,
   parseSeasonResults,
 } from '../lib/manual-history.ts';
-import { connect, runTransaction, upsert } from '../pipeline/db.ts';
+import { connect, runTransaction, stmt, upsert } from '../pipeline/db.ts';
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -74,7 +74,22 @@ if (dryRun) {
   process.exit(0);
 }
 
+/**
+ * The manager files are authoritative, not additive: the derive step emits
+ * every assignment the archive knows about, so a manager the league stops
+ * crediting has to disappear rather than linger from an earlier import. Both
+ * tables are therefore replaced, in the one transaction, and only when a
+ * non-empty pair was supplied -- a missing or empty file prunes nothing.
+ */
+const prune = managers.length > 0 && managerSeasons.length > 0
+  ? [
+    stmt('delete from public.manager_franchise_seasons'),
+    stmt('delete from public.managers'),
+  ]
+  : [];
+
 const statements = [
+  ...prune,
   upsert(
     'public.franchises',
     ['franchise_key', 'current_name', 'founded_season', 'folded_season', 'notes'],

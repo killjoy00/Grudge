@@ -292,3 +292,41 @@ ul.plain li:last-child { border-bottom: 0; }
   .preference-row { align-items: flex-start; }
   .site-footer { padding-right: 13px; padding-left: 13px; }
 }
+
+/* --------------------------------------------------- sortable tables */
+.sort-btn {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+table.sortable th:has(.sort-btn) { cursor: pointer; }
+.sort-btn:hover { color: var(--navy); }
+.sort-btn.active { color: var(--navy); }
+.sort-caret { color: var(--muted); font-size: 9px; }
+.sort-btn.active .sort-caret { color: var(--accent); }
+table.sortable th.num .sort-btn { flex-direction: row-reverse; }
+
+/* Rivalry extremes and archive/era markers. */
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.tag.best { color: var(--win); background: #eaf6ef; }
+.tag.worst { color: var(--loss); background: #fcecec; }
+.tag.era { color: var(--muted); background: var(--navy-2); }
+.title-row { background: #fbf7ea; }
