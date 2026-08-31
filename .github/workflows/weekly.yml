@@ -43,7 +43,7 @@ jobs:
       # broken, the right outcome is a red build and an untouched database,
       # not a successful run that writes wrong numbers.
       - name: Test
-        run: npx tsx --test pipeline/*.test.ts
+        run: npx tsx --test pipeline/*.test.ts lib/*.test.ts
 
       # Each step below fails the job on a non-zero exit, and every write is
       # transactional, so a failure anywhere leaves the database as it was.

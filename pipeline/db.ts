@@ -9,6 +9,7 @@
  * for the ESPN-mirror tables, so its URL lives only in CI secrets.
  */
 import { neon } from '@neondatabase/serverless';
+import { describeUrlProblem } from '../lib/dburl.ts';
 
 export type Sql = ReturnType<typeof neon>;
 
@@ -18,7 +19,19 @@ export function connect(url = process.env.PIPELINE_DATABASE_URL): Sql {
       'PIPELINE_DATABASE_URL is not set. It must be the app_pipeline connection string.'
     );
   }
-  return neon(url);
+  // Same guard as the web app. A malformed value here fails deep inside the
+  // driver mid-run with the value masked by the CI log scrubber and no mention
+  // of which variable was at fault -- which is exactly how APP_DATABASE_URL
+  // cost three builds before anyone could tell what was wrong.
+  const problem = describeUrlProblem(url);
+  if (problem) {
+    throw new Error(
+      `PIPELINE_DATABASE_URL is malformed: ${problem}. ` +
+      'Expected postgresql://user:password@host/dbname?sslmode=require — ' +
+      'the bare URL, with no quotes, no "psql" prefix and no variable name.'
+    );
+  }
+  return neon(url.trim());
 }
 
 /** A single statement plus its parameters, for batching into one transaction. */
