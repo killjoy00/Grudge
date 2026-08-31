@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import {
-  CURRENT_SEASON, getPlayedSeasons, getWeekResults, getWeekAwards,
+  getCurrentSeason, getPlayedSeasons, getWeekResults, getWeekAwards,
   getBenchWatch, getComments, getStandings,
 } from '../lib/queries.ts';
 import { Comments } from '../components/Comments.tsx';
@@ -22,11 +22,11 @@ export default async function Home() {
   const latest = await latestPlayedWeek();
 
   if (!latest) {
-    const seasons = await getPlayedSeasons();
+    const [seasons, currentSeason] = await Promise.all([getPlayedSeasons(), getCurrentSeason()]);
     return (
       <>
         <h1>UNC Grudge Match</h1>
-        <p className="sub">The {CURRENT_SEASON} season hasn&rsquo;t kicked off yet.</p>
+        <p className="sub">The {currentSeason} season hasn&rsquo;t kicked off yet.</p>
         <div className="card">
           <p className="note">
             Once week 1 is played, this page becomes the weekly recap: scores, awards,

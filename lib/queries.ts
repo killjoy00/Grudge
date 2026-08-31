@@ -6,7 +6,13 @@ import 'server-only';
  */
 import { asPublic, asUser } from './db.ts';
 
-export const CURRENT_SEASON = 2026;
+/** Latest season actually loaded, so New Year's Day never requires a code edit. */
+export async function getCurrentSeason() {
+  const rows = await asPublic<{ season: number | null }>(
+    'select max(season)::int as season from public.seasons'
+  );
+  return rows[0]?.season ?? new Date().getUTCFullYear();
+}
 
 export interface TeamRow {
   espn_team_id: number;

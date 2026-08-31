@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import {
-  CURRENT_SEASON, getOpenWeek, getWeekResults, getMyPicks, getLeaderboard,
+  getCurrentSeason, getOpenWeek, getWeekResults, getMyPicks, getLeaderboard,
 } from '../../lib/queries.ts';
 import { PickForm } from '../../components/PickForm.tsx';
 import { isAdmin } from '../../lib/admin.ts';
@@ -10,12 +10,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function Predictions() {
   const { userId } = await auth();
-  const open = await getOpenWeek(CURRENT_SEASON);
+  const season = await getCurrentSeason();
+  const open = await getOpenWeek(season);
 
   const [matchups, picks, board] = await Promise.all([
-    open ? getWeekResults(CURRENT_SEASON, open.week) : Promise.resolve([]),
-    open && userId ? getMyPicks(CURRENT_SEASON, open.week) : Promise.resolve([]),
-    userId ? getLeaderboard(CURRENT_SEASON) : Promise.resolve([]),
+    open ? getWeekResults(season, open.week) : Promise.resolve([]),
+    open && userId ? getMyPicks(season, open.week) : Promise.resolve([]),
+    userId ? getLeaderboard(season) : Promise.resolve([]),
   ]);
 
   const initial: Record<number, number> = {};
@@ -56,7 +57,7 @@ export default async function Predictions() {
                 you like until kickoff.
               </p>
               <PickForm
-                season={CURRENT_SEASON}
+                season={season}
                 week={open.week}
                 matchups={matchups}
                 initial={initial}

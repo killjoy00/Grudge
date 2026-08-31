@@ -23,14 +23,18 @@ grant usage   on schema app                  to authenticated, app_user;
 
 grant execute on function app.current_user_id() to authenticated, app_user;
 
--- Only the webhook handler's server-side credential may call this -- it must
--- never be reachable from a browser session, since it writes is_admin.
--- Reuses app_pipeline: both it and the webhook handler are trusted backend
--- code, never a specific end user, so one "trusted backend" role covers both
--- rather than adding a second role for a single function grant.
-revoke all on function public.provision_profile from public, authenticated;
+-- Only the webhook's narrow role may call this. In particular, the BYPASSRLS
+-- pipeline credential must never be placed in Vercel.
+revoke all on function public.provision_profile from public, authenticated, app_user, app_pipeline;
 
-grant execute on function public.provision_profile to app_pipeline;
+-- This policy repair script can also be used before the provisioning role is
+-- created, so grant conditionally instead of making every other repair fail.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'app_provisioner') then
+    execute 'grant execute on function public.provision_profile(text, citext, text) to app_provisioner';
+  end if;
+end $$;
 
 -- Correct for ROW ownership -- but see below: by itself it is a security hole.
 alter table public.profiles enable row level security;

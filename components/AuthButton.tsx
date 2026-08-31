@@ -27,7 +27,10 @@ export function AuthButton() {
   if (!isLoaded) return <span className="authslot" aria-hidden />;
 
   return isSignedIn ? (
-    <UserButton />
+    <div className="authcontrols">
+      <a href="/me">Profile</a>
+      <UserButton />
+    </div>
   ) : (
     <SignInButton mode="modal">
       <button>Sign in</button>

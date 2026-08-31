@@ -653,12 +653,10 @@ create table public.profiles (
 ```
 
 Provisioning moves from a Postgres trigger to a function a webhook calls, because
-Postgres has no `INSERT INTO auth.users` event to hook here — Clerk fires a
-`user.created` webhook to a Next.js API route instead. **The route itself is
-Step 5/6 work, not written yet** (it needs the app to exist); what belongs in
-the schema now is the function it will call, kept `security definer` and
-allowlist-checked so the fail-closed behavior doesn't depend on the webhook
-handler getting the check right:
+Postgres has no `INSERT INTO auth.users` event to hook here — Clerk fires
+`user.created` and `user.updated` to `app/api/webhooks/clerk/route.ts`. The
+function stays `security definer` and allowlist-checked so the fail-closed
+behavior does not depend on the webhook handler getting the check right:
 
 ```sql
 create or replace function public.provision_profile(
@@ -682,13 +680,11 @@ begin
   return result;
 end $$;
 
--- Only the webhook handler's server-side credential may call this -- it must
--- never be reachable from a browser session, since it writes is_admin.
--- Reuses app_pipeline: both it and the webhook handler are trusted backend
--- code, never a specific end user, so one "trusted backend" role covers both
--- rather than adding a second role for a single function grant.
-revoke all on function public.provision_profile from public, authenticated;
-grant execute on function public.provision_profile to app_pipeline;
+-- Only the narrowly scoped Vercel webhook credential may call this. The
+-- BYPASSRLS pipeline role remains in GitHub Actions and never enters Vercel.
+revoke all on function public.provision_profile
+  from public, authenticated, app_user, app_pipeline;
+grant execute on function public.provision_profile to app_provisioner;
 ```
 
 This also answers *"after login, users pick or are assigned their ESPN team"* —

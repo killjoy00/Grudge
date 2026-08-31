@@ -12,6 +12,11 @@ on:
         description: 'Season to load (blank = current year)'
         required: false
         type: string
+      send_recap:
+        description: 'Send the latest completed week recap after a successful manual run'
+        required: true
+        default: false
+        type: boolean
 
 # Never let two runs touch the database or push to the branch at once. A
 # manual retry firing while the scheduled run is mid-flight would otherwise
@@ -45,9 +50,9 @@ jobs:
       - name: Test
         run: npx tsx --test pipeline/*.test.ts lib/*.test.ts
 
-      # Each step below fails the job on a non-zero exit, and every write is
-      # transactional, so a failure anywhere leaves the database as it was.
-      # There is deliberately no continue-on-error in this workflow.
+      # Each database-writing command is internally transactional. The commands
+      # are separate transactions, though, so the workflow stops immediately on
+      # any error and never sends a recap for a partially completed run.
       - name: Fetch ESPN data and load
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
@@ -82,9 +87,8 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/ownership.ts
 
-      # Only reached if every step above succeeded, so a partial week is never
-      # committed. The archive is append-only history: raw payloads exactly as
-      # ESPN served them.
+      # Only reached if every data step above succeeded. The archive is
+      # append-only history: raw payloads exactly as ESPN served them.
       - name: Commit raw data
         id: commit
         run: |
@@ -98,16 +102,15 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             git commit -m "Weekly data $(date -u +%Y-%m-%d)
 
-          Automated capture from the ESPN v3 API.
-
-          [skip ci]"
+          Automated capture from the ESPN v3 API."
             git push
           fi
 
-      # Vercel is optional until it is configured, so a missing hook is a
-      # notice rather than a failure -- but a hook that IS set and fails is a
-      # real failure, because the site would silently serve stale data.
+      # A raw-data commit already triggers Vercel through its Git integration.
+      # Only call the hook when there was no commit, which refreshes runtime
+      # caches without creating a duplicate deployment on normal Tuesdays.
       - name: Trigger Vercel deploy
+        if: steps.commit.outputs.changed != 'true'
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -123,6 +126,24 @@ jobs:
             exit 1
           fi
 
+      # Scheduled Tuesdays send automatically. Manual runs are opt-in so a
+      # historical backfill or troubleshooting retry cannot surprise the league
+      # with an old recap. Every recipient receives a private, individual email.
+      - name: Send weekly recap
+        if: github.event_name == 'schedule' || inputs.send_recap == true
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_RECIPIENTS: ${{ secrets.RECAP_RECIPIENTS }}
+          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+          RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+        run: |
+          if [ -n "${{ inputs.season }}" ]; then
+            npm run recap -- --season=${{ inputs.season }} --skip-if-empty
+          else
+            npm run recap -- --skip-if-empty
+          fi
+
       - name: Summary
         if: always()
         run: |
@@ -131,5 +152,6 @@ jobs:
             echo ""
             echo "- Result: **${{ job.status }}**"
             echo "- New raw data committed: **${{ steps.commit.outputs.changed || 'no' }}**"
+            echo "- Recap requested: **${{ github.event_name == 'schedule' || inputs.send_recap == true }}**"
             echo "- Run: \`$(date -u +'%Y-%m-%d %H:%M UTC')\`"
           } >> "$GITHUB_STEP_SUMMARY"
