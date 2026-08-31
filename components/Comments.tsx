@@ -1,10 +1,11 @@
 'use client';
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { postComment, editComment, deleteComment } from '../lib/actions.ts';
 
 export interface Comment {
   id: string; user_id: string; body: string; parent_id: string | null;
-  created_at: string; display_name: string | null;
+  created_at: string; display_name: string | null; is_deleted: boolean;
 }
 
 function when(iso: string) {
@@ -19,6 +20,7 @@ function when(iso: string) {
 export function Comments({
   season, week, comments, me,
 }: { season: number; week: number; comments: Comment[]; me: string | null }) {
+  const router = useRouter();
   const [body, setBody] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -33,7 +35,12 @@ export function Comments({
     if (!body.trim()) return;
     start(async () => {
       const res = await postComment(season, week, body, replyTo);
-      if (res.ok) { setBody(''); setReplyTo(null); setErr(null); }
+      if (res.ok) {
+        setBody('');
+        setReplyTo(null);
+        setErr(null);
+        router.refresh();
+      }
       else setErr(res.error ?? 'Could not post.');
     });
   }
@@ -41,8 +48,24 @@ export function Comments({
   function saveEdit(id: string) {
     start(async () => {
       const res = await editComment(id, draft);
-      if (res.ok) { setEditing(null); setErr(null); }
+      if (res.ok) {
+        setEditing(null);
+        setErr(null);
+        router.refresh();
+      }
       else setErr(res.error ?? 'Could not save.');
+    });
+  }
+
+  function remove(id: string) {
+    start(async () => {
+      const res = await deleteComment(id);
+      if (res.ok) {
+        setErr(null);
+        router.refresh();
+      } else {
+        setErr(res.error ?? 'Could not delete.');
+      }
     });
   }
 
@@ -63,22 +86,24 @@ export function Comments({
             </div>
           </div>
         ) : (
-          <div className="body">{c.body}</div>
+          <div className="body">
+            {c.is_deleted ? <em className="tsub">[deleted]</em> : c.body}
+          </div>
         )}
         {me && editing !== c.id && (
           <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
-            {!isReply && (
+            {!isReply && !c.is_deleted && (
               <button style={{ border: 'none', background: 'none', padding: 0, color: 'var(--muted)', fontSize: 13 }}
                       onClick={() => setReplyTo(replyTo === c.id ? null : c.id)}>
                 {replyTo === c.id ? 'Cancel reply' : 'Reply'}
               </button>
             )}
-            {mine && (
+            {mine && !c.is_deleted && (
               <>
                 <button style={{ border: 'none', background: 'none', padding: 0, color: 'var(--muted)', fontSize: 13 }}
                         onClick={() => { setEditing(c.id); setDraft(c.body); }}>Edit</button>
                 <button style={{ border: 'none', background: 'none', padding: 0, color: 'var(--muted)', fontSize: 13 }}
-                        onClick={() => start(async () => { await deleteComment(c.id); })}>Delete</button>
+                        onClick={() => remove(c.id)} disabled={pending}>Delete</button>
               </>
             )}
           </div>

@@ -71,14 +71,27 @@ export async function postComment(
     const text = body.trim();
     if (!text) return { ok: false, error: 'Write something first.' };
 
-    await asUser((q) => [
+    const [rows] = await asUser<{ id: string }>((q) => [
       q(
         `insert into public.comments (user_id, season, week, body, parent_id)
-         values ($1, $2, $3, $4, $5)`,
+         select $1, $2, $3, $4, $5::uuid
+          where $5::uuid is null
+             or exists (
+                  select 1 from public.comments parent
+                   where parent.id = $5::uuid
+                     and parent.season = $2
+                     and parent.week = $3
+                     and parent.parent_id is null
+                     and parent.deleted_at is null
+                )
+         returning id`,
         [userId, season, week, text, parentId]
       ),
     ]);
-    revalidatePath(`/week/${season}/${week}`);
+    if (!rows?.length) {
+      return { ok: false, error: 'That comment thread is no longer available.' };
+    }
+    revalidatePath('/');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: friendly(e) };

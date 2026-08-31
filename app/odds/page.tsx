@@ -1,16 +1,16 @@
-import { getPlayoffOdds, getPlayedSeasons } from '../../lib/queries.ts';
+import { getCachedPlayedSeasons, getCachedPlayoffOdds } from '../../lib/cached-queries.ts';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default async function Odds({
   searchParams,
 }: { searchParams: Promise<{ season?: string }> }) {
-  const seasons = await getPlayedSeasons();
+  const seasons = await getCachedPlayedSeasons();
   const sp = await searchParams;
   const season = Number(sp.season) || seasons[0]?.season;
   if (!season) return <p className="empty">No completed seasons yet.</p>;
 
-  const rows = await getPlayoffOdds(season);
+  const rows = await getCachedPlayoffOdds(season);
   const a = (rows[0]?.assumptions ?? {}) as Record<string, unknown>;
 
   return (

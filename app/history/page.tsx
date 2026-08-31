@@ -1,9 +1,14 @@
-import { getAllTime, getPlayedSeasons } from '../../lib/queries.ts';
+import { getCachedHistory } from '../../lib/cached-queries.ts';
 
-export const revalidate = 86400;
+// Defer the first database read until a request reaches the deployment. A
+// static render made every build depend on Neon being reachable and on the
+// runtime credential already being perfect, so an otherwise valid deploy
+// failed while prerendering /history. The data itself is still cached for a
+// day; only the timing of the first read changes.
+export const dynamic = 'force-dynamic';
 
 export default async function History() {
-  const [all, seasons] = await Promise.all([getAllTime(), getPlayedSeasons()]);
+  const [all, seasons] = await getCachedHistory();
 
   return (
     <>

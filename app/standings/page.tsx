@@ -1,18 +1,17 @@
-import { getStandings, getPlayedSeasons, getLuck } from '../../lib/queries.ts';
+import { getCachedPlayedSeasons, getCachedStandings } from '../../lib/cached-queries.ts';
 
-// Rebuilt on demand; the pipeline triggers a deploy on Tuesdays, and an hourly
-// revalidate keeps it fresh if anything is loaded out of band.
-export const revalidate = 3600;
+// Render after deployment, then cache the underlying public data for an hour.
+export const dynamic = 'force-dynamic';
 
 export default async function Standings({
   searchParams,
 }: { searchParams: Promise<{ season?: string }> }) {
-  const seasons = await getPlayedSeasons();
+  const seasons = await getCachedPlayedSeasons();
   const sp = await searchParams;
   const season = Number(sp.season) || seasons[0]?.season;
   if (!season) return <p className="empty">No completed seasons yet.</p>;
 
-  const [rows, luck] = await Promise.all([getStandings(season), getLuck(season)]);
+  const [rows, luck] = await getCachedStandings(season);
   const luckBy = new Map(luck.map((l) => [l.espn_team_id, l]));
   const playoffLine = 6;
 
