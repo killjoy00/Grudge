@@ -15,6 +15,7 @@ import {
   getPlayedSeasons,
   getPlayoffOdds,
   getPowerRankings,
+  getSeasonChampions,
   getStandings,
   getManagerHistory,
 } from './queries.ts';
@@ -49,6 +50,7 @@ export const getCachedHistory = unstable_cache(
     getPlayedSeasons(),
     getFranchiseHistory(),
     getManagerHistory(),
+    getSeasonChampions(),
   ]),
   ['all-time-history'],
   { revalidate: 86400 }

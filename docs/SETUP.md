@@ -196,8 +196,24 @@ Run the membership migration as the owner, then run the provisioner grants:
 
 ```bash
 NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-08-31-membership-recaps-history.sql
+NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-09-01-unified-history.sql
 NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/provisioner-role.sql
 ```
+
+Then load the league record — every season from 2005 on — which is what
+`/history` reads:
+
+```bash
+npm run history:derive
+npm run history:import -- \
+  --franchises=data/manual-history/franchises.csv \
+  --seasons=data/manual-history/season-results.csv \
+  --managers=data/manual-history/managers.csv \
+  --manager-seasons=data/manual-history/manager-seasons.csv
+```
+
+It is one idempotent transaction, so re-running it after backfilling a new ESPN
+season is safe. See [`docs/LEAGUE-HISTORY.md`](LEAGUE-HISTORY.md).
 
 Verify the role before constructing its connection string:
 
