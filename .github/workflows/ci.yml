@@ -29,7 +29,7 @@ jobs:
       # checks the normalizer and the feature models against actual ESPN
       # payloads rather than fixtures written to match my own assumptions.
       - name: Pipeline tests
-        run: npx tsx --test pipeline/*.test.ts
+        run: npx tsx --test pipeline/*.test.ts lib/*.test.ts
 
       # /history is prerendered at build time, so the build genuinely queries
       # Neon -- a placeholder URL no longer gets us through. The credential used

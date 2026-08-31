@@ -26,6 +26,7 @@ import 'server-only';
  * tests/rls/02-attacks.sql cover exactly that.
  */
 import { neon } from '@neondatabase/serverless';
+import { describeUrlProblem } from './dburl.ts';
 import { auth } from '@clerk/nextjs/server';
 
 /**
@@ -55,7 +56,15 @@ function client() {
       'runs in, Preview included, not Production alone.'
     );
   }
-  cached = neon(url);
+  const problem = describeUrlProblem(url);
+  if (problem) {
+    throw new Error(
+      `APP_DATABASE_URL is malformed: ${problem}. ` +
+      'Expected postgresql://user:password@host/dbname?sslmode=require — ' +
+      'the bare URL, with no quotes, no "psql" prefix and no variable name.'
+    );
+  }
+  cached = neon(url.trim());
   return cached;
 }
 

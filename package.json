@@ -10,7 +10,7 @@
     "pipeline": "tsx pipeline/run.ts",
     "features": "tsx pipeline/compute.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test pipeline/*.test.ts"
+    "test": "tsx --test pipeline/*.test.ts lib/*.test.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.8.3",
