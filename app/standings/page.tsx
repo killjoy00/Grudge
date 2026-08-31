@@ -17,10 +17,11 @@ export default async function Standings({
 
   return (
     <>
-      <h1>Standings</h1>
-      <p className="sub">
-        {season} · seeding tiebreak is total points scored, the league&rsquo;s own rule
-      </p>
+      <div className="page-hero compact-hero">
+        <div className="eyebrow">{season} season</div>
+        <h1>The table</h1>
+        <p>Seeding breaks ties by total points scored—the league&rsquo;s own rule.</p>
+      </div>
 
       <div className="card">
         <div className="scroll">

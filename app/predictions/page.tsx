@@ -9,14 +9,14 @@ import { isAdmin } from '../../lib/admin.ts';
 export const dynamic = 'force-dynamic';
 
 export default async function Predictions() {
-  const { userId } = await auth();
+  const { userId } = await auth.protect();
   const season = await getCurrentSeason();
   const open = await getOpenWeek(season);
 
   const [matchups, picks, board] = await Promise.all([
     open ? getWeekResults(season, open.week) : Promise.resolve([]),
-    open && userId ? getMyPicks(season, open.week) : Promise.resolve([]),
-    userId ? getLeaderboard(season) : Promise.resolve([]),
+    open ? getMyPicks(season, open.week) : Promise.resolve([]),
+    getLeaderboard(season),
   ]);
 
   const initial: Record<number, number> = {};
@@ -27,19 +27,22 @@ export default async function Predictions() {
 
   return (
     <>
-      <h1>Predictions</h1>
-      {open ? (
-        <p className="sub">
+      <div className="page-hero compact-hero">
+        <div className="eyebrow">Call your shot</div>
+        <h1>Predictions</h1>
+        {open ? (
+          <p>
           Week {open.week} · picks lock at first kickoff
           {lockAt && ` — ${new Date(lockAt).toLocaleString(undefined, {
             weekday: 'short', month: 'short', day: 'numeric',
             hour: 'numeric', minute: '2-digit',
             timeZone: 'America/New_York', timeZoneName: 'short',
           })}`}
-        </p>
-      ) : (
-        <p className="sub">No week is open for picks right now.</p>
-      )}
+          </p>
+        ) : (
+          <p>No week is open for picks right now.</p>
+        )}
+      </div>
 
       {open && (
         <div className="card">
@@ -72,8 +75,7 @@ export default async function Predictions() {
       <div className="card">
         {board.length === 0 ? (
           <div className="empty">
-            {userId ? 'Nothing scored yet — the Tuesday pipeline fills this in.'
-                    : 'Sign in to see the leaderboard.'}
+            Nothing scored yet — the Tuesday pipeline fills this in.
           </div>
         ) : (
           <table>

@@ -10,11 +10,13 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import {
   getAllTime,
+  getFranchiseHistory,
   getLuck,
   getPlayedSeasons,
   getPlayoffOdds,
   getPowerRankings,
   getStandings,
+  getManagerHistory,
 } from './queries.ts';
 
 export const getCachedPlayedSeasons = unstable_cache(
@@ -42,7 +44,12 @@ export const getCachedPlayoffOdds = unstable_cache(
 );
 
 export const getCachedHistory = unstable_cache(
-  async () => Promise.all([getAllTime(), getPlayedSeasons()]),
+  async () => Promise.all([
+    getAllTime(),
+    getPlayedSeasons(),
+    getFranchiseHistory(),
+    getManagerHistory(),
+  ]),
   ['all-time-history'],
   { revalidate: 86400 }
 );

@@ -26,6 +26,9 @@ function friendly(e: unknown): string {
   if (/not in matchup/i.test(msg)) return "That team isn't playing in that matchup.";
   if (/row-level security/i.test(msg)) return 'You can only change your own picks.';
   if (/not signed in/i.test(msg)) return 'You need to sign in.';
+  if (/membership inactive|not provisioned/i.test(msg)) {
+    return 'Your league membership is not active. Ask the commissioner to check your account.';
+  }
   if (/violates check constraint/i.test(msg)) return 'That comment is empty or too long.';
   return 'Something went wrong. Please try again.';
 }
@@ -127,19 +130,25 @@ export async function deleteComment(id: string): Promise<ActionResult> {
   }
 }
 
-export async function updateDisplayName(name: string): Promise<ActionResult> {
+export async function updateProfile(
+  name: string,
+  recapEmailEnabled: boolean
+): Promise<ActionResult> {
   try {
     const text = name.trim().slice(0, 60);
     if (!text) return { ok: false, error: 'Name cannot be empty.' };
     const { userId } = await auth();
     if (!userId) return { ok: false, error: 'You need to sign in.' };
-    // Only display_name is grantable to this role -- is_admin and espn_team_id
-    // are protected by a column grant and a trigger.
+    // These are the only two profile columns grantable to this role. Team,
+    // email, active membership, and administrator status remain protected by
+    // column grants and a trigger.
     const [rows] = await asUser<{ id: string }>((q) => [
       q(`update public.profiles
-            set display_name = $1, updated_at = now()
-          where id = $2
-          returning id`, [text, userId]),
+            set display_name = $1,
+                recap_email_enabled = $2,
+                updated_at = now()
+          where id = $3
+          returning id`, [text, recapEmailEnabled, userId]),
     ]);
     if (!rows?.length) {
       return { ok: false, error: 'Your league profile has not been provisioned yet.' };

@@ -22,7 +22,7 @@ pay $25/mo or cannibalize an existing project, we're moving to a stack with a
 free tier that doesn't collide with your other work: **Neon** for Postgres, 100
 projects and no per-org/per-person cap on the free tier
 ([neon.com/faqs/free-plan-limits-and-quotas](https://neon.com/faqs/free-plan-limits-and-quotas)),
-and **Clerk** for auth, free up to 10,000 monthly active users with magic-link
+and **Clerk** for auth, with a free Hobby tier and magic-link
 sign-in built in
 ([clerk.com](https://clerk.com), per current pricing coverage).
 
@@ -48,19 +48,17 @@ signup-gating was a trigger on Postgres's own `auth.users` table, which doesn't
 exist here — Clerk owns user identity outside Postgres entirely. Two consequences,
 both improvements once you see them:
 
-1. **The allowlist gate moves up a layer, and gets simpler.** Clerk has a native
-   dashboard toggle — Sign-up & Sign-in → Restrictions → Allowlist — that blocks
-   sign-in for any email not on the list, before Postgres is ever touched
-   ([clerk.com/docs/authentication/allowlist](https://clerk.com/docs/authentication/allowlist)).
-   No trigger, no function, no SQL at all for this part. You'll add the 13
-   emails there, not in a table `INSERT`.
+1. **The registration gate moves up a layer.** Clerk's production allowlist is
+   paid, so the app uses Clerk's free **Invite-only** access mode and application
+   invitations instead. An uninvited user cannot enter the sign-up flow; the
+   commissioner creates and repairs invitations from the Members page
+   ([clerk.com/docs/guides/secure/restricting-access](https://clerk.com/docs/guides/secure/restricting-access)).
 2. **Profile provisioning becomes a webhook, not a trigger.** Postgres has no way
    to know a Clerk signup happened unless something tells it. The standard pattern
    is a Clerk webhook (`user.created`) hitting a Next.js API route, which looks up
    the email in `league_allowlist` and upserts the `profiles` row — logically the
    same as the old trigger, just living in application code instead of the
-   database. I have **not written that webhook handler yet** — it's Step 5/6
-   scope (it needs the Next.js app to exist), flagged here so the schema below
+   database. The handler is `app/api/webhooks/clerk/route.ts`; the schema below
    accounts for it (`profiles.id` is a Clerk user ID, not a Postgres-generated
    one, and carries no Postgres-enforced foreign key to anything, since the
    "users" table now lives outside this database).
@@ -612,17 +610,16 @@ compares that against a row's `user_id` — `null = anything` is `null`, which
 RLS treats as "no", so an unidentified caller matches no rows.
 
 
-### The allowlist is two gates now, not one
+### Registration and membership are two gates
 
-**Gate 1 — Clerk itself, no SQL.** Sign-up & Sign-in → Restrictions → Allowlist
-in the Clerk dashboard, 13 emails added there. An email not on that list is
-refused at sign-in and never reaches this database at all — a stronger fail-closed
-than the Supabase version, since there's no window where an unauthorized row
-could even be attempted.
+**Gate 1 — Clerk Invite-only mode and invitations.** The commissioner creates
+an application invitation for each active roster email. A person without a
+valid invitation cannot sign up. This uses the Hobby-compatible access mode;
+Clerk's paid production Allowlist feature is deliberately disabled.
 
 **Gate 2 — this table, which supplies the ESPN-team/admin mapping Clerk has no
-concept of.** `league_allowlist` is still needed, just no longer the thing doing
-the blocking:
+concept of and authorizes app access after sign-in.** `league_allowlist` keeps
+its historical name but is the authoritative league roster:
 
 ```sql
 create extension if not exists citext;
@@ -685,7 +682,8 @@ end $$;
 revoke all on function public.provision_profile
   from public, authenticated, app_user, app_pipeline;
 -- The base schema can be applied before the deployment-only role is created.
--- scripts/provisioner-role.sql grants this after Neon creates the role.
+-- scripts/provisioner-role.sql grants this after the owner creates the role
+-- with SQL. Neon Console-created roles inherit neon_superuser and are rejected.
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'app_provisioner') then
@@ -699,11 +697,10 @@ the allowlist row carries the team, so the profile is provisioned correctly on
 first login with nothing to pick. (If you'd rather people self-select, drop
 `espn_team_id` from the allowlist and I'll add a one-time claim flow instead.)
 
-Belt-and-suspenders worth noting: since Clerk's own allowlist (Gate 1) already
-blocks a non-member from ever obtaining a valid session, `provision_profile`'s
-own allowlist check is defense in depth, not the only thing standing between a
-stranger and a profile row — unlike the Supabase design, where the DB trigger
-*was* the only gate.
+Belt-and-suspenders worth noting: Clerk Invite-only mode blocks uninvited
+registration, while `provision_profile` independently requires an active roster
+row. The database check is authoritative even if an invitation is sent to the
+wrong address or an already-registered Clerk account remains after deactivation.
 
 ### Privilege escalation — the hole worth naming
 
@@ -1046,13 +1043,13 @@ psql session running as the owner cannot quietly bypass every policy above.
 
 ---
 
-## What I need from you before I run any of this
+## Inputs required before initial deployment
 
-1. **Approve or redline the above.** Particularly: hiding other people's picks
+1. **Confirm the product choices.** Particularly: hiding other people's picks
    until lock, soft-deleting comments, and auto-assigning teams from the allowlist
    rather than letting people choose.
-2. **The allowlist**, as `email, espn_team_id, is_admin` — 13 rows. I have the
-   SWIDs and names from Step 1, so email + team is enough and I'll join the rest.
+2. **The league roster**, as `email, espn_team_id, is_admin` — 13 rows. Email
+   plus team is enough; the commissioner page sends Clerk invitations from it.
 3. **Confirm the Monte Carlo bracket assumption**: 6 of 10 teams, top 2 seeds get
    byes, 3v6 and 4v5 in round one, no reseeding (`playoffReseed: false`), seeding
    ties broken by total points (`TOTAL_POINTS_SCORED`). The bracket isn't in the

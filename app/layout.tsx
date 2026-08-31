@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Nav } from '../components/Nav.tsx';
 import { AuthButton } from '../components/AuthButton.tsx';
+import { LeagueMark } from '../components/LeagueMark.tsx';
 
 export const metadata: Metadata = {
   title: 'UNC Grudge Match',
@@ -12,7 +13,11 @@ export const metadata: Metadata = {
 
 // Mobile-first: lock the viewport to device width so wide tables scroll inside
 // their own container rather than zooming the whole page out.
-export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#071d35',
+};
 
 // Deliberately NOT async, and deliberately not calling auth(). Any dynamic API
 // used here applies to every route beneath it, which would force the whole site
@@ -26,8 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="site">
             <div className="headrow">
               <a href="/" className="brand">
-                UNC Grudge Match
-                <span>Est. 2018 on record</span>
+                <LeagueMark />
+                <span className="brand-copy">
+                  <strong>Grudge Match</strong>
+                  <small>UNC fantasy football · est. 2005</small>
+                </span>
               </a>
               <div className="spacer" />
               <AuthButton />
@@ -35,6 +43,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Nav />
           </header>
           <main className="wrap">{children}</main>
+          <footer className="site-footer">
+            <span>UNC Grudge Match</span>
+            <span>Keep the receipts.</span>
+          </footer>
         </body>
       </html>
     </ClerkProvider>

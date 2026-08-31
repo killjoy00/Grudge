@@ -15,10 +15,11 @@ export default async function Odds({
 
   return (
     <>
-      <h1>Playoff odds</h1>
-      <p className="sub">
-        {season} · after week {rows[0]?.week ?? '—'} · {String(a.simCount ?? '')} simulations
-      </p>
+      <div className="page-hero compact-hero">
+        <div className="eyebrow">{season} · after week {rows[0]?.week ?? '—'}</div>
+        <h1>The path in</h1>
+        <p>{String(a.simCount ?? '')} simulations of the remaining schedule and real tiebreak rules.</p>
+      </div>
 
       <div className="card">
         {rows.map((r) => (

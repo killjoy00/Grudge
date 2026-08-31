@@ -19,6 +19,8 @@ export const dynamic = 'force-dynamic';
 
 const TABS = [
   ['/admin', 'Overview'],
+  ['/admin/members', 'Members'],
+  ['/admin/recaps', 'Recaps'],
   ['/admin/pool', 'Free agents'],
 ];
 

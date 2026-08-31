@@ -25,8 +25,11 @@ export default async function Home() {
     const [seasons, currentSeason] = await Promise.all([getPlayedSeasons(), getCurrentSeason()]);
     return (
       <>
-        <h1>UNC Grudge Match</h1>
-        <p className="sub">The {currentSeason} season hasn&rsquo;t kicked off yet.</p>
+        <div className="page-hero">
+          <div className="eyebrow">The league ledger</div>
+          <h1>Waiting on kickoff.</h1>
+          <p>The {currentSeason} season is next. The arguments are already in midseason form.</p>
+        </div>
         <div className="card">
           <p className="note">
             Once week 1 is played, this page becomes the weekly recap: scores, awards,
@@ -55,8 +58,11 @@ export default async function Home() {
 
   return (
     <>
-      <h1>Week {week} recap</h1>
-      <p className="sub">{season} season</p>
+      <div className="page-hero">
+        <div className="eyebrow">{season} scoreboard</div>
+        <h1>Week {week}, settled.</h1>
+        <p>Final scores, weekly indignities, and the standings after the dust cleared.</p>
+      </div>
 
       <div className="card">
         {games.map((g) => {

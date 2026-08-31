@@ -147,12 +147,15 @@ export async function getSnapshotCoverage(season: number) {
 /** The league allowlist. Admin-only by RLS policy, not just by this module. */
 export async function getAllowlist() {
   const [rows] = await asUser<{
-    email: string; espn_team_id: number | null; is_admin: boolean; espn_swid: string | null;
+    email: string; season: number | null; espn_team_id: number | null;
+    is_admin: boolean; is_active: boolean; espn_swid: string | null;
+    claimed_at: string | null;
   }>((q) => [
     q(
-      `select email::text as email, espn_team_id, is_admin, espn_swid
+      `select email::text as email, season, espn_team_id, is_admin, is_active,
+              espn_swid, claimed_at
          from public.league_allowlist
-        order by is_admin desc, email`
+        order by is_active desc, is_admin desc, email`
     ),
   ]);
   return rows ?? [];
@@ -162,16 +165,52 @@ export async function getAllowlist() {
 export async function getProvisionedMembers() {
   const [rows] = await asUser<{
     id: string; email: string; display_name: string | null;
-    espn_team_id: number | null; is_admin: boolean; team_name: string | null;
+    espn_team_id: number | null; is_admin: boolean; is_active: boolean;
+    recap_email_enabled: boolean; team_name: string | null;
   }>((q) => [
     q(
-      `select pr.id, pr.email::text as email, pr.display_name, pr.espn_team_id, pr.is_admin,
+      `select pr.id, pr.email::text as email, pr.display_name, pr.espn_team_id,
+              a.is_admin, (pr.is_active and a.is_active) as is_active,
+              pr.recap_email_enabled,
               t.name as team_name
          from public.profiles pr
+         join public.league_allowlist a on a.email = pr.email
          left join public.teams t
            on t.espn_team_id = pr.espn_team_id
           and t.season = (select max(season) from public.teams)
-        order by pr.is_admin desc, pr.email`
+        order by a.is_active desc, a.is_admin desc, pr.email`
+    ),
+  ]);
+  return rows ?? [];
+}
+
+export interface RecapDeliveryRow {
+  id: string;
+  season: number;
+  week: number;
+  recipient_email: string;
+  display_name: string | null;
+  status: 'sending' | 'sent' | 'failed' | 'skipped';
+  provider_message_id: string | null;
+  error_code: string | null;
+  attempt_count: number;
+  last_attempted_at: string | null;
+  sent_at: string | null;
+}
+
+/** Recent Resend API outcomes. Recipient addresses remain admin-only by RLS. */
+export async function getRecapDeliveries(limit = 100) {
+  const safeLimit = Math.max(1, Math.min(Math.trunc(limit), 250));
+  const [rows] = await asUser<RecapDeliveryRow>((q) => [
+    q(
+      `select d.id::text, d.season, d.week, d.recipient_email::text,
+              p.display_name, d.status, d.provider_message_id, d.error_code,
+              d.attempt_count, d.last_attempted_at, d.sent_at
+         from public.recap_deliveries d
+         left join public.profiles p on p.id = d.profile_id
+        order by d.last_attempted_at desc nulls last, d.id desc
+        limit $1`,
+      [safeLimit]
     ),
   ]);
   return rows ?? [];

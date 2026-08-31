@@ -5,7 +5,6 @@ import { createHash } from 'node:crypto';
 
 import { connect } from './db.ts';
 import {
-  parseRecipients,
   renderWeeklyRecap,
   type RecapAward,
   type RecapBenchRow,
@@ -38,6 +37,17 @@ function optionalPositiveInt(value: string | undefined, name: string): number | 
 const REQUESTED_WEEK = optionalPositiveInt(weekArg, '--week');
 
 type Query = <T>(text: string, params?: unknown[]) => Promise<T[]>;
+
+interface RecapRecipient {
+  profile_id: string;
+  email: string;
+}
+
+class SendFailure extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
 
 function queryClient(): Query {
   const sql = connect() as unknown as { query: Query };
@@ -110,6 +120,16 @@ async function loadRecap(query: Query): Promise<WeeklyRecap | null> {
   return { season: SEASON, week, games, awards, bench, standings, predictions };
 }
 
+async function loadRecipients(query: Query): Promise<RecapRecipient[]> {
+  return query<RecapRecipient>(
+    `select p.id as profile_id, p.email::text as email
+       from public.profiles p
+       join public.league_allowlist a on a.email = p.email
+      where p.is_active and a.is_active and p.recap_email_enabled
+      order by p.id`
+  );
+}
+
 function required(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required to send weekly recaps.`);
@@ -148,7 +168,10 @@ async function sendOne(
   if (!response.ok || !payload.id) {
     // Do not print the API's free-form message: validation errors may echo the
     // recipient, and the address list is intentionally a repository secret.
-    throw new Error(`Resend returned HTTP ${response.status} (${payload.name ?? 'unknown error'})`);
+    const providerName = (payload.name ?? 'unknown_error')
+      .replace(/[^a-z0-9_-]+/gi, '_')
+      .slice(0, 60);
+    throw new SendFailure(`resend_${response.status}_${providerName}`);
   }
   return payload.id;
 }
@@ -171,17 +194,61 @@ async function main() {
 
   const apiKey = required('RESEND_API_KEY');
   const from = required('RECAP_FROM_EMAIL');
-  const recipients = parseRecipients(required('RECAP_RECIPIENTS'));
-  if (recipients.length === 0) throw new Error('RECAP_RECIPIENTS has no email addresses.');
+  const query = queryClient();
+  const recipients = await loadRecipients(query);
+  if (recipients.length === 0) {
+    console.log(`${recap.season} week ${recap.week}: no active members opted into recaps.`);
+    return;
+  }
 
   console.log(`${recap.season} week ${recap.week}: sending ${recipients.length} private recap email(s)`);
   const failures: string[] = [];
   for (let i = 0; i < recipients.length; i++) {
+    const recipient = recipients[i]!;
+    const state = await query<{ status: string }>(
+      `insert into public.recap_deliveries
+         (season, week, profile_id, recipient_email, status, attempt_count,
+          last_attempted_at, updated_at)
+       values ($1, $2, $3, $4::citext, 'sending', 1, now(), now())
+       on conflict (season, week, recipient_email) do update set
+         profile_id = excluded.profile_id,
+         status = case when public.recap_deliveries.status = 'sent'
+                       then 'sent' else 'sending' end,
+         attempt_count = case when public.recap_deliveries.status = 'sent'
+                              then public.recap_deliveries.attempt_count
+                              else public.recap_deliveries.attempt_count + 1 end,
+         last_attempted_at = case when public.recap_deliveries.status = 'sent'
+                                  then public.recap_deliveries.last_attempted_at
+                                  else now() end,
+         updated_at = now()
+       returning status`,
+      [recap.season, recap.week, recipient.profile_id, recipient.email]
+    );
+    if (state[0]?.status === 'sent') {
+      console.log(`  skipped ${i + 1}/${recipients.length} (already sent)`);
+      continue;
+    }
+
     try {
-      const id = await sendOne(apiKey, from, recipients[i]!, recap, rendered);
+      const id = await sendOne(apiKey, from, recipient.email, recap, rendered);
+      await query(
+        `update public.recap_deliveries
+            set status = 'sent', provider_message_id = $4, error_code = null,
+                sent_at = now(), updated_at = now()
+          where season = $1 and week = $2 and recipient_email = $3::citext`,
+        [recap.season, recap.week, recipient.email, id]
+      );
       console.log(`  sent ${i + 1}/${recipients.length} (${id})`);
     } catch (error) {
-      failures.push(error instanceof Error ? error.message : String(error));
+      const code = error instanceof SendFailure ? error.code : 'unexpected_send_error';
+      failures.push(code);
+      await query(
+        `update public.recap_deliveries
+            set status = 'failed', error_code = $4,
+                provider_message_id = null, updated_at = now()
+          where season = $1 and week = $2 and recipient_email = $3::citext`,
+        [recap.season, recap.week, recipient.email, code]
+      );
       console.error(`  failed ${i + 1}/${recipients.length}`);
     }
   }
