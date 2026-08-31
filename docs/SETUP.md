@@ -197,6 +197,7 @@ Run the membership migration as the owner, then run the provisioner grants:
 ```bash
 NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-08-31-membership-recaps-history.sql
 NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-09-01-unified-history.sql
+NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-09-02-history-detail.sql
 NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/provisioner-role.sql
 ```
 
