@@ -79,10 +79,10 @@ exception when others then
   perform test.record(p_label, false, 'unexpectedly FAILED: ' || sqlerrm);
 end $$;
 
-grant usage on schema test to authenticated, app_user, app_pipeline;
-grant select, insert on test.results to authenticated, app_user, app_pipeline;
-grant usage, select on sequence test.results_id_seq to authenticated, app_user, app_pipeline;
-grant execute on all functions in schema test to authenticated, app_user, app_pipeline;
+grant usage on schema test to authenticated, app_user, app_pipeline, app_provisioner;
+grant select, insert on test.results to authenticated, app_user, app_pipeline, app_provisioner;
+grant usage, select on sequence test.results_id_seq to authenticated, app_user, app_pipeline, app_provisioner;
+grant execute on all functions in schema test to authenticated, app_user, app_pipeline, app_provisioner;
 
 -- Clerk-style user ids (Clerk's real ones look like "user_2abc...").
 -- \set is a psql client-side substitution, not SQL -- it happens before the
@@ -92,9 +92,10 @@ grant execute on all functions in schema test to authenticated, app_user, app_pi
 \set stranger_id 'user_test_stranger_0001'
 
 -- ================================================ profile provisioning (webhook) ==
--- app_pipeline is the only role holding execute on provision_profile -- it
--- stands in for the Clerk webhook handler's server-side credential.
-set role app_pipeline;
+-- app_provisioner is the only role holding execute on provision_profile. It
+-- stands in for the Clerk webhook handler's narrowly scoped credential and,
+-- unlike app_pipeline, does not bypass RLS.
+set role app_provisioner;
 
 select test.expect_ok(
   format($$select public.provision_profile('%s', 'owner@example.com', 'Ryan')$$, :'owner_id'),
@@ -108,9 +109,9 @@ select test.expect_error(
   format($$select public.provision_profile('%s', 'stranger@evil.com', 'Nobody')$$, :'stranger_id'),
   'T3  ATTACK provision a NON-allowlisted email');
 
--- Diagnostic check, not an app_pipeline capability test -- runs unrestricted.
--- app_pipeline itself has no direct SELECT grant on profiles (correctly: only
--- provision_profile()'s SECURITY DEFINER context touches that table).
+-- Diagnostic check, not an app_provisioner capability test -- unrestricted.
+-- app_provisioner itself has no direct SELECT grant on profiles (correctly:
+-- only provision_profile()'s SECURITY DEFINER context touches that table).
 reset role;
 
 select test.expect_count(

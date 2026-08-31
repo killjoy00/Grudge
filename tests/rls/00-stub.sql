@@ -21,6 +21,9 @@ create role authenticated;
 create role app_user;
 -- The pipeline role: BYPASSRLS, writes the ESPN mirror + computed tables.
 create role app_pipeline with bypassrls;
+-- The webhook role: ordinary, non-BYPASSRLS, and only allowed to execute the
+-- SECURITY DEFINER provisioning function.
+create role app_provisioner;
 
 grant usage   on schema auth            to authenticated, app_user;
 grant execute on function auth.user_id() to authenticated, app_user;
