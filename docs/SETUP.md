@@ -166,14 +166,17 @@ step is *only* for the Tuesday recap, which isn't an auth email at all.
    you to your DNS. Wait for **Verified**.
 3. **API Keys** → create one → save as `RESEND_API_KEY`.
 
-Nothing to verify yet — the newsletter isn't built until Step 5/6.
+The Tuesday workflow sends the newsletter after every successful scheduled run.
 
 Put everything from this task in `.env.local` (already gitignored):
 
 ```bash
 DATABASE_URL=postgresql://neondb_owner:...@ep-xxxx.us-east-1.aws.neon.tech/grudge?sslmode=require
+APP_DATABASE_URL=postgresql://app_user:...@ep-xxxx-pooler.us-east-1.aws.neon.tech/grudge?sslmode=require
+PROVISIONER_DATABASE_URL=postgresql://app_provisioner:...@ep-xxxx-pooler.us-east-1.aws.neon.tech/grudge?sslmode=require
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 RESEND_API_KEY=re_...
 ```
 
@@ -217,7 +220,15 @@ Note there is **no team 7**, and three teams have two owners — so 13 emails fo
 |---|---|
 | `PIPELINE_DATABASE_URL` | `app_pipeline`'s connection string — generated when I write the migration that creates that role (not yet); until then, `DATABASE_URL` from 2a works for local testing only |
 | `RESEND_API_KEY` | 2d |
+| `RECAP_RECIPIENTS` | comma-separated league member email addresses |
 | `VERCEL_DEPLOY_HOOK_URL` | Task 4c |
+
+Under **Secrets and variables → Actions → Variables**, add:
+
+| variable | value |
+|---|---|
+| `RECAP_FROM_EMAIL` | `UNC Grudge Match <recap@planitnow.us>` |
+| `RECAP_SITE_URL` | `https://grudge.planitnow.us` |
 
 No ESPN cookies here — the weekly pipeline is unauthenticated by design, which is
 the main reason the backfill is a separate one-time script. No Clerk secret here
@@ -235,17 +246,16 @@ Next.js → **don't deploy yet**, add env vars first.
 
 ### 4b. Environment variables
 **Settings → Environment Variables**, all three environments. The Clerk keys
-are confirmed from Task 2; the exact variable Next.js needs for the
-authenticated-user DB connection (versus `DATABASE_URL`) is one of the two
-things I'm still verifying — see the note at the top of Task 2 — so treat this
-table as likely-but-not-final until I confirm it against your live project:
+are confirmed from Task 2. The owner and pipeline credentials never belong in
+Vercel:
 
 | name | scope |
 |---|---|
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Production, Preview, Development |
 | `CLERK_SECRET_KEY` | Production, Preview, Development |
-| `DATABASE_URL` | Production, Preview, Development *(unverified — may need to be a different, RLS-Authorize-aware connection string; see Task 2 note)* |
-| `RESEND_API_KEY` | Production only |
+| `APP_DATABASE_URL` (`app_user`) | Production, Preview, Development |
+| `PROVISIONER_DATABASE_URL` (`app_provisioner`) | Production only |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Production only |
 
 ### 4c. Deploy hook
 **Settings → Git → Deploy Hooks** → create one named `weekly-pipeline` on `main`
@@ -272,6 +282,10 @@ links point at the right place.
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ✅ | — | ✅ | ✅ (that's what "publishable" means) |
 | `CLERK_SECRET_KEY` | ✅ | — | ✅ | ❌ **never** |
 | `DATABASE_URL` (admin/migrations) | ✅ | — | — | ❌ |
+| `APP_DATABASE_URL` (`app_user`) | ✅ | ✅ CI only | ✅ | ❌ |
 | `PIPELINE_DATABASE_URL` (`app_pipeline`) | — | ✅ | — | ❌ **never** — bypasses RLS entirely |
-| `RESEND_API_KEY` | ✅ | ✅ | ✅ prod only | ❌ |
+| `PROVISIONER_DATABASE_URL` (`app_provisioner`) | ✅ | — | ✅ prod only | ❌ |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | ✅ | — | ✅ prod only | ❌ |
+| `RESEND_API_KEY` | ✅ | ✅ | — | ❌ |
+| `RECAP_RECIPIENTS` | ✅ | ✅ | — | ❌ |
 | `ESPN_SWID` / `ESPN_S2` | ✅ backfill only | ❌ **never** | ❌ | ❌ |

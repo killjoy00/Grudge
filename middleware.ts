@@ -21,6 +21,9 @@ const isProtected = createRouteMatcher([
   '/api/admin(.*)',
 ]);
 
+// /api/webhooks/clerk is deliberately absent. It has no browser session; its
+// authentication is Clerk's verified webhook signature, checked in the route.
+
 export default clerkMiddleware(async (auth, req) => {
   if (isProtected(req)) await auth.protect();
 });

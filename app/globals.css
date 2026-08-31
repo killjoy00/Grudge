@@ -41,10 +41,11 @@ header.site {
 .brand { font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 .brand span { color: var(--muted); font-weight: 400; font-size: 13px; display: block; }
 .spacer { flex: 1; }
-/* Holds the header's width while Clerk resolves the session in the browser,
-   so the brand does not shift sideways on first paint. Matches the rendered
-   width of both the avatar and the sign-in button. */
-.authslot { display: inline-block; width: 32px; height: 32px; flex: none; }
+/* Holds roughly the signed-in controls' width while Clerk resolves the session,
+   so the brand does not shift sideways on first paint. */
+.authslot { display: inline-block; width: 80px; height: 32px; flex: none; }
+.authcontrols { display: flex; align-items: center; gap: 9px; }
+.authcontrols > a { color: var(--muted); font-size: 13px; }
 
 nav.tabs {
   display: flex; gap: 4px; overflow-x: auto; padding: 8px 14px;
@@ -103,11 +104,14 @@ button.pick { flex: 1; text-align: left; }
 button.pick.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pickrow { display: flex; gap: 8px; margin: 10px 0; }
 
-textarea {
+textarea, input[type="text"] {
   width: 100%; font: inherit; font-size: 15px; padding: 10px; border-radius: 8px;
   background: var(--surface-2); color: var(--text); border: 1px solid var(--line);
+}
+textarea {
   resize: vertical; min-height: 76px;
 }
+.fieldlabel { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .err { color: var(--loss); font-size: 13px; margin-top: 6px; }
 .ok { color: var(--win); font-size: 13px; margin-top: 6px; }
 .empty { color: var(--muted); font-size: 14px; padding: 18px 0; text-align: center; }

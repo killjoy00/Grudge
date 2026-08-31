@@ -1,4 +1,4 @@
-import { getTeams, getRivalries, getAllTime, CURRENT_SEASON } from '../../../lib/queries.ts';
+import { getTeams, getRivalries, getAllTime, getCurrentSeason } from '../../../lib/queries.ts';
 import { asPublic } from '../../../lib/db.ts';
 
 export const revalidate = 3600;
@@ -6,7 +6,8 @@ export const revalidate = 3600;
 export default async function Team({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const teamId = Number(id);
-  const teams = await getTeams(CURRENT_SEASON);
+  const season = await getCurrentSeason();
+  const teams = await getTeams(season);
   const team = teams.find((t) => t.espn_team_id === teamId);
   if (!team) return <p className="empty">No such team.</p>;
 

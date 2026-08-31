@@ -13,7 +13,7 @@
  * wrong.
  */
 import { getPool, getPoolOpportunities, getSnapshotCoverage } from '../../../lib/admin-queries.ts';
-import { CURRENT_SEASON } from '../../../lib/queries.ts';
+import { getCurrentSeason } from '../../../lib/queries.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +31,8 @@ function delta(v: string | null) {
 export default async function Pool({
   searchParams,
 }: { searchParams: Promise<{ week?: string }> }) {
-  const coverage = await getSnapshotCoverage(CURRENT_SEASON);
+  const season = await getCurrentSeason();
+  const coverage = await getSnapshotCoverage(season);
   const sp = await searchParams;
   const week = Number(sp.week) || coverage[0]?.week;
 
@@ -41,7 +42,7 @@ export default async function Pool({
         <h1>Free agents</h1>
         <div className="card">
           <p className="empty">
-            No ownership snapshots captured yet for {CURRENT_SEASON}.
+            No ownership snapshots captured yet for {season}.
           </p>
           <p className="note">
             The weekly job writes one every Tuesday. The first snapshot gives a
@@ -54,8 +55,8 @@ export default async function Pool({
   }
 
   const [opportunities, pool] = await Promise.all([
-    getPoolOpportunities(CURRENT_SEASON, week),
-    getPool(CURRENT_SEASON, week),
+    getPoolOpportunities(season, week),
+    getPool(season, week),
   ]);
 
   const haveTrend = pool.some((p) => p.our_percent_change !== null);
@@ -64,7 +65,7 @@ export default async function Pool({
     <>
       <h1>Free agents</h1>
       <p className="sub">
-        {CURRENT_SEASON} · week {week} · {pool.length} in the pool
+        {season} · week {week} · {pool.length} in the pool
       </p>
 
       {coverage.length > 1 && (

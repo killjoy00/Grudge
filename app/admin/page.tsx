@@ -6,15 +6,16 @@
  * generate -- "I can't get in" -- without anyone having to open the database.
  */
 import { getAllowlist, getProvisionedMembers, getSnapshotCoverage } from '../../lib/admin-queries.ts';
-import { CURRENT_SEASON } from '../../lib/queries.ts';
+import { getCurrentSeason } from '../../lib/queries.ts';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOverview() {
+  const season = await getCurrentSeason();
   const [allowlist, members, coverage] = await Promise.all([
     getAllowlist(),
     getProvisionedMembers(),
-    getSnapshotCoverage(CURRENT_SEASON),
+    getSnapshotCoverage(season),
   ]);
 
   const claimed = new Set(members.map((m) => m.email.toLowerCase()));
@@ -72,7 +73,7 @@ export default async function AdminOverview() {
         <h2>Ownership capture</h2>
         {coverage.length === 0 ? (
           <p className="empty">
-            No snapshots for {CURRENT_SEASON} yet. The weekly job writes one each
+            No snapshots for {season} yet. The weekly job writes one each
             Tuesday; until two exist there is no trend to compute.
           </p>
         ) : (

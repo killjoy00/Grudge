@@ -135,11 +135,17 @@ export async function updateDisplayName(name: string): Promise<ActionResult> {
     if (!userId) return { ok: false, error: 'You need to sign in.' };
     // Only display_name is grantable to this role -- is_admin and espn_team_id
     // are protected by a column grant and a trigger.
-    await asUser((q) => [
-      q('update public.profiles set display_name = $1, updated_at = now() where id = $2',
-        [text, userId]),
+    const [rows] = await asUser<{ id: string }>((q) => [
+      q(`update public.profiles
+            set display_name = $1, updated_at = now()
+          where id = $2
+          returning id`, [text, userId]),
     ]);
+    if (!rows?.length) {
+      return { ok: false, error: 'Your league profile has not been provisioned yet.' };
+    }
     revalidatePath('/');
+    revalidatePath('/me');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: friendly(e) };
