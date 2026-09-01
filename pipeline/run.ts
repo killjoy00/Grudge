@@ -259,6 +259,20 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
     weekRowsToWrite as unknown as Record<string, unknown>[], ['season', 'week']));
   summary.weeks = weekRowsToWrite.length;
 
+  // PICKS LOCK ON SATURDAY. The upsert above rewrites first_kickoff_at every
+  // run -- ESPN reschedules flex games -- so the lock has to be recomputed from
+  // it in the same transaction, or a moved kickoff would silently move the
+  // deadline. saturday_lock() is midnight at the end of Saturday night US
+  // Eastern; the arithmetic lives in Postgres so daylight saving is handled.
+  statements.push(stmt(
+    `update public.weeks
+        set locks_at = public.saturday_lock(first_kickoff_at)
+      where season = $1
+        and first_kickoff_at is not null
+        and locks_at is distinct from public.saturday_lock(first_kickoff_at)`,
+    [season]
+  ));
+
   const knownWeeks = new Set(weekRowsToWrite.map((w) => w.week));
   const matchups = matchupRows(league).filter((m) => knownWeeks.has(m.week));
   statements.push(...upsertChunked('public.matchups',
