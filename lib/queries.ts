@@ -390,6 +390,68 @@ export async function getLeaderboard(season: number) {
   return rows ?? [];
 }
 
+/**
+ * A week's matchups with the people behind each team, for the picks page.
+ * Owners are first names joined with "and" -- "Ryan and Byron" -- because the
+ * point of the page is which person you are betting against, not which ESPN
+ * slot. Primary owner leads.
+ */
+export async function getWeekMatchups(season: number, week: number) {
+  return asPublic<{
+    espn_matchup_id: number; week: number;
+    home_team_id: number; home_name: string; home_owners: string | null;
+    away_team_id: number; away_name: string; away_owners: string | null;
+    home_points: string | null; away_points: string | null;
+    winner: string; is_final: boolean;
+  }>(
+    `with owners as (
+       select o.season, o.espn_team_id,
+              -- ESPN stores some first names lowercase ("byron"). Capitalise
+              -- the first letter only; initcap() would wreck "McNeill".
+              string_agg(
+                (with raw as (
+                   select coalesce(nullif(trim(m.first_name), ''), m.display_name) as n
+                 )
+                 select upper(left(n, 1)) || substr(n, 2) from raw),
+                ' and ' order by o.is_primary desc, m.first_name
+              ) as names
+         from public.team_owners o
+         join public.members m on m.season = o.season and m.swid = o.swid
+        where o.season = $1
+        group by o.season, o.espn_team_id
+     )
+     select mu.espn_matchup_id, mu.week,
+            mu.home_team_id, ht.name as home_name, ho.names as home_owners,
+            mu.away_team_id, at.name as away_name, ao.names as away_owners,
+            round(mu.home_points, 1)::text as home_points,
+            round(mu.away_points, 1)::text as away_points,
+            mu.winner, mu.is_final
+       from public.matchups mu
+       join public.teams ht on ht.season = mu.season and ht.espn_team_id = mu.home_team_id
+       join public.teams at on at.season = mu.season and at.espn_team_id = mu.away_team_id
+       left join owners ho on ho.espn_team_id = mu.home_team_id
+       left join owners ao on ao.espn_team_id = mu.away_team_id
+      where mu.season = $1 and mu.week = $2
+      order by mu.espn_matchup_id`,
+    [season, week]
+  );
+}
+
+/** Every player's prediction record across all seasons. */
+export async function getAllTimeLeaderboard() {
+  const [rows] = await asUser<{
+    user_id: string; display_name: string | null; picks_made: number;
+    correct: number; points: string; accuracy: string | null;
+    first_season: number; last_season: number;
+  }>((q) => [
+    q(`select user_id, display_name, picks_made::int, correct::int,
+              points::text, accuracy::text, first_season, last_season
+         from public.prediction_leaderboard_alltime
+        order by points desc, correct desc`),
+  ]);
+  return rows ?? [];
+}
+
 export async function getComments(season: number, week: number) {
   const [rows] = await asUser<{
     id: string; user_id: string; body: string; parent_id: string | null;

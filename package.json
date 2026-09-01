@@ -10,6 +10,7 @@
     "pipeline": "tsx pipeline/run.ts",
     "features": "tsx pipeline/compute.ts",
     "recap": "tsx pipeline/send-recap.ts",
+    "clerk:email": "tsx scripts/clerk-email-template.ts",
     "history:derive": "tsx scripts/derive-league-history.ts",
     "history:import": "tsx scripts/import-manual-history.ts",
     "typecheck": "tsc --noEmit",
