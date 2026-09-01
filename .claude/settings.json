@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Neon__run_sql",
+      "mcp__Neon__run_sql_transaction",
+      "mcp__Neon__describe_table_schema",
+      "mcp__Neon__get_database_tables",
+      "mcp__Neon__describe_project",
+      "mcp__Neon__list_branches",
+      "mcp__Neon__get_connection_string"
+    ]
+  }
+}

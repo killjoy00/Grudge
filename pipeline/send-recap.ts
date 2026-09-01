@@ -4,15 +4,8 @@
 import { createHash } from 'node:crypto';
 
 import { connect } from './db.ts';
-import {
-  renderWeeklyRecap,
-  type RecapAward,
-  type RecapBenchRow,
-  type RecapGame,
-  type RecapPredictionRow,
-  type RecapStanding,
-  type WeeklyRecap,
-} from './recap.ts';
+import { loadRecap, type Query } from './recap-query.ts';
+import { renderWeeklyRecap, type WeeklyRecap } from './recap.ts';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -36,8 +29,6 @@ function optionalPositiveInt(value: string | undefined, name: string): number | 
 
 const REQUESTED_WEEK = optionalPositiveInt(weekArg, '--week');
 
-type Query = <T>(text: string, params?: unknown[]) => Promise<T[]>;
-
 interface RecapRecipient {
   profile_id: string;
   email: string;
@@ -52,72 +43,6 @@ class SendFailure extends Error {
 function queryClient(): Query {
   const sql = connect() as unknown as { query: Query };
   return (text, params = []) => sql.query(text, params);
-}
-
-async function loadRecap(query: Query): Promise<WeeklyRecap | null> {
-  const weekRows = REQUESTED_WEEK === null
-    ? await query<{ week: number }>(
-        `select max(week)::int as week
-           from public.team_week_results
-          where season = $1`,
-        [SEASON]
-      )
-    : [{ week: REQUESTED_WEEK }];
-  const week = Number(weekRows[0]?.week);
-  if (!Number.isInteger(week) || week < 1) {
-    if (SKIP_IF_EMPTY) return null;
-    throw new Error(`${SEASON} has no completed week to recap.`);
-  }
-
-  const [games, awards, bench, standings, predictions] = await Promise.all([
-    query<RecapGame>(
-      `select at.name as away_name, round(m.away_points, 1)::text as away_points,
-              ht.name as home_name, round(m.home_points, 1)::text as home_points, m.winner
-         from public.matchups m
-         join public.teams at on at.season = m.season and at.espn_team_id = m.away_team_id
-         join public.teams ht on ht.season = m.season and ht.espn_team_id = m.home_team_id
-        where m.season = $1 and m.week = $2 and m.is_final
-        order by m.espn_matchup_id`, [SEASON, week]),
-    query<RecapAward>(
-      `select a.award_key, t.name, round(a.value, 1)::text as value
-         from public.weekly_awards a
-         left join public.teams t on t.season = a.season and t.espn_team_id = a.espn_team_id
-        where a.season = $1 and a.week = $2
-        order by array_position(array['high_scorer','low_scorer','blowout','nailbiter','worst_bench'], a.award_key)`,
-      [SEASON, week]),
-    query<RecapBenchRow>(
-      `select t.name, round(r.points_for, 1)::text as points_for,
-              round(r.optimal_points, 1)::text as optimal_points,
-              round(r.points_left_on_bench, 1)::text as points_left_on_bench
-         from public.team_week_results r
-         join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
-        where r.season = $1 and r.week = $2
-        order by r.points_left_on_bench desc nulls last`, [SEASON, week]),
-    query<RecapStanding>(
-      `select t.name, r.cum_wins as wins, r.cum_losses as losses, r.cum_ties as ties,
-              round(r.cum_points_for, 1)::text as points_for
-         from public.team_week_results r
-         join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
-        where r.season = $1 and r.week = $2
-        order by r.cum_wins desc, r.cum_points_for desc`, [SEASON, week]),
-    query<RecapPredictionRow>(
-      `select pr.display_name,
-              count(*) filter (where s.is_correct)::int as correct,
-              coalesce(sum(s.points), 0)::text as points,
-              round(count(*) filter (where s.is_correct)::numeric
-                    / nullif(count(s.prediction_id), 0), 4)::text as accuracy
-         from public.predictions p
-         join public.profiles pr on pr.id = p.user_id
-         left join public.prediction_scores s on s.prediction_id = p.id
-        where p.season = $1
-        group by p.user_id, pr.display_name
-        order by coalesce(sum(s.points), 0) desc,
-                 count(*) filter (where s.is_correct) desc
-        limit 3`, [SEASON]),
-  ]);
-
-  if (games.length === 0) throw new Error(`${SEASON} week ${week} has no final matchups.`);
-  return { season: SEASON, week, games, awards, bench, standings, predictions };
 }
 
 async function loadRecipients(query: Query): Promise<RecapRecipient[]> {
@@ -177,8 +102,11 @@ async function sendOne(
 }
 
 async function main() {
-  const recap = await loadRecap(queryClient());
+  const recap = await loadRecap(queryClient(), { season: SEASON, week: REQUESTED_WEEK });
   if (!recap) {
+    // A season that has not started is a normal state for the scheduled job,
+    // but a bare invocation asking for a recap that cannot exist is an error.
+    if (!SKIP_IF_EMPTY) throw new Error(`${SEASON} has no completed week to recap.`);
     console.log(`${SEASON}: no completed week yet; no recap sent.`);
     return;
   }

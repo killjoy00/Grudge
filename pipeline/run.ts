@@ -308,7 +308,7 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
   summary.players = players.length;
 
   statements.push(...upsertChunked('public.roster_entries',
-    ['season', 'week', 'espn_team_id', 'espn_player_id', 'lineup_slot_id', 'is_starter', 'applied_points', 'acquisition_type', 'injury_status'],
+    ['season', 'week', 'espn_team_id', 'espn_player_id', 'lineup_slot_id', 'is_starter', 'applied_points', 'projected_points', 'acquisition_type', 'injury_status'],
     entries as unknown as Record<string, unknown>[], ['season', 'week', 'espn_team_id', 'espn_player_id']));
   summary.roster_entries = entries.length;
 

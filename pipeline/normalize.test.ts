@@ -121,6 +121,26 @@ test('roster entries carry the points optimal-lineup needs', () => {
   assert.ok(scored.length > 20, `expected many scoring players in a played week, got ${scored.length}`);
 });
 
+test('roster entries carry the projection a surprise is measured against', () => {
+  // The recap calls a week a surprise by comparing actual to projected, so the
+  // projection has to be a genuinely different number -- reading statSourceId 0
+  // twice would look fine here and make every player exactly as expected.
+  for (const season of PLAYED) {
+    const week = 1;
+    const rows = rosterEntryRows(boxscore(season, week), week, starterSlots(history(season)));
+    const projected = rows.filter((r) => r.projected_points !== null && r.projected_points > 0);
+    assert.ok(projected.length > 20,
+      `${season}: expected many projected players, got ${projected.length}`);
+
+    const differ = projected.filter(
+      (r) => r.applied_points !== null && Math.abs(r.applied_points - r.projected_points!) > 0.01
+    );
+    assert.ok(differ.length > projected.length / 2,
+      `${season}: only ${differ.length}/${projected.length} players differed from their projection` +
+      ' -- that reads like the actual score, not the projection');
+  }
+});
+
 test('a team starting-lineup total reconciles with its matchup score', () => {
   // The strongest available check that slot semantics are right: summing the
   // players we call starters must reproduce ESPN's own team total.

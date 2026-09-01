@@ -55,7 +55,8 @@ function totalsCells(row: TotalsRow): SortRow['cells'] {
 }
 
 export default async function History() {
-  const [espnEra, playedSeasons, franchises, managers, champions] = await getCachedHistory();
+  const [espnEra, playedSeasons, franchises, managers, champions, topWeeks] =
+    await getCachedHistory();
   const played = champions.length;
   const first = champions.length ? champions[champions.length - 1]!.season : null;
   const last = champions.length ? champions[0]!.season : null;
@@ -200,6 +201,52 @@ export default async function History() {
               from the commissioner&rsquo;s 2005–2017 spreadsheet; the rest are ESPN&rsquo;s
               own record.
             </p>
+          </div>
+        </>
+      )}
+
+      {topWeeks.length > 0 && (
+        <>
+          <h2>Biggest weeks</h2>
+          <p className="sub">
+            The ten highest single-week scores. ESPN era only — the 2005–2017
+            archive keeps season totals, not week-by-week scores.
+          </p>
+          <div className="card">
+            <div className="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th className="rank">#</th><th>Team</th>
+                    <th className="num">Points</th><th>Week</th><th>Opponent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topWeeks.map((row, index) => (
+                    <tr key={`${row.season}-${row.week}-${row.espn_team_id}`}
+                        className={index === 0 ? 'title-row' : undefined}>
+                      <td className="rank">{index + 1}</td>
+                      <td>
+                        <a href={`/team/${row.espn_team_id}`} className="tname">{row.name}</a>
+                      </td>
+                      <td className="num"><strong>{row.points}</strong></td>
+                      <td>
+                        <a href={`/standings?season=${row.season}`}>
+                          {row.season} wk {row.week}
+                        </a>
+                      </td>
+                      <td>
+                        {row.opponent ?? '—'}
+                        <span className="tsub block">
+                          {row.points_against}
+                          {row.result === 'L' && ' — and lost'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}
