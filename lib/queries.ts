@@ -318,6 +318,35 @@ export async function getFranchiseManagers(espnTeamId: number) {
   );
 }
 
+/**
+ * The biggest single weeks in league history.
+ *
+ * ESPN-era only, and it has to be: a week's score exists only in
+ * team_week_results, and the 2005-2017 archive is season totals with no
+ * week-by-week detail. Playoff weeks count -- a 190 is a 190.
+ */
+export async function getTopScoringWeeks(limit = 10) {
+  return asPublic<{
+    season: number; week: number; espn_team_id: number; name: string;
+    points: string; opponent: string | null; points_against: string;
+    result: string | null;
+  }>(
+    `select r.season, r.week, r.espn_team_id, t.name,
+            round(r.points_for, 1)::text as points,
+            ot.name as opponent,
+            round(r.points_against, 1)::text as points_against,
+            r.result
+       from public.team_week_results r
+       join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
+       left join public.teams ot
+         on ot.season = r.season and ot.espn_team_id = r.opponent_team_id
+      where r.points_for is not null
+      order by r.points_for desc
+      limit $1`,
+    [limit]
+  );
+}
+
 /** One row per played season, newest first, for the title roll. */
 export async function getSeasonChampions() {
   return asPublic<{
