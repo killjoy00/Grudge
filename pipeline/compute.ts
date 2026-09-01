@@ -138,6 +138,12 @@ function buildSeasonStatements(season: number, loaded: Loaded): { statements: St
         points_for: r.pointsFor, points_against: r.pointsAgainst, result: r.result,
         optimal_points: ln?.optimalPoints ?? null,
         points_left_on_bench: ln?.pointsLeftOnBench ?? null,
+        // The named start/sit decision, not just the aggregate. Already solved
+        // per team-week above; only the total used to survive into the row,
+        // which left the recap unable to say who was benched.
+        worst_bench_player_id: ln?.worstBenchDecision?.playerId ?? null,
+        worst_bench_points: ln?.worstBenchDecision?.benchPoints ?? null,
+        worst_bench_started_points: ln?.worstBenchDecision?.startedInstead ?? null,
         league_median: lk?.leagueMedian ?? null,
         beat_median: lk?.beatMedian ?? null,
         all_play_wins: lk?.allPlayWins ?? null,
@@ -149,7 +155,9 @@ function buildSeasonStatements(season: number, loaded: Loaded): { statements: St
   }
   statements.push(...upsertChunked('public.team_week_results',
     ['season', 'week', 'espn_team_id', 'opponent_team_id', 'points_for', 'points_against', 'result',
-     'optimal_points', 'points_left_on_bench', 'league_median', 'beat_median',
+     'optimal_points', 'points_left_on_bench',
+     'worst_bench_player_id', 'worst_bench_points', 'worst_bench_started_points',
+     'league_median', 'beat_median',
      'all_play_wins', 'all_play_losses', 'cum_wins', 'cum_losses', 'cum_ties',
      'cum_points_for', 'cum_points_against'],
     twrRows, ['season', 'week', 'espn_team_id']));
