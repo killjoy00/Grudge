@@ -58,6 +58,7 @@ export interface RosterEntryRow {
   lineup_slot_id: number;
   is_starter: boolean;
   applied_points: number | null;
+  projected_points: number | null;
   acquisition_type: string | null;
   injury_status: string | null;
 }
@@ -176,6 +177,22 @@ export function matchupRows(league: EspnLeague): MatchupRow[] {
   return out;
 }
 
+/**
+ * What the player was expected to score that week.
+ *
+ * ESPN ships both numbers in the same stats array: statSourceId 0 is what
+ * happened, 1 is the projection. Only the actual was ever read, which is why
+ * projected_points sat null on every row -- and without it there is no way to
+ * say a 30-point game was a surprise rather than a Tuesday.
+ */
+export function projectedPoints(entry: EspnRosterEntry, week: number): number | null {
+  const stats = entry.playerPoolEntry?.player?.stats ?? [];
+  const projection = stats.find(
+    (stat) => stat.statSourceId === 1 && stat.scoringPeriodId === week
+  );
+  return projection?.appliedTotal ?? null;
+}
+
 /** Weekly lineup rows from an mBoxscore payload for one scoring period. */
 export function rosterEntryRows(
   boxscore: EspnLeague,
@@ -193,6 +210,7 @@ export function rosterEntryRows(
         lineup_slot_id: e.lineupSlotId,
         is_starter: starters.has(e.lineupSlotId),
         applied_points: e.playerPoolEntry?.appliedStatTotal ?? null,
+        projected_points: projectedPoints(e, week),
         acquisition_type: e.acquisitionType ?? null,
         injury_status: e.injuryStatus ?? null,
       });
