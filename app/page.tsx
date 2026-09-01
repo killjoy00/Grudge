@@ -8,43 +8,99 @@ import { asPublic } from '../lib/db.ts';
 
 export const dynamic = 'force-dynamic';
 
-/** Most recent week with results, across any season. */
-async function latestPlayedWeek() {
-  const rows = await asPublic<{ season: number; week: number }>(
-    `select season, max(week)::int as week from public.team_week_results
-      group by season order by season desc limit 1`
+/**
+ * The latest played week OF THE CURRENT SEASON.
+ *
+ * Deliberately not "the newest season that has results anywhere": before week 1
+ * that answer is last season's finale, and the front page spent the whole
+ * preseason insisting week 14 had just been settled. A season with no results
+ * yet returns null, which is week zero.
+ */
+async function latestPlayedWeek(season: number) {
+  const rows = await asPublic<{ week: number | null }>(
+    `select max(week)::int as week from public.team_week_results where season = $1`,
+    [season]
   );
+  const week = rows[0]?.week;
+  return typeof week === 'number' && week > 0 ? week : null;
+}
+
+/** Week zero: no games yet, so lead with what the league already argues about. */
+async function preseason() {
+  const [rows] = await Promise.all([
+    asPublic<{
+      season: number; champion_name: string | null; champion_team_name: string | null;
+      titles: number | null; kickoff: string | null;
+    }>(
+      `select c.season, c.champion_name, c.champion_team_name,
+              (select count(*) from public.franchise_seasons
+                where franchise_key = c.champion_key and is_champion) as titles,
+              (select min(first_kickoff_at)::text from public.weeks
+                where season = (select max(season) from public.seasons)) as kickoff
+         from public.season_champions c
+        order by c.season desc limit 1`
+    ),
+  ]);
   return rows[0] ?? null;
 }
 
 export default async function Home() {
   const { userId } = await auth();
-  const latest = await latestPlayedWeek();
+  const currentSeason = await getCurrentSeason();
+  const week = await latestPlayedWeek(currentSeason);
 
-  if (!latest) {
-    const [seasons, currentSeason] = await Promise.all([getPlayedSeasons(), getCurrentSeason()]);
+  if (week === null) {
+    const [seasons, last] = await Promise.all([getPlayedSeasons(), preseason()]);
+    const kickoff = last?.kickoff ? new Date(last.kickoff) : null;
+    const days = kickoff
+      ? Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / 86_400_000))
+      : null;
     return (
       <>
         <div className="page-hero">
-          <div className="eyebrow">The league ledger</div>
-          <h1>Waiting on kickoff.</h1>
-          <p>The {currentSeason} season is next. The arguments are already in midseason form.</p>
+          <div className="eyebrow">{currentSeason} season</div>
+          <h1>{days === null ? 'Season on the clock.'
+            : days === 0 ? 'Kickoff is today.'
+              : `${days} day${days === 1 ? '' : 's'} until kickoff.`}</h1>
+          <p>
+            Nobody has lost yet. Ten teams, five matchups a week, and one trophy
+            that has changed hands {seasons.length > 0 ? 'plenty of times' : 'before'}.
+          </p>
         </div>
+
+        <div className="stat-strip three">
+          <div>
+            <strong>{last?.champion_name ?? '—'}</strong>
+            <span>Defending champion{last ? ` (${last.season})` : ''}</span>
+          </div>
+          <div>
+            <strong>{last?.titles ?? '—'}</strong>
+            <span>Titles for that franchise</span>
+          </div>
+          <div>
+            <strong>{currentSeason - 2005}</strong>
+            <span>Seasons of grudges</span>
+          </div>
+        </div>
+
         <div className="card">
           <p className="note">
-            Once week 1 is played, this page becomes the weekly recap: scores, awards,
-            who left the most points on their bench, and the argument thread.
-            <br /><br />
-            In the meantime there are {seasons.length} seasons of history loaded —
-            try <a href="/standings">standings</a>, <a href="/rankings">power rankings</a>,
-            or <a href="/history">all-time records</a>.
+            Week 1 picks are open now — <strong>they lock Saturday at midnight ET</strong>,
+            the midnight between Saturday and Sunday. After week 1 this page turns
+            into the weekly recap: scores, awards, who left the most points on their
+            bench, and the argument thread.
           </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+            <a href="/predictions" className="btn">Make your week 1 picks</a>
+            <a href="/history" className="btn btn-quiet">All-time records</a>
+            <a href="/standings" className="btn btn-quiet">Season books</a>
+          </div>
         </div>
       </>
     );
   }
 
-  const { season, week } = latest;
+  const season = currentSeason;
   const [games, awards, bench, comments, table] = await Promise.all([
     getWeekResults(season, week),
     getWeekAwards(season, week),
