@@ -1,0 +1,72 @@
+name: Send a test recap
+
+# Preview the weekly letter against real data, to ONE address, without the
+# league receiving anything.
+#
+# Separate from weekly.yml on purpose. That workflow loads data, computes
+# features, scores predictions and then mails eleven people; nothing here
+# should be able to trigger any of that by accident. This job only reads the
+# database and sends a single email.
+#
+# It writes nothing at all -- notably not to recap_deliveries, which is the
+# record of what the league was actually sent. A test must never be able to
+# mark a real week as delivered, or a later real send would skip it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      to:
+        description: 'Email address to send the single test copy to'
+        required: true
+        type: string
+      season:
+        description: 'Season to recap (e.g. 2025)'
+        required: true
+        type: string
+      week:
+        description: 'Week to recap (1-14)'
+        required: true
+        type: string
+
+concurrency:
+  group: test-recap
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Send the test copy
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+          RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+        run: |
+          npm run recap -- \
+            --season='${{ inputs.season }}' \
+            --week='${{ inputs.week }}' \
+            --to='${{ inputs.to }}'
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Test recap"
+            echo ""
+            echo "- Season/week: **${{ inputs.season }} week ${{ inputs.week }}**"
+            echo "- Result: **${{ job.status }}**"
+            echo "- One copy only. The league was not emailed and nothing was recorded."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,12 +1,18 @@
 import { getCachedFranchiseFile } from '../../../lib/cached-queries.ts';
 import { getTeams, getRivalries, getCurrentSeason } from '../../../lib/queries.ts';
 import { espnTeamUrl } from '../../../lib/espn-links.ts';
+import { EspnTeamLink } from '../../../components/EspnLink.tsx';
 
 export const revalidate = 3600;
 
 function record(wins: number, losses: number, ties: number) {
   return `${wins}-${losses}${ties ? `-${ties}` : ''}`;
 }
+
+/** ESPN position ids, for labelling a key player. */
+const POSITIONS: Record<number, string> = {
+  1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K', 16: 'D/ST',
+};
 
 function finish(place: number | null) {
   if (place === null) return null;
@@ -25,7 +31,7 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
   const team = teams.find((t) => t.espn_team_id === teamId);
   if (!team) return <p className="empty">No such team.</p>;
 
-  const [rivals, [bySeason, managers]] = await Promise.all([
+  const [rivals, [bySeason, managers, keyPlayers]] = await Promise.all([
     getRivalries(teamId),
     getCachedFranchiseFile(teamId),
   ]);
@@ -53,6 +59,15 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
     target && rivals.filter((r) => r[key] === target[key]).length === 1 ? target.opp_id : null;
   const bestId = unique(mostWins, 'wins');
   const worstId = unique(mostLosses, 'losses');
+
+  // Key players grouped by season, so the table body is a lookup rather than
+  // a filter per row.
+  const playersBySeason = new Map<number, typeof keyPlayers>();
+  for (const p of keyPlayers) {
+    const list = playersBySeason.get(p.season) ?? [];
+    list.push(p);
+    playersBySeason.set(p.season, list);
+  }
 
   const current = managers[0];
 
@@ -99,7 +114,7 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
           <table>
             <thead>
               <tr>
-                <th>Season</th><th>Team name</th><th className="num">Record</th>
+                <th>Season</th><th>Team name &amp; top scorers</th><th className="num">Record</th>
                 <th className="num">PF</th><th className="num">Playoffs</th>
                 <th>Manager</th>
               </tr>
@@ -114,6 +129,24 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
                     {s.team_name}
                     {s.is_champion && <span className="tag best">Champion</span>}
                     {s.is_runner_up && <span className="tag era">Runner-up</span>}
+                    {/* Straight to that season's roster on ESPN. Only the ESPN
+                        era has one; the 2005-2017 archive has no team ids. */}
+                    {s.season >= 2018 && (
+                      <EspnTeamLink teamId={teamId} season={s.season} />
+                    )}
+                    {(playersBySeason.get(s.season) ?? []).length > 0 && (
+                      <span className="tsub block">
+                        {(playersBySeason.get(s.season) ?? []).map((p, i) => (
+                          <span key={p.full_name}>
+                            {i > 0 && ' · '}
+                            {p.full_name}
+                            {p.position_id !== null && POSITIONS[p.position_id] &&
+                              ` (${POSITIONS[p.position_id]})`}{' '}
+                            <strong>{p.points}</strong>
+                          </span>
+                        ))}
+                      </span>
+                    )}
                   </td>
                   <td className="num">{record(s.wins, s.losses, s.ties)}</td>
                   <td className="num">{s.points_for ?? '—'}</td>

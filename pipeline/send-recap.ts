@@ -29,6 +29,22 @@ function optionalPositiveInt(value: string | undefined, name: string): number | 
 
 const REQUESTED_WEEK = optionalPositiveInt(weekArg, '--week');
 
+/**
+ * Send one copy to a single address instead of to the league.
+ *
+ * For previewing a change to the letter against real data without eleven
+ * people receiving it. Deliberately does NOT touch recap_deliveries: that
+ * table is the record of what the league was actually sent, and a test must
+ * not be able to mark a real week as delivered (or, worse, suppress the real
+ * send later because a row already says 'sent').
+ *
+ * The subject is prefixed so nobody mistakes it for the real thing.
+ */
+const TEST_RECIPIENT = args.find((a) => a.startsWith('--to='))?.split('=')[1]?.trim();
+if (TEST_RECIPIENT !== undefined && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(TEST_RECIPIENT)) {
+  throw new Error('--to must be a single email address.');
+}
+
 interface RecapRecipient {
   profile_id: string;
   email: string;
@@ -66,7 +82,14 @@ async function sendOne(
   from: string,
   recipient: string,
   recap: WeeklyRecap,
-  rendered: ReturnType<typeof renderWeeklyRecap>
+  rendered: ReturnType<typeof renderWeeklyRecap>,
+  /**
+   * Extra idempotency salt. The real send wants Resend to swallow a duplicate
+   * -- that is what protects the league from a retried workflow -- but a test
+   * send has to actually arrive every time it is asked for, or the second
+   * preview of a change would silently never appear.
+   */
+  idempotencySalt = ''
 ): Promise<string> {
   const recipientHash = createHash('sha256').update(recipient).digest('hex').slice(0, 16);
   const response = await fetch('https://api.resend.com/emails', {
@@ -74,7 +97,8 @@ async function sendOne(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'Idempotency-Key': `grudge-recap-${recap.season}-${recap.week}-${recipientHash}`,
+      'Idempotency-Key':
+        `grudge-recap-${recap.season}-${recap.week}-${recipientHash}${idempotencySalt}`,
     },
     body: JSON.stringify({
       from,
@@ -122,6 +146,20 @@ async function main() {
 
   const apiKey = required('RESEND_API_KEY');
   const from = required('RECAP_FROM_EMAIL');
+
+  if (TEST_RECIPIENT) {
+    const marked = {
+      ...rendered,
+      subject: `[TEST] ${rendered.subject}`,
+    };
+    const id = await sendOne(
+      apiKey, from, TEST_RECIPIENT, recap, marked, `-test-${Date.now()}`
+    );
+    console.log(`${recap.season} week ${recap.week}: test copy sent (${id}).`);
+    console.log('Nothing was written to recap_deliveries; the league was not emailed.');
+    return;
+  }
+
   const query = queryClient();
   const recipients = await loadRecipients(query);
   if (recipients.length === 0) {
