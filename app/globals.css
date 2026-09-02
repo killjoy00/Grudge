@@ -488,3 +488,8 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
 @media (max-width: 560px) {
   .trade-sides, .trade-vote-row { grid-template-columns: 1fr; }
 }
+/* The lineup figure is the verdict, so it carries the weight; value over
+   replacement and started points sit under it as supporting detail. */
+.trade-impact { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.trade-impact-label { margin-left: 6px; color: var(--muted); font-size: 12px; }
+.trade-secondary { margin-top: 4px; font-size: 12px; }

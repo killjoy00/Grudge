@@ -12,7 +12,7 @@ import { submitTradeVote } from '../lib/trade-actions.ts';
  * an empty tally -- there is nothing for this component to hide.
  */
 export function TradeVote({
-  season, tradeId, sides, initial, tally, signedIn,
+  season, tradeId, sides, initial, tally, signedIn, open, closesAt,
 }: {
   season: number;
   tradeId: string;
@@ -21,6 +21,9 @@ export function TradeVote({
   initial: number | null;
   tally: Record<number, number>;
   signedIn: boolean;
+  /** Whether the window is still open. The database refuses a late vote too. */
+  open: boolean;
+  closesAt: string | null;
 }) {
   const [vote, setVote] = useState(initial);
   const [counts, setCounts] = useState(tally);
@@ -49,15 +52,24 @@ export function TradeVote({
     });
   }
 
-  if (!signedIn) {
-    return <p className="note trade-vote-note">Sign in to vote on this trade.</p>;
-  }
-
   const total = Object.values(counts).reduce((s, n) => s + n, 0);
+
+  // A closed trade with no votes has nothing to say, so it says nothing rather
+  // than showing an empty ballot nobody can fill in.
+  if (!open && total === 0 && vote == null) return null;
+  if (!signedIn) {
+    return (
+      <p className="note trade-vote-note">
+        {open ? 'Sign in to vote on this trade.' : 'Voting on this trade has closed.'}
+      </p>
+    );
+  }
 
   return (
     <div className="trade-vote">
-      <div className="trade-vote-q">Who won it?</div>
+      <div className="trade-vote-q">
+        {open ? 'Who won it?' : 'The league said'}
+      </div>
       <div className="trade-vote-row">
         {sides.map(([teamId, name]) => {
           const n = counts[teamId] ?? 0;
@@ -67,7 +79,7 @@ export function TradeVote({
               key={teamId}
               type="button"
               className={`pick trade-vote-btn ${vote === teamId ? 'on' : ''}`}
-              disabled={pending}
+              disabled={pending || !open}
               aria-pressed={vote === teamId}
               onClick={() => choose(teamId)}
             >
@@ -82,9 +94,16 @@ export function TradeVote({
         })}
       </div>
       {err && <p className="pick-error" role="alert">{err}</p>}
-      {vote == null && (
+      {open && vote == null && (
         <p className="note trade-vote-note">
           The league&rsquo;s votes appear once you have cast yours.
+          {closesAt && ` Voting closes ${new Date(closesAt).toLocaleDateString('en-US',
+            { month: 'short', day: 'numeric' })}.`}
+        </p>
+      )}
+      {!open && vote == null && (
+        <p className="note trade-vote-note">
+          Voting closed before you weighed in.
         </p>
       )}
     </div>

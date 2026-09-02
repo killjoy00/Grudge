@@ -362,6 +362,16 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
       ['season', 'trade_id', 'effective_week', 'team_a', 'team_b', 'espn_transaction_id', 'accepted_at', 'confidence'],
       trades.map(({ players: _players, ...row }) => row) as unknown as Record<string, unknown>[],
       ['season', 'trade_id']));
+    // Open voting on trades seen for the first time, and ONLY those. This is a
+    // separate statement rather than a column in the upsert above because the
+    // upsert runs every week: including it would push the deadline forward on
+    // every run and voting would never close.
+    statements.push(stmt(
+      `update public.trades
+          set voting_closes_at = now() + public.trade_voting_window()
+        where season = $1 and voting_closes_at is null`,
+      [season]
+    ));
     const tradePlayers = trades.flatMap((t) =>
       t.players.map((p) => ({ season, trade_id: t.trade_id, ...p })));
     // Replaced wholesale rather than upserted: a player the previous detection

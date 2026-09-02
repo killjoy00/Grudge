@@ -375,8 +375,9 @@ select test.expect_error(
    before committing, which is the same rule the predictions page runs on. */
 
 reset role; reset app.user_id;
-insert into public.trades (season, trade_id, effective_week, team_a, team_b)
-values (2026, 'rls-trade', 3, 1, 6);
+insert into public.trades (season, trade_id, effective_week, team_a, team_b, voting_closes_at)
+values (2026, 'rls-trade', 3, 1, 6, now() + interval '2 days'),
+       (2026, 'rls-shut',  4, 1, 6, now() - interval '1 day');
 insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
 values (:'admin_id', 2026, 'rls-trade', 1);
 set role app_user;
@@ -413,17 +414,25 @@ select test.expect_rowcount(
   format($$update public.trade_votes set voted_team_id = 6 where user_id = '%s'$$, :'admin_id'), 0,
   'T49 ATTACK change another member vote');
 
+-- The window is the whole point of the vote: it is a snap judgement made
+-- before the season answered the question. A late vote is refused in the
+-- database, not merely hidden by the form.
+select test.expect_error(
+  $$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+    values (app.current_user_id(), 2026, 'rls-shut', 1)$$,
+  'T50 ATTACK vote after the window closed');
+
 select test.expect_error(
   $$insert into public.trades (season, trade_id, effective_week, team_a, team_b)
     values (2026, 'invented', 1, 1, 6)$$,
-  'T50 ATTACK invent a trade from the browser');
+  'T51 ATTACK invent a trade from the browser');
 
 -- Identity cleared: a pooled connection must not carry the previous request's
 -- voter into the next one and hand them the tally.
 reset app.user_id;
 select test.expect_count(
   $$select count(*) from public.trade_votes where trade_id = 'rls-trade'$$, 0,
-  'T51 identity cleared -> the tally is invisible again');
+  'T52 identity cleared -> the tally is invisible again');
 
 reset role; reset app.user_id;
 
