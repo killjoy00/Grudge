@@ -22,8 +22,10 @@ export interface RecapWorstDecision {
   team: string;
   player: string;
   benchPoints: string;
-  /** Lowest-scoring starter that week; regularly negative, which is the joke. */
-  worstStarter: string | null;
+  /** The starter they were eligible to replace, at the slot that starter held. */
+  displaced: string;
+  displacedPoints: string;
+  /** What the swap would have gained -- benchPoints minus displacedPoints. */
   cost: string;
 }
 
@@ -83,6 +85,8 @@ export interface RecapPowerRow {
   rank: number;
   score: string;
   movement: number | null;
+  /** Whole-number percent, or null before the odds model has run. */
+  playoff_pct: string | null;
 }
 
 export interface RecapNextGame {
@@ -115,9 +119,11 @@ export interface RecapStreak {
 }
 
 export interface RecapGrudge {
-  team: string;
-  opponent: string;
+  home: string;
+  away: string;
+  winner: string;
   games: number;
+  /** From the home team's side of the series. */
   wins: number;
   losses: number;
   ties: number;
@@ -173,9 +179,32 @@ const AWARD_LABELS: Record<string, string> = {
   high_scorer: 'Highest score',
   low_scorer: 'Lowest score',
   blowout: 'Biggest blowout',
-  nailbiter: 'Closest game',
+  // Recorded against the team that LOST it -- winning by 0.3 is luck, losing
+  // by 0.3 is the part anyone remembers.
+  nailbiter: 'Heartbreaking loss',
   worst_bench: 'Worst bench decision',
 };
+
+/**
+ * Openers, rotated so the email does not read like a form letter.
+ *
+ * Chosen by week number rather than at random: the same week always renders
+ * the same greeting, so a re-send is identical to the first send and a
+ * delivery retry cannot produce two different emails.
+ */
+const INTROS = [
+  "Let's see what happened last week.",
+  'Another week down. Here is who covered themselves in glory and who did not.',
+  'The tape does not lie. Week in review.',
+  'Ten managers, five games, one weekly reckoning.',
+  'Somebody had to lose. Here is how it all shook out.',
+  'Rosters were set, lineups were regretted. The full accounting:',
+  'Your weekly reminder that the waiver wire giveth and the bench taketh away.',
+] as const;
+
+export function introFor(week: number): string {
+  return INTROS[Math.abs(Math.trunc(week)) % INTROS.length]!;
+}
 
 /** Picks close Saturday at midnight ET; stated here and enforced in the database. */
 const LOCK_RULE = 'Picks lock Saturday at midnight ET — the whole of Saturday is yours.';
@@ -212,6 +241,27 @@ export function signed(value: string): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return value;
   return n > 0 ? `+${value}` : value;
+}
+
+/**
+ * What this week's meeting did to the series.
+ *
+ * head_to_head already counts the game just played, so the record quoted is
+ * the one the result produced -- "now 9-11", not the standing before it.
+ * Wins and losses are from the HOME team's side.
+ */
+export function grudgeLine(g: RecapGrudge): string {
+  const ties = g.ties ? `-${g.ties}` : '';
+  const won = g.winner === 'HOME' ? g.home : g.winner === 'AWAY' ? g.away : null;
+  // Always quote the series from the side that is actually ahead, so the
+  // record reads as a lead rather than as whoever happened to be at home.
+  const standing =
+    g.wins > g.losses ? `${g.home} lead it ${g.wins}-${g.losses}${ties}`
+    : g.losses > g.wins ? `${g.away} lead it ${g.losses}-${g.wins}${ties}`
+    : `it is level at ${g.wins}-${g.losses}${ties}`;
+  return won === null
+    ? `They tied. All time, ${standing}.`
+    : `${won} took it. All time, ${standing}.`;
 }
 
 /** Rank movement as an arrow. Null means the team was not ranked last week. */
@@ -292,13 +342,12 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
       );
     }
     if (d?.worstDecision) {
-      const starter = d.worstDecision.worstStarter === null
-        ? ''
-        : `; worst starter managed ${escapeHtml(d.worstDecision.worstStarter)}`;
       notes.push(
         `<strong style="color:#b91c1c">Worst call</strong> · ${escapeHtml(d.worstDecision.team)} ` +
-        `left ${escapeHtml(d.worstDecision.player)} (${escapeHtml(d.worstDecision.benchPoints)}) ` +
-        `on the bench${starter} — cost <strong>${escapeHtml(d.worstDecision.cost)}</strong>`
+        `benched ${escapeHtml(d.worstDecision.player)} (${escapeHtml(d.worstDecision.benchPoints)}) ` +
+        `and started ${escapeHtml(d.worstDecision.displaced)} ` +
+        `(${escapeHtml(d.worstDecision.displacedPoints)}) — ` +
+        `<strong>${escapeHtml(d.worstDecision.cost)}</strong> left on the bench`
       );
     }
     if (d?.differentiator) {
@@ -348,16 +397,22 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
 
   const powerHtml = recap.power.length ? `
     <h2 style="${h2}">Power rankings</h2>
+    <p style="${sub}">
+      Weighted toward all-play record, so the schedule counts for less than the scoring.
+      <a href="${escapeHtml(siteUrl)}/rankings" style="color:#2563eb">See the methodology</a>.
+    </p>
     <table role="presentation" style="${table}">
       <tr><th style="${border}text-align:left" colspan="2">Team</th>
           <th style="${border}text-align:right">Score</th>
-          <th style="${border}text-align:right">Move</th></tr>
+          <th style="${border}text-align:right">Move</th>
+          <th style="${border}text-align:right">Playoffs</th></tr>
       ${recap.power.map((row) =>
         `<tr><td style="${border}color:#6b7280;width:22px">${row.rank}</td>` +
         `<td style="${border}"><strong>${escapeHtml(row.name)}</strong></td>` +
         `<td style="${border}text-align:right">${escapeHtml(row.score)}</td>` +
         `<td style="${border}text-align:right;color:${(row.movement ?? 0) > 0 ? '#047857' : (row.movement ?? 0) < 0 ? '#b91c1c' : '#9ca3af'}">` +
-        `${movementLabel(row.movement)}</td></tr>`
+        `${movementLabel(row.movement)}</td>` +
+        `<td style="${border}text-align:right">${row.playoff_pct === null ? '—' : `${escapeHtml(row.playoff_pct)}%`}</td></tr>`
       ).join('')}
     </table>` : '';
 
@@ -399,17 +454,19 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
       ).join('')}
     </table>` : '';
 
-  const grudgeHtml = recap.grudge ? `
+  const grudgeHtml = recap.grudge ? (() => {
+    const g = recap.grudge;
+    return `
     <h2 style="${h2}">The Grudge</h2>
-    <p style="${sub}">The most-played pairing in the league. ESPN era, 2018 on.</p>
+    <p style="${sub}">The game with the most history behind it this week. ESPN era, 2018 on.</p>
     <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;font-size:14px">
-      <strong>${escapeHtml(recap.grudge.team)}</strong> vs
-      <strong>${escapeHtml(recap.grudge.opponent)}</strong>
+      <strong>${escapeHtml(g.home)}</strong> vs <strong>${escapeHtml(g.away)}</strong>
+      <div style="margin-top:5px">${escapeHtml(grudgeLine(g))}</div>
       <div style="color:#6b7280;margin-top:4px">
-        ${recap.grudge.games} meetings since ${recap.grudge.first_season} ·
-        ${recap.grudge.wins}-${recap.grudge.losses}${recap.grudge.ties ? `-${recap.grudge.ties}` : ''}
+        ${g.games} meetings since ${g.first_season}
       </div>
-    </div>` : '';
+    </div>`;
+  })() : '';
 
   const historyHtml = recap.history.length ? `
     <h2 style="${h2}">This week in Grudge history</h2>
@@ -470,10 +527,11 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
     <div style="background:#111827;color:white;border-radius:12px 12px 0 0;padding:24px">
       <div style="color:#93c5fd;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">UNC Grudge Match</div>
       <h1 style="font-size:28px;margin:5px 0 0">Week ${recap.week}</h1>
-      <div style="color:#cbd5e1;margin-top:4px">${recap.season} season</div>
+      <div style="color:#cbd5e1;margin-top:6px;font-size:15px">${escapeHtml(introFor(recap.week))}</div>
+      <div style="color:#8fa0b8;margin-top:3px;font-size:13px">${recap.season} season</div>
     </div>
     <div style="background:white;border-radius:0 0 12px 12px;padding:24px">
-      <h2 style="${h2};margin-top:0">The week</h2>
+      <h2 style="${h2};margin-top:0">This week&rsquo;s games</h2>
       ${gamesHtml}
       ${recordWatchHtml}
       ${powerHtml}
@@ -506,10 +564,9 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
         `${d.surprise.projected}, scored ${d.surprise.actual} (${signed(d.surprise.delta)})`);
     }
     if (d?.worstDecision) {
-      const starter = d.worstDecision.worstStarter === null
-        ? '' : `; worst starter managed ${d.worstDecision.worstStarter}`;
       lines.push(`  Worst call: ${d.worstDecision.team} benched ${d.worstDecision.player} ` +
-        `(${d.worstDecision.benchPoints})${starter} — cost ${d.worstDecision.cost}`);
+        `(${d.worstDecision.benchPoints}) and started ${d.worstDecision.displaced} ` +
+        `(${d.worstDecision.displacedPoints}) — ${d.worstDecision.cost} left on the bench`);
     }
     if (d?.differentiator) {
       lines.push(`  Decided at ${d.differentiator.position}: ${game.home_name} ` +
@@ -523,7 +580,8 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
   ).join('\n');
 
   const powerText = recap.power.map((row) =>
-    `${row.rank}. ${row.name} — ${row.score} (${movementLabel(row.movement)})`
+    `${row.rank}. ${row.name} — ${row.score} (${movementLabel(row.movement)})` +
+    (row.playoff_pct === null ? '' : `, ${row.playoff_pct}% playoffs`)
   ).join('\n');
 
   const nextText = recap.nextWeek.map((game) => {
@@ -546,9 +604,8 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
   ).join('\n');
 
   const grudgeText = recap.grudge
-    ? `${recap.grudge.team} vs ${recap.grudge.opponent}: ${recap.grudge.games} meetings since ` +
-      `${recap.grudge.first_season}, ${recap.grudge.wins}-${recap.grudge.losses}` +
-      `${recap.grudge.ties ? `-${recap.grudge.ties}` : ''}`
+    ? `${recap.grudge.home} vs ${recap.grudge.away} — ${recap.grudge.games} meetings since ` +
+      `${recap.grudge.first_season}.\n${grudgeLine(recap.grudge)}`
     : '';
 
   const historyText = recap.history.map((row) =>
@@ -572,7 +629,8 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
 
   const text = [
     `UNC Grudge Match — ${recap.season} Week ${recap.week}`,
-    `THE WEEK\n${gameText}`,
+    introFor(recap.week),
+    `THIS WEEK'S GAMES\n${gameText}`,
     recordWatchText && `RECORD WATCH\n${recordWatchText}`,
     powerText && `POWER RANKINGS\n${powerText}`,
     nextText && `WEEK ${recap.week + 1}\n${LOCK_RULE}\n${nextText}`,
