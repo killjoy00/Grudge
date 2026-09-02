@@ -123,6 +123,15 @@ export interface SideValue {
    * best lineup. This is the position adjustment stated as a number.
    */
   playerValue: number;
+  /**
+   * How many player-weeks `playerValue` is built from -- the weeks an
+   * acquisition would actually have been in the best lineup.
+   *
+   * Zero means the figure measures nothing at all, which is a different thing
+   * from a player who scored exactly replacement level. A page showing "0.0"
+   * for both cannot tell them apart, so it has this to tell them apart with.
+   */
+  valuedWeeks: number;
   /** Raw points their acquisitions scored while this team rostered them. */
   rosteredPoints: number;
   /** Of those, the ones the manager actually started. */
@@ -228,6 +237,7 @@ export function valueTrade(input: TradeValueInput): TradeValue {
 
     let lineupImpact = 0;
     let playerValue = 0;
+    let valuedWeeks = 0;
     let rosteredPoints = 0;
     let startedPoints = 0;
 
@@ -262,6 +272,7 @@ export function valueTrade(input: TradeValueInput): TradeValue {
         if (!best.started.has(id)) continue;
         const pos = input.position.get(id);
         playerValue += pts - (pos === undefined ? 0 : input.replacement.get(pos) ?? 0);
+        valuedWeeks += 1;
       }
     }
 
@@ -269,6 +280,7 @@ export function valueTrade(input: TradeValueInput): TradeValue {
       espn_team_id: teamId,
       lineupImpact: round1(lineupImpact),
       playerValue: round1(playerValue),
+      valuedWeeks,
       rosteredPoints: round1(rosteredPoints),
       startedPoints: round1(startedPoints),
       received, gaveUp,

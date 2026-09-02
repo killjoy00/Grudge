@@ -49,7 +49,14 @@ function TradeSide({
         </span>
         <span className="trade-impact-label">to their lineup</span>
         <div className="note trade-secondary">
-          {signed(side.playerValue)} over replacement ·{' '}
+          {/* A dash, not 0.0, when nothing was measured. An acquisition who
+              never made the lineup contributed nothing, which is a different
+              statement from one who scored exactly replacement level. */}
+          <span title={side.valuedWeeks === 0
+            ? 'Never in the best lineup, so there is nothing to measure against replacement.'
+            : `Measured over ${side.valuedWeeks} week${side.valuedWeeks === 1 ? '' : 's'} in the best lineup.`}>
+            {side.valuedWeeks === 0 ? '—' : signed(side.playerValue)} over replacement
+          </span>{' · '}
           {side.startedPoints.toFixed(1)} of {side.rosteredPoints.toFixed(1)} started
         </div>
       </div>
