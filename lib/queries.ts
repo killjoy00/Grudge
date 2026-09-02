@@ -7,20 +7,6 @@ import 'server-only';
 import { asPublic, asUser } from './db.ts';
 
 /** Latest season actually loaded, so New Year's Day never requires a code edit. */
-/**
- * This league on ESPN. The id is public -- it is in every ESPN URL any member
- * already has bookmarked -- and duplicated from pipeline/espn.ts on purpose:
- * that module is server-only pipeline code and importing it into a page would
- * drag the whole fetch layer along with it.
- */
-export const ESPN_LEAGUE_ID = 114052;
-
-/** A team's live roster on ESPN, which this site deliberately does not mirror. */
-export function espnTeamUrl(espnTeamId: number, season: number) {
-  return `https://fantasy.espn.com/football/team?leagueId=${ESPN_LEAGUE_ID}` +
-    `&teamId=${espnTeamId}&seasonId=${season}`;
-}
-
 export async function getCurrentSeason() {
   const rows = await asPublic<{ season: number | null }>(
     'select max(season)::int as season from public.seasons'

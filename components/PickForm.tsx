@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { submitPick } from '../lib/actions.ts';
+import { EspnMatchupLink } from './EspnLink.tsx';
 
 export interface Matchup {
   espn_matchup_id: number;
@@ -78,6 +79,9 @@ export function PickForm({
               <span>Matchup {index + 1} of {matchups.length}</span>
               {saved === m.espn_matchup_id && <span className="matchup-saved">Saved</span>}
               {chosen === undefined && <span className="matchup-todo">No pick yet</span>}
+              {/* Not inside the pick buttons: those are the control, and a link
+                  within one would both fight the click and be invalid HTML. */}
+              <EspnMatchupLink season={season} week={week} teamId={m.away_team_id} />
             </div>
             <div className="matchup-body">
               {side(m.away_team_id, m.away_name, m.away_owners)}
