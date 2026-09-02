@@ -435,3 +435,56 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
 /* On the dark scoreboard rows the muted grey would vanish. */
 .match .espn-link { color: var(--accent); border-color: var(--line); }
 .matchup-head .espn-link { margin-left: auto; }
+
+/* ------------------------------------------------------------------ trades
+   A trade is two sides of one thing, so it is laid out as two columns that
+   stack on a phone rather than as two rows in a table -- the reader should see
+   the swap, not scan for it. Each side carries its own accent along its top
+   edge, and the same accent identifies it in every part of the card. */
+.trade-card { padding-bottom: 6px; }
+.trade-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+/* The eyebrow takes the slack, so one tag or two both sit flush right and
+   stay next to each other rather than being pushed apart. */
+.trade-head .eyebrow { margin-right: auto; }
+.trade-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.trade-side {
+  padding: 12px 12px 10px;
+  background: var(--surface-2);
+  border-top: 3px solid var(--line-dark);
+  border-radius: var(--radius);
+}
+/* The winning side is marked by weight, not by colour alone: the accent stripe
+   already carries identity, so a second colour here would say two things at
+   once. */
+.trade-side.ahead { background: #eaf6ef; box-shadow: inset 0 0 0 1px rgb(22 115 75 / .25); }
+.trade-side-head { display: flex; align-items: center; flex-wrap: wrap; }
+.trade-got {
+  margin: 8px 0 4px; color: var(--muted);
+  font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase;
+}
+.trade-players { margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.trade-players li { padding: 3px 0; }
+.trade-pos {
+  display: inline-block; min-width: 34px;
+  color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .05em;
+}
+.trade-points {
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.trade-basis { margin: 12px 0 0; }
+.trade-vote { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.trade-vote-q {
+  margin-bottom: 8px;
+  font-size: 10px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase;
+}
+.trade-vote-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.trade-vote-btn { width: 100%; }
+.trade-vote-note { margin: 8px 0 0; }
+
+@media (max-width: 560px) {
+  .trade-sides, .trade-vote-row { grid-template-columns: 1fr; }
+}

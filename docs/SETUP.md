@@ -194,10 +194,15 @@ create role app_provisioner with
 
 Run the membership migration as the owner, then run the provisioner grants:
 
+Every migration in date order, then the provisioner grants. The loop is
+deliberate: this used to be three named files and had drifted five migrations
+behind. Filenames are ISO dates, so the shell glob sorts them into the order
+they were applied in production, and each is idempotent.
+
 ```bash
-NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-08-31-membership-recaps-history.sql
-NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-09-01-unified-history.sql
-NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/migrations/2026-09-02-history-detail.sql
+for m in scripts/migrations/*.sql; do
+  NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs "$m"
+done
 NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs scripts/provisioner-role.sql
 ```
 

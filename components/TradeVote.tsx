@@ -1,0 +1,92 @@
+'use client';
+import { useState, useTransition } from 'react';
+import { submitTradeVote } from '../lib/trade-actions.ts';
+
+/**
+ * Two buttons and, once you have committed, the league's tally.
+ *
+ * The tally is withheld until you vote for the same reason the predictions
+ * page withholds other people's picks: a running count next to an unanswered
+ * question is not a vote, it is a suggestion. The withholding is enforced by
+ * the trade_votes select policy, so an unvoted trade simply arrives here with
+ * an empty tally -- there is nothing for this component to hide.
+ */
+export function TradeVote({
+  season, tradeId, sides, initial, tally, signedIn,
+}: {
+  season: number;
+  tradeId: string;
+  /** [teamId, name] for each side, in the order they should be shown. */
+  sides: [number, string][];
+  initial: number | null;
+  tally: Record<number, number>;
+  signedIn: boolean;
+}) {
+  const [vote, setVote] = useState(initial);
+  const [counts, setCounts] = useState(tally);
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  function choose(teamId: number) {
+    const previous = vote;
+    setVote(teamId); // optimistic
+    setErr(null);
+    // The tally the server sent is the one before this vote, so nudge it here
+    // rather than showing a stale count until the next page load.
+    setCounts((c) => {
+      const next = { ...c };
+      if (previous != null) next[previous] = Math.max(0, (next[previous] ?? 1) - 1);
+      next[teamId] = (next[teamId] ?? 0) + 1;
+      return next;
+    });
+    start(async () => {
+      const res = await submitTradeVote(season, tradeId, teamId);
+      if (!res.ok) {
+        setVote(previous);
+        setCounts(tally);
+        setErr(res.error ?? 'Could not save that vote.');
+      }
+    });
+  }
+
+  if (!signedIn) {
+    return <p className="note trade-vote-note">Sign in to vote on this trade.</p>;
+  }
+
+  const total = Object.values(counts).reduce((s, n) => s + n, 0);
+
+  return (
+    <div className="trade-vote">
+      <div className="trade-vote-q">Who won it?</div>
+      <div className="trade-vote-row">
+        {sides.map(([teamId, name]) => {
+          const n = counts[teamId] ?? 0;
+          const share = total > 0 ? Math.round((n / total) * 100) : 0;
+          return (
+            <button
+              key={teamId}
+              type="button"
+              className={`pick trade-vote-btn ${vote === teamId ? 'on' : ''}`}
+              disabled={pending}
+              aria-pressed={vote === teamId}
+              onClick={() => choose(teamId)}
+            >
+              <span className="pick-team">{name}</span>
+              {vote != null && (
+                <span className="pick-owner">
+                  {n} vote{n === 1 ? '' : 's'} · {share}%
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {err && <p className="pick-error" role="alert">{err}</p>}
+      {vote == null && (
+        <p className="note trade-vote-note">
+          The league&rsquo;s votes appear once you have cast yours.
+        </p>
+      )}
+    </div>
+  );
+}
