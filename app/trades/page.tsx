@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { tradeSeasons, tradeVotes, votingOpen, type TradeCard, type VoteState }
   from '../../lib/trade-history-queries.ts';
 import { getCachedSeasonTrades, getCachedTradeRecords } from '../../lib/cached-queries.ts';
-import type { SideValue } from '../../pipeline/trade-value.ts';
+import { UNGRADED_POSITIONS, type SideValue } from '../../pipeline/trade-value.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
 import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
@@ -30,14 +30,18 @@ function TradeSide({
       <div className="trade-got">got</div>
       <ul className="trade-players">
         {players.length === 0 && <li className="note">nothing this side of the ledger</li>}
-        {players.map((p) => (
-          <li key={p.espn_player_id}>
-            <span className="trade-pos">
-              {POSITIONS[p.default_position_id ?? 0] ?? '\u2014'}
-            </span>
-            {p.full_name ?? `Player ${p.espn_player_id}`}
-          </li>
-        ))}
+        {players.map((p) => {
+          const counted = !UNGRADED_POSITIONS.has(p.default_position_id ?? -1);
+          return (
+            <li key={p.espn_player_id} className={counted ? undefined : 'trade-uncounted'}>
+              <span className="trade-pos">
+                {POSITIONS[p.default_position_id ?? 0] ?? '\u2014'}
+              </span>
+              {p.full_name ?? `Player ${p.espn_player_id}`}
+              {!counted && <span className="trade-nocount"> not counted</span>}
+            </li>
+          );
+        })}
       </ul>
       <div className="trade-points">
         <span className={`trade-impact ${side.lineupImpact > 0 ? 'up' : side.lineupImpact < 0 ? 'down' : ''}`}>
@@ -60,7 +64,9 @@ function TradeArticle({
   const aName = teamNames[trade.team_a] ?? `Team ${trade.team_a}`;
   const bName = teamNames[trade.team_b] ?? `Team ${trade.team_b}`;
   const winnerName = value.winner === trade.team_a ? aName : bName;
-  const ungraded = value.weeksScored === 0;
+  // Either no week has been played since the trade, or the whole deal was
+  // kickers and defences. Both mean there is no verdict to give.
+  const ungraded = !value.graded;
 
   return (
     <article className="card trade-card">
@@ -101,7 +107,9 @@ function TradeArticle({
 
       <p className="note trade-basis">
         {ungraded
-          ? 'No week has been played since this trade, so there is nothing to score yet.'
+          ? value.weeksScored === 0
+            ? 'No week has been played since this trade, so there is nothing to score yet.'
+            : 'Kickers and defences are left out of the scoring, and there was nothing else in this trade.'
           : `Points added to each side's best possible lineup from week ${trade.effective_week} on, ` +
             `against the roster they would have had without the trade. ` +
             `${value.weeksScored} week${value.weeksScored === 1 ? '' : 's'} counted.`}
@@ -228,6 +236,12 @@ export default async function Trades({
             Because the two sides are measured against different rosters, both
             can come out ahead. That is not a bug in the arithmetic; it is what a
             good trade looks like, and it is labelled when it happens.
+            <br /><br />
+            Kickers and defences are left out entirely. Nobody trades for a
+            kicker on purpose, and when one rides along in a deal his points are
+            noise that can move a verdict without meaning anything. They are
+            still listed &mdash; the trade happened &mdash; just marked as not
+            counted.
             <br /><br />
             ESPN does not publish what was in a trade. The only record it serves
             is an acceptance envelope with an empty item list, pointing at a

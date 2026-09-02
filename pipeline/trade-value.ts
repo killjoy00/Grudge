@@ -58,6 +58,20 @@ import { bestLineup, expandSlots, type LineupPlayer } from './lineup.ts';
 import { starterDemand, replacementLevels, type PlayerSeason } from './trade.ts';
 import { capacityFromStarters } from './trade-assemble.ts';
 
+/**
+ * Positions left out of grading entirely: kicker (5) and team defence (16).
+ *
+ * Not a modelling nicety -- a league decision. Nobody trades for a kicker on
+ * purpose, and when one rides along in a deal his points are noise that moves
+ * a verdict without meaning anything. Both sit in dedicated slots with no flex
+ * overlap, so dropping them removes a fixed constant from every lineup on both
+ * sides of the counterfactual and cannot change which trade won.
+ *
+ * They are still LISTED on the trade card. The deal happened; it is only the
+ * arithmetic that ignores them.
+ */
+export const UNGRADED_POSITIONS = new Set([5, 16]);
+
 /** Who was on a roster in a given week. */
 export interface RosterWeekRow {
   week: number;
@@ -126,6 +140,13 @@ export interface TradeValue {
   weeksScored: number;
   /** True when both sides came out ahead -- a genuinely good trade. */
   mutual: boolean;
+  /**
+   * False when nothing in the trade can be scored: no week played yet, or
+   * every player in it was a kicker or a defence. Distinguishing the two from
+   * a real 0-0 tie is why this exists -- "even" is a verdict, and neither of
+   * those is one.
+   */
+  graded: boolean;
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -167,7 +188,15 @@ function weekBest(
  * forced into a single zero-sum number.
  */
 export function valueTrade(input: TradeValueInput): TradeValue {
-  const { team_a, team_b, moves, eligible, slots, weeks } = input;
+  const { team_a, team_b, eligible, slots, weeks } = input;
+
+  // Kickers and defences are dropped from the arithmetic, not from the record.
+  // A player whose position we do not know is kept: we cannot claim he is a
+  // kicker, and weekBest already leaves out anyone with no known eligibility.
+  const moves = input.moves.filter((m) => {
+    const pos = input.position.get(m.espn_player_id);
+    return pos === undefined || !UNGRADED_POSITIONS.has(pos);
+  });
 
   // Roster membership and scoring, indexed by week for the inner loop.
   const rosterBy = new Map<number, Map<number, Set<number>>>();
@@ -249,11 +278,15 @@ export function valueTrade(input: TradeValueInput): TradeValue {
   const a = sideFor(team_a, team_b);
   const b = sideFor(team_b, team_a);
   const margin = round1(a.lineupImpact - b.lineupImpact);
+  // Nothing left to weigh: either no week has been played, or the whole deal
+  // was kickers and defences. Neither is a tie, so neither gets a verdict.
+  const graded = scored.length > 0 && moves.length > 0;
   return {
     a, b, margin,
-    winner: scored.length === 0 ? null : margin > 0 ? team_a : margin < 0 ? team_b : null,
+    winner: !graded ? null : margin > 0 ? team_a : margin < 0 ? team_b : null,
     weeksScored: scored.length,
-    mutual: scored.length > 0 && a.lineupImpact > 0 && b.lineupImpact > 0,
+    mutual: graded && a.lineupImpact > 0 && b.lineupImpact > 0,
+    graded,
   };
 }
 
@@ -309,7 +342,6 @@ export function seasonContext(
 
   const starters = rosterRows.filter((r) => r.is_starter);
   const capacity = capacityFromStarters(starters);
-  const slots = expandSlots(capacity);
 
   // Which positions were seen filling each slot, and how often. This is what
   // tells the model that the FLEX runs about two-thirds running backs in this
@@ -327,6 +359,27 @@ export function seasonContext(
     observedFill.set(r.lineup_slot_id, counts);
   }
 
+  // Drop the kicker and defence slots, and with them those players.
+  //
+  // Which slots those ARE is read off the data rather than hardcoded: a slot
+  // every one of whose observed occupants was a kicker or a defence is a
+  // kicker or defence slot. In this league that finds slot 17 and slot 16, and
+  // it would keep working if ESPN renumbered them or the league added a second
+  // defence. A slot nobody has filled yet is kept -- absence of evidence is
+  // not evidence that it is a kicker slot.
+  for (const [slot, positions] of slotElig) {
+    if (positions.length > 0 && positions.every((pos) => UNGRADED_POSITIONS.has(pos))) {
+      capacity.delete(slot);
+    }
+  }
+  const slots = expandSlots(capacity);
+  // Removing the slots alone would be enough -- a kicker's only eligible slot
+  // is gone, so no lineup can hold him -- but dropping him from eligibility
+  // says so once, here, instead of leaving it as a consequence to rediscover.
+  for (const [playerId, pos] of position) {
+    if (UNGRADED_POSITIONS.has(pos)) eligible.delete(playerId);
+  }
+
   const totals = new Map<number, { points: number; games: number }>();
   for (const r of rosterRows) {
     const acc = totals.get(r.espn_player_id) ?? { points: 0, games: 0 };
@@ -337,7 +390,7 @@ export function seasonContext(
   const seasons: PlayerSeason[] = [];
   for (const [playerId, acc] of totals) {
     const pos = position.get(playerId);
-    if (pos === undefined) continue;
+    if (pos === undefined || UNGRADED_POSITIONS.has(pos)) continue;
     seasons.push({
       playerId, name: String(playerId), positionId: pos,
       eligible: eligible.get(playerId) ?? [],

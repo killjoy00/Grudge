@@ -493,3 +493,7 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
 .trade-impact { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .trade-impact-label { margin-left: 6px; color: var(--muted); font-size: 12px; }
 .trade-secondary { margin-top: 4px; font-size: 12px; }
+/* Kickers and defences still appear in the trade -- it happened -- but they
+   are visibly outside the arithmetic rather than silently dropped. */
+.trade-uncounted { color: var(--muted); }
+.trade-nocount { font-size: 11px; font-style: italic; }

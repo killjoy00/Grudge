@@ -9,7 +9,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { valueTrade, type TradeValueInput, type PlayerWeekPoints } from './trade-value.ts';
+import {
+  valueTrade, seasonContext,
+  type TradeValueInput, type PlayerWeekPoints,
+} from './trade-value.ts';
 
 const QB = 0, RB = 2, WR = 4, TE = 6, FLEX = 23;
 const SLOTS = [QB, RB, RB, WR, WR, TE, FLEX];
@@ -242,4 +245,63 @@ test('value over replacement is position adjusted', () => {
      { espn_player_id: 20, from_team_id: 2, to_team_id: 1 }]));
   assert.equal(v.a.playerValue, 16);  // TE: (10 - 2) x 2 weeks
   assert.equal(v.b.playerValue, 10);  // WR: (10 - 5) x 2 weeks
+});
+
+/* ------------------------------------------ kickers and defences are cut */
+
+test('a kicker in a trade is not graded', () => {
+  const K = 5;
+  const players: P[] = [
+    { id: 10, pos: POS.wr, ppw: 10 },
+    { id: 20, pos: POS.wr, ppw: 10 },
+    { id: 50, pos: K, ppw: 40 },   // a monster kicker, riding along
+  ];
+  const base = scenario(players,
+    { 1: [20, 50], 2: [10] },
+    [{ espn_player_id: 10, from_team_id: 1, to_team_id: 2 },
+     { espn_player_id: 20, from_team_id: 2, to_team_id: 1 },
+     { espn_player_id: 50, from_team_id: 2, to_team_id: 1 }]);
+  // The kicker has a kicker slot available and outscores everyone; if he were
+  // graded he would swamp the verdict.
+  const v = valueTrade({
+    ...base,
+    slots: [...SLOTS, 17],
+    eligible: new Map([[10, [WR, FLEX]], [20, [WR, FLEX]], [50, [17]]]),
+  });
+  assert.equal(v.a.lineupImpact, 0, 'the two receivers cancel; the kicker adds nothing');
+  assert.equal(v.a.rosteredPoints, 20, 'the kicker\'s 80 points are not counted');
+});
+
+test('a trade of nothing but kickers has no verdict', () => {
+  const K = 5, DST = 16;
+  const players: P[] = [{ id: 50, pos: K, ppw: 12 }, { id: 60, pos: DST, ppw: 9 }];
+  const v = valueTrade({
+    ...scenario(players, { 1: [60], 2: [50] },
+      [{ espn_player_id: 50, from_team_id: 1, to_team_id: 2 },
+       { espn_player_id: 60, from_team_id: 2, to_team_id: 1 }]),
+    slots: [...SLOTS, 17, 16],
+  });
+  assert.equal(v.graded, false, 'not a tie -- there is simply nothing to weigh');
+  assert.equal(v.winner, null);
+});
+
+test('seasonContext drops the kicker and defence slots it finds in the data', () => {
+  // Slot 17 only ever holds kickers and slot 16 only defences, so both go.
+  // Slot 23 holds running backs and receivers, so it stays.
+  const roster = (week: number, team: number, playerId: number, slot: number, pts: number) =>
+    ({ week, espn_team_id: team, espn_player_id: playerId,
+       lineup_slot_id: slot, is_starter: true, applied_points: pts });
+  const ctx = seasonContext(
+    [roster(1, 1, 1, 23, 10), roster(1, 1, 2, 17, 8), roster(1, 1, 3, 16, 6),
+     roster(2, 1, 1, 23, 11), roster(2, 1, 2, 17, 9), roster(2, 1, 3, 16, 7)],
+    [{ espn_player_id: 1, default_position_id: POS.rb, eligible_slots: [RB, FLEX] },
+     { espn_player_id: 2, default_position_id: 5, eligible_slots: [17] },
+     { espn_player_id: 3, default_position_id: 16, eligible_slots: [16] }],
+    10
+  );
+  assert.deepEqual(ctx.slots, [23], 'only the flex survives');
+  assert.equal(ctx.eligible.has(1), true);
+  assert.equal(ctx.eligible.has(2), false, 'kicker dropped');
+  assert.equal(ctx.eligible.has(3), false, 'defence dropped');
+  assert.equal(ctx.replacement.has(5), false, 'no replacement level for kickers');
 });
