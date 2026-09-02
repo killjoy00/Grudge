@@ -105,6 +105,8 @@ export interface EspnRosterEntry {
       fullName: string;
       defaultPositionId?: number;
       proTeamId?: number;
+      /** Lineup slot ids this player may fill; what makes FLEX eligibility real. */
+      eligibleSlots?: number[];
       stats?: { statSourceId: number; statSplitTypeId: number; scoringPeriodId: number; appliedTotal?: number }[];
     };
   };

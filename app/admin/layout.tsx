@@ -22,6 +22,7 @@ const TABS = [
   ['/admin/members', 'Members'],
   ['/admin/recaps', 'Recaps'],
   ['/admin/pool', 'Free agents'],
+  ['/admin/trades', 'Trades'],
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

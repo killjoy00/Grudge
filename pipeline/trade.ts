@@ -31,6 +31,18 @@ export const POSITIONS: Record<number, string> = {
   1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K', 16: 'D/ST',
 };
 
+/**
+ * Fewest played weeks the model will speak on.
+ *
+ * Replacement levels are measured from observed scoring, so a short sample
+ * makes the output confident and meaningless -- which is the exact failure
+ * this whole approach exists to avoid. Two weeks is a deliberate floor, low
+ * enough to be useful early and high enough that a single freak week cannot
+ * set a position's replacement level on its own. Below it, both the CLI and
+ * the admin page refuse and say why rather than printing something.
+ */
+export const MIN_WEEKS_DEFAULT = 2;
+
 export interface PlayerSeason {
   playerId: number;
   name: string;

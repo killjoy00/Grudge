@@ -226,7 +226,11 @@ export function rosterEntryRows(
 
 /** Players seen anywhere in a boxscore, for the shared `players` table. */
 export function playerRows(boxscore: EspnLeague) {
-  const byId = new Map<number, { espn_player_id: number; full_name: string; default_position_id: number | null; pro_team_id: number | null }>();
+  const byId = new Map<number, {
+    espn_player_id: number; full_name: string;
+    default_position_id: number | null; pro_team_id: number | null;
+    eligible_slots: number[] | null;
+  }>();
   for (const m of boxscore.schedule ?? []) {
     for (const side of [m.home, m.away]) {
       for (const e of side?.rosterForCurrentScoringPeriod?.entries ?? []) {
@@ -237,6 +241,11 @@ export function playerRows(boxscore: EspnLeague) {
           full_name: p.fullName,
           default_position_id: p.defaultPositionId ?? null,
           pro_team_id: p.proTeamId ?? null,
+          // What this player may legally be started at. Kept as ESPN's own
+          // slot ids: they are what the lineup solver matches against, and
+          // decoding them here would mean maintaining a second copy of
+          // ESPN's slot table.
+          eligible_slots: p.eligibleSlots ?? null,
         });
       }
     }
