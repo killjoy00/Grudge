@@ -362,6 +362,26 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
       ['season', 'trade_id', 'effective_week', 'team_a', 'team_b', 'espn_transaction_id', 'accepted_at', 'confidence'],
       trades.map(({ players: _players, ...row }) => row) as unknown as Record<string, unknown>[],
       ['season', 'trade_id']));
+    // Open voting on trades seen for the first time IN THE SEASON BEING
+    // PLAYED, and only those.
+    //
+    // Separate from the upsert above because that upsert runs every week:
+    // including the column there would push the deadline forward on every run
+    // and voting would never close.
+    //
+    // Restricted to the current season because a vote is a snap judgement on a
+    // trade whose result nobody knows yet. Re-running the 2021 backfill must
+    // not open a week of voting on a trade whose season finished years ago,
+    // and the is_current flag -- not the calendar -- is what decides which
+    // season that is.
+    statements.push(stmt(
+      `update public.trades t
+          set voting_closes_at = now() + public.trade_voting_window()
+        where t.season = $1 and t.voting_closes_at is null
+          and exists (select 1 from public.seasons s
+                       where s.season = t.season and s.is_current)`,
+      [season]
+    ));
     const tradePlayers = trades.flatMap((t) =>
       t.players.map((p) => ({ season, trade_id: t.trade_id, ...p })));
     // Replaced wholesale rather than upserted: a player the previous detection

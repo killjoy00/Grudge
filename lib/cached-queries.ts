@@ -8,6 +8,7 @@ import 'server-only';
  * guarantees without coupling `next build` to Neon.
  */
 import { unstable_cache } from 'next/cache';
+import { allTimeTradeRecords, seasonTrades } from './trade-history-queries.ts';
 import {
   getAllTime,
   getFranchiseHistory,
@@ -96,4 +97,26 @@ export const getCachedFranchiseFile = unstable_cache(
   ]),
   ['franchise-file'],
   { revalidate: 86400 }
+);
+
+/**
+ * Trades, valued.
+ *
+ * Cached because valuing a trade replays every week of that season's rosters
+ * through the lineup solver, and the all-time ledger does it for every season
+ * at once. None of those numbers can move until the weekly pipeline runs, so
+ * paying that cost per request would be waste rather than freshness. Votes are
+ * NOT cached here -- they are read per member through asUser and change the
+ * moment somebody clicks.
+ */
+export const getCachedSeasonTrades = unstable_cache(
+  seasonTrades,
+  ['season-trades'],
+  { revalidate: 3600 }
+);
+
+export const getCachedTradeRecords = unstable_cache(
+  allTimeTradeRecords,
+  ['trade-records'],
+  { revalidate: 3600 }
 );

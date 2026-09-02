@@ -21,6 +21,7 @@ export interface ActionResult {
 function friendly(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/not in trade/i.test(msg)) return "That team isn't in this trade.";
+  if (/voting closed/i.test(msg)) return 'Voting on this trade has closed.';
   if (/row-level security/i.test(msg)) return 'You can only change your own vote.';
   if (/violates foreign key/i.test(msg)) return 'That trade no longer exists.';
   if (/not signed in/i.test(msg)) return 'You need to sign in.';
