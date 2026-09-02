@@ -305,3 +305,25 @@ test('seasonContext drops the kicker and defence slots it finds in the data', ()
   assert.equal(ctx.eligible.has(3), false, 'defence dropped');
   assert.equal(ctx.replacement.has(5), false, 'no replacement level for kickers');
 });
+
+test('an acquisition who never reaches the lineup is measured over no weeks', () => {
+  // Chris Olave in 2024: acquired in week 10, scored zero every week after.
+  // valuedWeeks distinguishes "contributed nothing" from "was exactly average",
+  // which a bare 0.0 cannot.
+  // Team 1 keeps a full complement of receivers, so the zero never displaces
+  // anybody. (On a one-man roster he WOULD fill an otherwise empty slot at no
+  // cost, which is why this test carries a real bench.)
+  const players: P[] = [
+    { id: 10, pos: POS.wr, ppw: 25 },  // given up, and a real starter
+    { id: 20, pos: POS.wr, ppw: 0 },   // received, never plays
+    { id: 41, pos: POS.wr, ppw: 18 }, { id: 42, pos: POS.wr, ppw: 16 },
+    { id: 43, pos: POS.wr, ppw: 14 },
+  ];
+  const v = valueTrade(scenario(players, { 1: [20, 41, 42, 43], 2: [10] },
+    [{ espn_player_id: 10, from_team_id: 1, to_team_id: 2 },
+     { espn_player_id: 20, from_team_id: 2, to_team_id: 1 }]));
+  assert.equal(v.a.valuedWeeks, 0, 'he never reached the lineup');
+  assert.equal(v.a.playerValue, 0);
+  assert.ok(v.a.lineupImpact < 0, 'and the lineup still records the loss');
+  assert.ok(v.b.valuedWeeks > 0, 'the other side did play, so it is measured');
+});
