@@ -126,7 +126,13 @@ export interface EspnTransactionItem {
 export interface EspnTransaction {
   id: string;
   type: string;
-  status: string;
+  /**
+   * Absent on some envelopes. A TRADE_ACCEPT carries no status at all -- the
+   * proposal it points at via relatedTransactionId is where the status lives.
+   * Typed optional because it IS optional, which is what stopped the loader
+   * writing a null into a not-null column and failing the whole week.
+   */
+  status?: string;
   executionType?: string;
   teamId?: number;
   scoringPeriodId: number;

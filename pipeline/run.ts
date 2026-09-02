@@ -30,6 +30,7 @@ import { fetchLeague, fetchBoxscore, fetchProSchedule, LEAGUE_ID, type EspnLeagu
 import {
   seasonRow, teamRows, matchupRows, rosterEntryRows, playerRows, weekRows,
   starterSlots, weekCompleteness, completedWeeks, finalScoringPeriod,
+  transactionRows,
 } from './normalize.ts';
 import { connect, runTransaction, upsertChunked, stmt, type Stmt } from './db.ts';
 
@@ -315,18 +316,16 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
   // Transactions: envelope + items. `raw` is retained deliberately -- only
   // DRAFT records have ever been observed for this league, so the first real
   // waiver claim tells us the truth without a lost record.
-  const txns = (league.transactions ?? []).filter((t) => knownWeeks.has(t.scoringPeriodId));
+  const txRows = transactionRows(league, knownWeeks);
   statements.push(...upsertChunked('public.transactions',
     ['espn_transaction_id', 'season', 'week', 'espn_team_id', 'type', 'status', 'execution_type', 'bid_amount', 'is_pending', 'proposed_at', 'raw'],
-    txns.map((t) => ({
-      espn_transaction_id: t.id, season, week: t.scoringPeriodId, espn_team_id: t.teamId ?? null,
-      type: t.type, status: t.status, execution_type: t.executionType ?? null,
-      bid_amount: t.bidAmount ?? 0, is_pending: t.isPending ?? false,
-      proposed_at: t.proposedDate ? new Date(t.proposedDate).toISOString() : null,
-      raw: JSON.stringify(t),
-    })), ['espn_transaction_id']));
-  summary.transactions = txns.length;
+    txRows as unknown as Record<string, unknown>[], ['espn_transaction_id']));
+  summary.transactions = txRows.length;
 
+  // Items come from the same filtered set, so an unclassifiable transaction
+  // cannot leave orphaned items behind.
+  const keptIds = new Set(txRows.map((t) => t.espn_transaction_id));
+  const txns = (league.transactions ?? []).filter((t) => keptIds.has(t.id));
   const items = txns.flatMap((t) =>
     (t.items ?? []).map((it, i) => ({
       espn_transaction_id: t.id, item_index: i, espn_player_id: it.playerId ?? null,
