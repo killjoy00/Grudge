@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import {
   getCurrentSeason, getPlayedSeasons, getWeekResults, getWeekAwards,
-  getBenchWatch, getComments, getStandings,
+  getBenchWatch, getComments, getStandings, getPlayoffWeek,
 } from '../lib/queries.ts';
 import { Comments } from '../components/Comments.tsx';
 import { asPublic } from '../lib/db.ts';
@@ -101,6 +101,67 @@ export default async function Home() {
   }
 
   const season = currentSeason;
+
+  // Once the bracket starts, the regular-season week stops being the news.
+  // Nothing derived is computed for playoff weeks on purpose (they must not
+  // contaminate season records), so this reads the games straight from
+  // `matchups` and shows the bracket instead of a frozen week 14.
+  const playoffs = await getPlayoffWeek(season);
+  if (playoffs) {
+    const champs = playoffs.games.filter((g) => g.playoff_tier === 'WINNERS_BRACKET');
+    const rest = playoffs.games.filter((g) => g.playoff_tier !== 'WINNERS_BRACKET');
+    const board = (list: typeof playoffs.games) => (
+      <div className="card">
+        {list.map((g) => {
+          const homeWon = g.winner === 'HOME';
+          const awayWon = g.winner === 'AWAY';
+          return (
+            <div className="match" key={g.espn_matchup_id}>
+              <div className={`side ${awayWon ? 'win' : g.is_final ? 'lose' : ''}`}>
+                <span>{g.away_name}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.away_points ?? '—'}</span>
+              </div>
+              <span className="vs">at</span>
+              <div className={`side ${homeWon ? 'win' : g.is_final ? 'lose' : ''}`}>
+                <span>{g.home_name}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.home_points ?? '—'}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+    return (
+      <>
+        <div className="page-hero">
+          <div className="eyebrow">{season} postseason</div>
+          <h1>Week {playoffs.week}: the bracket.</h1>
+          <p>Six teams got in. The rest of the league is watching.</p>
+        </div>
+        {champs.length > 0 && (
+          <>
+            <h2>Championship bracket</h2>
+            {board(champs)}
+          </>
+        )}
+        {rest.length > 0 && (
+          <>
+            <h2>Consolation</h2>
+            {board(rest)}
+          </>
+        )}
+        <div className="card">
+          <p className="note">
+            Awards, bench watch and the luck index are regular-season measures
+            and stop at week {week}, so they are not shown here.{' '}
+            <a href={`/standings?season=${season}`}>The {season} table</a> has the
+            seeding the bracket came from.
+          </p>
+        </div>
+      </>
+    );
+  }
+
   const [games, awards, bench, comments, table] = await Promise.all([
     getWeekResults(season, week),
     getWeekAwards(season, week),

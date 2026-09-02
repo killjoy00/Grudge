@@ -7,6 +7,20 @@ import 'server-only';
 import { asPublic, asUser } from './db.ts';
 
 /** Latest season actually loaded, so New Year's Day never requires a code edit. */
+/**
+ * This league on ESPN. The id is public -- it is in every ESPN URL any member
+ * already has bookmarked -- and duplicated from pipeline/espn.ts on purpose:
+ * that module is server-only pipeline code and importing it into a page would
+ * drag the whole fetch layer along with it.
+ */
+export const ESPN_LEAGUE_ID = 114052;
+
+/** A team's live roster on ESPN, which this site deliberately does not mirror. */
+export function espnTeamUrl(espnTeamId: number, season: number) {
+  return `https://fantasy.espn.com/football/team?leagueId=${ESPN_LEAGUE_ID}` +
+    `&teamId=${espnTeamId}&seasonId=${season}`;
+}
+
 export async function getCurrentSeason() {
   const rows = await asPublic<{ season: number | null }>(
     'select max(season)::int as season from public.seasons'
@@ -116,6 +130,51 @@ export async function getLuck(season: number) {
       order by l.luck_delta desc`,
     [season]
   );
+}
+
+/**
+ * The bracket, for the weeks after the regular season.
+ *
+ * The derived tables -- team_week_results, weekly_awards, power_rankings --
+ * deliberately stop at the regular season, because playoff games must not
+ * contaminate season records, all-play or luck. But the front page picks its
+ * week from team_week_results, so through the entire playoffs it kept showing
+ * the last regular-season week while the championship was being decided.
+ *
+ * This reads `matchups` directly, which does hold the bracket. There are no
+ * awards or bench figures for these weeks and the page does not pretend
+ * otherwise -- it shows the games, which is the part anyone is looking for.
+ */
+export async function getPlayoffWeek(season: number) {
+  const rows = await asPublic<{ week: number | null }>(
+    `select max(m.week)::int as week
+       from public.matchups m
+       join public.seasons s on s.season = m.season
+      where m.season = $1 and m.is_final and m.week > s.regular_season_weeks`,
+    [season]
+  );
+  const week = rows[0]?.week;
+  if (typeof week !== 'number' || week < 1) return null;
+
+  const games = await asPublic<{
+    espn_matchup_id: number; playoff_tier: string | null;
+    home_team_id: number; home_name: string; home_points: string | null;
+    away_team_id: number; away_name: string; away_points: string | null;
+    winner: string; is_final: boolean;
+  }>(
+    `select m.espn_matchup_id, m.playoff_tier,
+            m.home_team_id, ht.name as home_name, round(m.home_points, 1)::text as home_points,
+            m.away_team_id, at.name as away_name, round(m.away_points, 1)::text as away_points,
+            m.winner, m.is_final
+       from public.matchups m
+       join public.teams ht on ht.season = m.season and ht.espn_team_id = m.home_team_id
+       join public.teams at on at.season = m.season and at.espn_team_id = m.away_team_id
+      where m.season = $1 and m.week = $2
+      order by case m.playoff_tier when 'WINNERS_BRACKET' then 0 else 1 end,
+               m.espn_matchup_id`,
+    [season, week]
+  );
+  return { week, games };
 }
 
 export async function getWeekResults(season: number, week: number) {

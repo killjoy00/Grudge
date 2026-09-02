@@ -86,49 +86,6 @@ export default async function Predictions() {
         </div>
       </div>
 
-      <h2>Every player</h2>
-      <div className="card">
-        {players.length === 0 ? (
-          <div className="empty">
-            No picks have been made yet. Records appear here after the first week
-            is scored.
-          </div>
-        ) : (
-          <div className="scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th className="num">{season} record</th>
-                  <th className="num">{season} acc.</th>
-                  <th className="num">All-time record</th>
-                  <th className="num">All-time acc.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((row) => {
-                  const s = seasonBy.get(row.user_id);
-                  return (
-                    <tr key={row.user_id} className={row.user_id === userId ? 'title-row' : undefined}>
-                      <td>
-                        <span className="tname">{row.display_name ?? 'Someone'}</span>
-                        {row.user_id === userId && <span className="tag era">You</span>}
-                      </td>
-                      <td className="num">
-                        {s ? `${s.correct}-${s.picks_made - s.correct}` : '0-0'}
-                      </td>
-                      <td className="num">{pct(s?.accuracy ?? null)}</td>
-                      <td className="num">{row.correct}-{row.picks_made - row.correct}</td>
-                      <td className="num">{pct(row.accuracy)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       {open && (
         <>
           <h2>Week {open.week}</h2>
@@ -168,6 +125,49 @@ export default async function Predictions() {
           <a href="/admin">League admin →</a>
         </p>
       )}
+      <h2>Every manager</h2>
+      <div className="card">
+        {players.length === 0 ? (
+          <div className="empty">
+            No picks have been made yet. Records appear here after the first week
+            is scored.
+          </div>
+        ) : (
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Manager</th>
+                  <th className="num">{season} record</th>
+                  <th className="num">{season} acc.</th>
+                  <th className="num">All-time record</th>
+                  <th className="num">All-time acc.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {players.map((row) => {
+                  const s = seasonBy.get(row.user_id);
+                  return (
+                    <tr key={row.user_id} className={row.user_id === userId ? 'title-row' : undefined}>
+                      <td>
+                        <span className="tname">{row.display_name ?? 'Someone'}</span>
+                        {row.user_id === userId && <span className="tag era">You</span>}
+                      </td>
+                      <td className="num">
+                        {s ? `${s.correct}-${s.picks_made - s.correct}` : '0-0'}
+                      </td>
+                      <td className="num">{pct(s?.accuracy ?? null)}</td>
+                      <td className="num">{row.correct}-{row.picks_made - row.correct}</td>
+                      <td className="num">{pct(row.accuracy)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
     </>
   );
 }

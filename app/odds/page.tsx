@@ -1,16 +1,40 @@
 import { getCachedPlayedSeasons, getCachedPlayoffOdds } from '../../lib/cached-queries.ts';
+import { getCurrentSeason } from '../../lib/queries.ts';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Odds({
   searchParams,
 }: { searchParams: Promise<{ season?: string }> }) {
-  const seasons = await getCachedPlayedSeasons();
   const sp = await searchParams;
-  const season = Number(sp.season) || seasons[0]?.season;
+  // The season the league is in, not the newest one with games in it. Same trap
+  // the standings and rankings pages fell into: odds are simulated FROM
+  // results, so "newest with results" is last year for the whole preseason.
+  const [seasons, current] = await Promise.all([getCachedPlayedSeasons(), getCurrentSeason()]);
+  const season = Number(sp.season) || current || seasons[0]?.season;
   if (!season) return <p className="empty">No completed seasons yet.</p>;
 
   const rows = await getCachedPlayoffOdds(season);
+
+  if (rows.length === 0) {
+    const previous = seasons.find((s) => s.season < season)?.season;
+    return (
+      <>
+        <div className="page-hero compact-hero">
+          <div className="eyebrow">{season} season</div>
+          <h1>The path in</h1>
+          <p>Simulations of the remaining schedule under the league&rsquo;s real tiebreak rules.</p>
+        </div>
+        <div className="callout">
+          With no games played, every team&rsquo;s remaining schedule is the whole
+          season and the simulation would just be telling you the field is even.
+          Odds appear once week 1 is scored.{' '}
+          {previous && <a href={`/odds?season=${previous}`}>See the {previous} odds</a>}
+        </div>
+      </>
+    );
+  }
+
   const a = (rows[0]?.assumptions ?? {}) as Record<string, unknown>;
 
   return (
