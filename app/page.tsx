@@ -160,9 +160,11 @@ export default async function Home() {
                   <td className="num">+{award('blowout')!.value}</td></tr>
             )}
             {award('nailbiter') && (
-              <tr><td>Closest game</td>
+              // The awardee is the team that LOST the closest game, so the
+              // margin reads as what it cost them rather than what it won.
+              <tr><td>Heartbreaking loss</td>
                   <td className="tname">{award('nailbiter')!.name}</td>
-                  <td className="num">+{award('nailbiter')!.value}</td></tr>
+                  <td className="num">−{award('nailbiter')!.value}</td></tr>
             )}
             {worstBench?.points_left_on_bench && Number(worstBench.points_left_on_bench) > 0 && (
               <tr><td>Worst bench decision</td>

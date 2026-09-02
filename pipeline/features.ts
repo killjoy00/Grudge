@@ -10,6 +10,7 @@
  * site can always be traced back to the rules that produced it.
  */
 import type { MatchupRow, RosterEntryRow } from './normalize.ts';
+import { IR_SLOT } from './normalize.ts';
 import { bestLineup, expandSlots } from './lineup.ts';
 
 export const MODEL_VERSION = '2026.1';
@@ -178,8 +179,17 @@ export interface OptimalLineup {
   actualPoints: number;
   optimalPoints: number;
   pointsLeftOnBench: number;
-  /** Player who should have started and didn't, with what it cost. */
-  worstBenchDecision: { playerId: number; benchPoints: number; startedInstead: number | null } | null;
+  /**
+   * The single best swap that was legally available, and who it displaces.
+   * Null when no benched player could have replaced anyone they outscored.
+   */
+  worstBenchDecision: {
+    playerId: number;
+    benchPoints: number;
+    displacedPlayerId: number;
+    displacedPoints: number;
+    gain: number;
+  } | null;
 }
 
 /**
@@ -229,29 +239,51 @@ export function optimalLineup(
   const chosen = entries.filter((e) => startedByOptimal.has(e.espn_player_id));
   const optimalPoints = solved.total;
 
-  // Worst bench decision: highest-scoring player left on the bench who the
-  // optimal lineup would have started.
-  const startedIds = new Set(entries.filter((e) => e.is_starter).map((e) => e.espn_player_id));
-  const shouldHaveStarted = chosen
-    .filter((e) => !startedIds.has(e.espn_player_id))
-    .sort((a, b) => (b.applied_points ?? 0) - (a.applied_points ?? 0));
-  const worst = shouldHaveStarted[0];
-  const benchedFor = entries
-    .filter((e) => e.is_starter)
-    .sort((a, b) => (a.applied_points ?? 0) - (b.applied_points ?? 0))[0];
+  // Worst call: the single best swap that was ACTUALLY LEGAL that week.
+  //
+  // This used to pair the best should-have-started player with the
+  // lowest-scoring starter on the roster, whoever that was. That produced
+  // nonsense: a benched RB who scored 16 read as an indictment because the
+  // kicker scored 1, when every RB and FLEX slot was already filled by
+  // someone who outscored him. Nobody can start a running back at kicker.
+  //
+  // So a swap counts only when the benched player is eligible for the slot
+  // the starter was OCCUPYING -- eligibility comes from ESPN's own
+  // eligibleSlots, which is what encodes that FLEX takes RB/WR/TE. When no
+  // such swap gains anything, there is no worst call and we say nothing,
+  // which is the honest answer for a manager who set their lineup right.
+  //
+  // Injured reserve is excluded: an IR player could not have been started
+  // at all, so holding one against a manager would be inventing a mistake.
+  const startedEntries = entries.filter((e) => e.is_starter);
+  let bestSwap: OptimalLineup['worstBenchDecision'] = null;
+  for (const benched of entries) {
+    if (benched.is_starter || benched.lineup_slot_id === IR_SLOT) continue;
+    const eligible = eligibleSlots.get(benched.espn_player_id) ?? [];
+    if (eligible.length === 0) continue;
+    const benchPoints = benched.applied_points ?? 0;
+    for (const starter of startedEntries) {
+      if (!eligible.includes(starter.lineup_slot_id)) continue;
+      const gain = benchPoints - (starter.applied_points ?? 0);
+      if (gain <= 0) continue;
+      if (bestSwap === null || gain > bestSwap.gain) {
+        bestSwap = {
+          playerId: benched.espn_player_id,
+          benchPoints: round2(benchPoints),
+          displacedPlayerId: starter.espn_player_id,
+          displacedPoints: round2(starter.applied_points ?? 0),
+          gain: round2(gain),
+        };
+      }
+    }
+  }
 
   return {
     season: first.season, week: first.week, teamId: first.espn_team_id,
     actualPoints: round2(actualPoints),
     optimalPoints: round2(optimalPoints),
     pointsLeftOnBench: round2(Math.max(0, optimalPoints - actualPoints)),
-    worstBenchDecision: worst
-      ? {
-          playerId: worst.espn_player_id,
-          benchPoints: round2(worst.applied_points ?? 0),
-          startedInstead: benchedFor ? round2(benchedFor.applied_points ?? 0) : null,
-        }
-      : null,
+    worstBenchDecision: bestSwap,
   };
 }
 
@@ -371,12 +403,18 @@ export function weeklyAwards(
       detail: { matchupId: blow.m.espn_matchup_id, loserId: blow.m.winner === 'HOME' ? blow.m.away_team_id : blow.m.home_team_id },
     });
   }
+  // The closest game, recorded against the team that LOST it. Winning by 0.3
+  // is luck; losing by 0.3 is the thing anyone actually remembers, so the
+  // award goes to the team it happened to.
   const close = margins[margins.length - 1];
-  if (close) {
-    const winnerId = close.m.winner === 'HOME' ? close.m.home_team_id : close.m.away_team_id;
+  if (close && close.m.winner !== 'TIE') {
+    const loserId = close.m.winner === 'HOME' ? close.m.away_team_id : close.m.home_team_id;
     out.push({
-      season, week, awardKey: 'nailbiter', teamId: winnerId, value: round2(close.margin),
-      detail: { matchupId: close.m.espn_matchup_id },
+      season, week, awardKey: 'nailbiter', teamId: loserId, value: round2(close.margin),
+      detail: {
+        matchupId: close.m.espn_matchup_id,
+        winnerId: close.m.winner === 'HOME' ? close.m.home_team_id : close.m.away_team_id,
+      },
     });
   }
 

@@ -16,6 +16,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { EspnLeague } from './espn.ts';
+import type { RosterEntryRow } from './normalize.ts';
 import { matchupRows, rosterEntryRows, starterSlots, starterSlotCounts } from './normalize.ts';
 import {
   teamWeeks, standings, luckIndex, seasonLuck, optimalLineup,
@@ -115,6 +116,68 @@ test('season luck: expected wins are bounded and total sensibly', () => {
     const totalDelta = sl.reduce((a, s) => a + s.luckDelta, 0);
     assert.ok(Math.abs(totalDelta) < 1.0, `${season}: luck should net out, got ${totalDelta.toFixed(3)}`);
   }
+});
+
+test('the worst call is a swap that was legally available', () => {
+  // The bug this pins: pairing the best benched player with the
+  // lowest-scoring starter on the roster regardless of position. A benched RB
+  // is no indictment when the only starter he outscored was the kicker --
+  // nobody can start a running back at kicker.
+  const RB = 2, WR = 4, FLEX = 23, K = 17;
+  const entry = (
+    id: number, slot: number, points: number, isStarter: boolean
+  ): RosterEntryRow => ({
+    season: 2026, week: 1, espn_team_id: 1, espn_player_id: id,
+    lineup_slot_id: slot, is_starter: isStarter, applied_points: points,
+    projected_points: null, acquisition_type: null, injury_status: null,
+  });
+
+  // A bench RB scoring 16 behind two RBs and a FLEX who all did better, and a
+  // kicker who scored 1. The kicker is irrelevant: the RB cannot fill K.
+  const roster = [
+    entry(1, RB, 20, true), entry(2, RB, 18, true),
+    entry(3, FLEX, 17, true), entry(4, K, 1, true),
+    entry(9, 20 /* bench */, 16, false),
+  ];
+  const eligible = new Map<number, number[]>([
+    [1, [RB, FLEX]], [2, [RB, FLEX]], [3, [RB, WR, FLEX]], [4, [K]],
+    [9, [RB, FLEX]],
+  ]);
+  const slotCap = new Map<number, number>([[RB, 2], [FLEX, 1], [K, 1]]);
+
+  const clean = optimalLineup(roster, eligible, slotCap);
+  assert.ok(clean);
+  assert.equal(clean.worstBenchDecision, null,
+    'a lineup with no legal improving swap must report no worst call');
+
+  // Now drop one starting RB below the benched player: a real, legal mistake.
+  const blundered = roster.map((r) =>
+    r.espn_player_id === 2 ? { ...r, applied_points: 4 } : r
+  );
+  const caught = optimalLineup(blundered, eligible, slotCap);
+  assert.ok(caught?.worstBenchDecision);
+  assert.equal(caught.worstBenchDecision.playerId, 9);
+  assert.equal(caught.worstBenchDecision.displacedPlayerId, 2,
+    'must displace the RB it could legally replace, not the kicker');
+  assert.equal(caught.worstBenchDecision.displacedPoints, 4);
+  assert.equal(caught.worstBenchDecision.gain, 12);
+});
+
+test('an injured-reserve player is never counted as a missed start', () => {
+  const RB = 2, FLEX = 23, IR = 21;
+  const entry = (
+    id: number, slot: number, points: number, isStarter: boolean
+  ): RosterEntryRow => ({
+    season: 2026, week: 1, espn_team_id: 1, espn_player_id: id,
+    lineup_slot_id: slot, is_starter: isStarter, applied_points: points,
+    projected_points: null, acquisition_type: null, injury_status: null,
+  });
+  // A 40-point week from a player parked on IR is not a decision anyone made.
+  const roster = [entry(1, RB, 3, true), entry(9, IR, 40, false)];
+  const eligible = new Map<number, number[]>([[1, [RB, FLEX]], [9, [RB, FLEX]]]);
+  const res = optimalLineup(roster, eligible, new Map([[RB, 1]]));
+  assert.ok(res);
+  assert.equal(res.worstBenchDecision, null);
 });
 
 test('optimal lineup is never worse than what was actually started', () => {

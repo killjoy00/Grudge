@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   renderWeeklyRecap, recapSubject, ordinal, signed, movementLabel, lean,
+  introFor, grudgeLine,
   type WeeklyRecap,
 } from './recap.ts';
 
@@ -21,7 +22,8 @@ const full: WeeklyRecap = {
       },
       worstDecision: {
         team: 'Run & Hide', player: 'Jerry Jeudy',
-        benchPoints: '16.1', worstStarter: '-6.0', cost: '37.4',
+        benchPoints: '16.1', displaced: 'George Pickens',
+        displacedPoints: '4.7', cost: '11.4',
       },
       differentiator: {
         position: 'WR', homePoints: '62.3', awayPoints: '42.6', gap: '19.7',
@@ -33,8 +35,8 @@ const full: WeeklyRecap = {
   standings: [{ name: 'The <Penguins>', wins: 3, losses: 0, ties: 0, points_for: '340.1' }],
   predictions: [{ display_name: 'Ryan', correct: 8, points: '8', accuracy: '0.8' }],
   power: [
-    { name: 'The <Penguins>', rank: 1, score: '88.4', movement: 2 },
-    { name: 'Run & Hide', rank: 2, score: '71.0', movement: -1 },
+    { name: 'The <Penguins>', rank: 1, score: '88.4', movement: 2, playoff_pct: '94' },
+    { name: 'Run & Hide', rank: 2, score: '71.0', movement: -1, playoff_pct: null },
   ],
   nextWeek: [{
     away_name: 'Run & Hide', home_name: 'The <Penguins>',
@@ -45,12 +47,12 @@ const full: WeeklyRecap = {
     { name: 'Run & Hide', luck: '-1.7', wins: 1, losses: 2 },
   ],
   allPlay: [{ name: 'The <Penguins>', all_play_wins: 24, all_play_losses: 3, wins: 3, losses: 0, pct: '0.8889' }],
-  streaks: [{ name: 'The <Penguins>', result: 'W', length: 3 }],
+  streaks: [{ name: 'The <Penguins>', result: 'W', length: 4 }],
   grudge: {
-    team: 'Run & Hide', opponent: 'The <Penguins>',
+    home: 'The <Penguins>', away: 'Run & Hide', winner: 'AWAY',
     games: 19, wins: 8, losses: 11, ties: 0, first_season: 2018,
   },
-  history: [{ label: 'Closest', season: 2022, detail: 'Panda Bear edged Brightleaf 137.0-136.7' }],
+  history: [{ label: 'Closest ever', season: 2022, detail: 'Panda Bear edged Brightleaf 137.0-136.7 — by 0.3' }],
   recordWatch: [{ name: 'The <Penguins>', points: '194.5', all_time_rank: 1 }],
   disputed: {
     home_name: 'The <Penguins>', away_name: 'Run & Hide',
@@ -78,14 +80,14 @@ const SITE = 'https://grudge.planitnow.us/';
 test('every section renders when the week has one', () => {
   const { html, text } = renderWeeklyRecap(full, SITE);
   for (const heading of [
-    'The week', 'Record watch', 'Power rankings', 'Week 4', 'Luck report',
+    'This week&rsquo;s games', 'Record watch', 'Power rankings', 'Week 4', 'Luck report',
     'Streaks', 'All-play', 'Most disputed pick', 'The Grudge',
     'This week in Grudge history', 'Awards', 'Standings', 'Prediction leaders',
   ]) {
     assert.ok(html.includes(heading), `missing HTML section: ${heading}`);
   }
   for (const heading of [
-    'THE WEEK', 'RECORD WATCH', 'POWER RANKINGS', 'WEEK 4', 'LUCK REPORT',
+    "THIS WEEK'S GAMES", 'RECORD WATCH', 'POWER RANKINGS', 'WEEK 4', 'LUCK REPORT',
     'STREAKS', 'ALL-PLAY', 'MOST DISPUTED PICK', 'THE GRUDGE',
     'THIS WEEK IN GRUDGE HISTORY', 'STANDINGS',
   ]) {
@@ -110,7 +112,7 @@ test('a quiet week prints no heading it cannot fill', () => {
   }
   // What always survives.
   assert.ok(html.includes('Standings'));
-  assert.ok(html.includes('The week'));
+  assert.ok(html.includes('This week&rsquo;s games'));
 });
 
 test('per-matchup detail names the player, the cost, and the position', () => {
@@ -119,11 +121,11 @@ test('per-matchup detail names the player, the cost, and the position', () => {
   assert.match(html, /projected 20\.9/);
   assert.match(html, /\+15\.4/);          // the surprise, signed
   assert.match(html, /Jerry Jeudy/);
-  assert.match(html, /worst starter managed -6\.0/);
+  assert.match(html, /started George Pickens \(4\.7\)/);
   assert.match(html, /Decided at WR/);
 
   assert.match(text, /Surprise: Josh Allen/);
-  assert.match(text, /cost 37\.4/);
+  assert.match(text, /11\.4 left on the bench/);
   assert.match(text, /Decided at WR/);
 });
 
@@ -196,4 +198,46 @@ test('the lean names a favourite only when the rankings actually separate them',
   // Level, or unranked: no favourite rather than a coin-flip dressed as one.
   assert.equal(lean({ away_name: 'A', home_name: 'B', away_score: '80.0', home_score: '80.0' }), null);
   assert.equal(lean({ away_name: 'A', home_name: 'B', away_score: null, home_score: '80.0' }), null);
+});
+
+test('the intro rotates but is stable for a given week', () => {
+  // Stability matters more than variety: a delivery retry must not produce a
+  // different email from the one some of the league already received.
+  assert.equal(introFor(3), introFor(3));
+  const seen = new Set([1, 2, 3, 4, 5, 6, 7].map(introFor));
+  assert.ok(seen.size > 1, 'every week produced the same opener');
+  assert.ok(introFor(99).length > 0, 'a late week must still get an opener');
+});
+
+test('the grudge quotes the series from whoever is actually ahead', () => {
+  const base = {
+    home: 'Home', away: 'Away', games: 19, ties: 0, first_season: 2018,
+  };
+  // Home is 8-11, so AWAY leads -- the old wording claimed the home team did.
+  assert.match(
+    grudgeLine({ ...base, winner: 'AWAY', wins: 8, losses: 11 }),
+    /Away took it\. All time, Away lead it 11-8\./
+  );
+  assert.match(
+    grudgeLine({ ...base, winner: 'HOME', wins: 11, losses: 8 }),
+    /Home took it\. All time, Home lead it 11-8\./
+  );
+  assert.match(
+    grudgeLine({ ...base, winner: 'TIE', wins: 9, losses: 9 }),
+    /They tied\. All time, it is level at 9-9\./
+  );
+});
+
+test('playoff odds ride along with the rankings, and tolerate having none', () => {
+  const { html, text } = renderWeeklyRecap(full, SITE);
+  assert.match(html, /94%/);
+  assert.match(text, /94% playoffs/);
+  // The unranked-for-odds team must render a dash, not "null%".
+  assert.doesNotMatch(html, /null/);
+  assert.doesNotMatch(text, /null/);
+});
+
+test('the power rankings link out to the methodology', () => {
+  const { html } = renderWeeklyRecap(full, SITE);
+  assert.match(html, /https:\/\/grudge\.planitnow\.us\/rankings/);
 });

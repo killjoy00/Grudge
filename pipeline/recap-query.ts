@@ -87,11 +87,14 @@ async function matchupDetail(
     ),
 
     // Worst decision: the costlier of the two teams' start/sit mistakes.
-    // worst_bench_* is solved by the pipeline against each team's real
-    // eligibility, so this is a lookup rather than a re-derivation.
+    //
+    // Both joins to players are INNER on purpose. The pipeline stores a worst
+    // call only when a legal swap existed -- the benched player eligible for
+    // the slot the displaced starter actually held -- so a manager who set
+    // their lineup right produces no row here and the line is simply omitted.
     query<{
       espn_matchup_id: number; team: string; player: string;
-      bench_points: string; worst_starter: string | null; cost: string;
+      bench_points: string; displaced: string; displaced_points: string; cost: string;
     }>(
       `with m as (
          select espn_matchup_id, home_team_id, away_team_id
@@ -101,16 +104,18 @@ async function matchupDetail(
        select distinct on (m.espn_matchup_id)
               m.espn_matchup_id, t.name as team, pl.full_name as player,
               round(r.worst_bench_points, 1)::text as bench_points,
-              round(r.worst_bench_started_points, 1)::text as worst_starter,
-              round(r.points_left_on_bench, 1)::text as cost
+              dp.full_name as displaced,
+              round(r.worst_bench_started_points, 1)::text as displaced_points,
+              round(r.worst_bench_points - r.worst_bench_started_points, 1)::text as cost
          from m
          join public.team_week_results r
            on r.season = $1 and r.week = $2
           and r.espn_team_id in (m.home_team_id, m.away_team_id)
          join public.players pl on pl.espn_player_id = r.worst_bench_player_id
+         join public.players dp on dp.espn_player_id = r.worst_bench_displaced_player_id
          join public.teams t on t.season = $1 and t.espn_team_id = r.espn_team_id
-        where r.points_left_on_bench > 0
-        order by m.espn_matchup_id, r.points_left_on_bench desc`,
+        order by m.espn_matchup_id,
+                 r.worst_bench_points - r.worst_bench_started_points desc`,
       [season, week]
     ),
 
@@ -166,7 +171,7 @@ async function matchupDetail(
   for (const r of decisions) {
     detail(r.espn_matchup_id).worstDecision = {
       team: r.team, player: r.player, benchPoints: r.bench_points,
-      worstStarter: r.worst_starter, cost: r.cost,
+      displaced: r.displaced, displacedPoints: r.displaced_points, cost: r.cost,
     };
   }
   for (const r of gaps) {
@@ -250,18 +255,26 @@ async function disputedPick(
 
 /* -------------------------------------------------------- season colour */
 
-/** Cumulative luck: wins earned against wins the schedule handed over. */
+/**
+ * Wins banked against wins the team's scoring actually earned it, this season.
+ *
+ * luck_delta is ALREADY cumulative -- the pipeline writes a running
+ * actual-wins-minus-expected-wins at every week, so the week-14 row is the
+ * whole season's luck. Summing the column across weeks added fourteen
+ * running totals together and reported P RIVERS NAS NAS at +20.2 wins of luck
+ * in a 14-game season, which is not a number that can exist. Read the row at
+ * the requested week and nothing else.
+ */
 function luckReport(query: Query, season: number, week: number) {
   return query<RecapLuckRow>(
-    `select t.name, round(sum(l.luck_delta), 1)::text as luck,
-            max(r.cum_wins)::int as wins, max(r.cum_losses)::int as losses
+    `select t.name, round(l.luck_delta, 1)::text as luck,
+            r.cum_wins::int as wins, r.cum_losses::int as losses
        from public.luck_index l
        join public.team_week_results r
          on r.season = l.season and r.week = l.week and r.espn_team_id = l.espn_team_id
        join public.teams t on t.season = l.season and t.espn_team_id = l.espn_team_id
-      where l.season = $1 and l.week <= $2
-      group by t.name
-      order by sum(l.luck_delta) desc`,
+      where l.season = $1 and l.week = $2
+      order by l.luck_delta desc`,
     [season, week]
   );
 }
@@ -285,11 +298,14 @@ function allPlay(query: Query, season: number, week: number) {
 }
 
 /**
- * Active winning and losing runs.
+ * Active winning and losing runs, three games or longer.
  *
  * The streak is the count of weeks back to the first result that differs from
  * the latest one; when nothing differs, the team has done the same thing all
  * season and the streak is every week they have played.
+ *
+ * Two in a row is not a streak, it is a fortnight, so the floor is three and
+ * a week where nobody is on one returns nothing at all.
  */
 function streaks(query: Query, season: number, week: number) {
   return query<RecapStreak>(
@@ -308,52 +324,79 @@ function streaks(query: Query, season: number, week: number) {
          from r join current c using (espn_team_id)
         group by 1
      )
-     select t.name, c.result,
-            coalesce(b.first_change - 1, p.weeks)::int as length
-       from current c
-       join broke b using (espn_team_id)
-       join played p using (espn_team_id)
-       join public.teams t on t.season = $1 and t.espn_team_id = c.espn_team_id
-      order by length desc, c.result
+     select name, result, length from (
+       select t.name, c.result,
+              coalesce(b.first_change - 1, p.weeks)::int as length
+         from current c
+         join broke b using (espn_team_id)
+         join played p using (espn_team_id)
+         join public.teams t on t.season = $1 and t.espn_team_id = c.espn_team_id
+     ) s
+      where length >= 3
+      order by length desc, result
       limit 4`,
     [season, week]
   );
 }
 
 /**
- * THE GRUDGE: the most-played pairing in the league, and where it stands.
+ * THE GRUDGE: the game played THIS WEEK with the most history behind it, and
+ * where the result leaves the series.
+ *
+ * Anchored to a game that was actually played rather than the league's
+ * all-time-longest pairing, which never changes and so stopped being news
+ * after the first email. head_to_head already counts this week's result, so
+ * the record shown is the one the game just produced.
  *
  * ESPN era only. The 2005-2017 archive records season finishes, not who played
  * whom, so no head-to-head exists before 2018 and claiming one would be an
- * invention. Ties broken toward the closest record, because a 19-game series
- * sitting at 10-9 is a better grudge than a one-sided one.
+ * invention. Ties broken toward the closest series -- 10-9 is a better grudge
+ * than a one-sided one.
  */
-async function theGrudge(query: Query, season: number): Promise<RecapGrudge | null> {
+async function theGrudge(
+  query: Query, season: number, week: number
+): Promise<RecapGrudge | null> {
   const rows = await query<RecapGrudge>(
-    `select a.name as team, b.name as opponent,
+    `with m as (
+       select home_team_id, away_team_id, winner
+         from public.matchups
+        where season = $1 and week = $2 and is_final
+     )
+     select ht.name as home, at.name as away, m.winner,
             h.games::int as games, h.wins::int as wins,
             h.losses::int as losses, h.ties::int as ties,
             h.first_season::int as first_season
-       from public.head_to_head h
-       join public.teams a on a.season = $1 and a.espn_team_id = h.team_id
-       join public.teams b on b.season = $1 and b.espn_team_id = h.opp_id
-      where h.team_id < h.opp_id
+       from m
+       join public.head_to_head h
+         on h.team_id = m.home_team_id and h.opp_id = m.away_team_id
+       join public.teams ht on ht.season = $1 and ht.espn_team_id = m.home_team_id
+       join public.teams at on at.season = $1 and at.espn_team_id = m.away_team_id
       order by h.games desc, abs(h.wins - h.losses) asc
       limit 1`,
-    [season]
+    [season, week]
   );
   return rows[0] ?? null;
 }
 
 /**
- * The same week number, in earlier seasons: the biggest score and the closest
- * finish. Two different kinds of memory, and a week that produced neither
- * simply does not appear.
+ * One memory from the same week number in earlier seasons -- the single most
+ * remarkable thing that ever happened in a week N, not a list.
+ *
+ * Three candidates are gathered and exactly one is chosen, by a cascade with
+ * real thresholds rather than a fixed favourite:
+ *
+ *   1. A finish under a point. Rarer than any big number and the only one of
+ *      the three that is genuinely hard to do.
+ *   2. Otherwise a score that still sits in the all-time top ten.
+ *   3. Otherwise the biggest hiding anyone ever handed out.
+ *
+ * A week whose history holds none of those returns nothing, and the section
+ * is dropped rather than padded with the merely above-average.
  */
 async function thisWeekInHistory(
   query: Query, season: number, week: number
 ): Promise<RecapHistoryNote[]> {
-  const [biggest, closest] = await Promise.all([
+  const [biggest, closest, blowout, topTen] = await Promise.all([
     query<{ season: number; name: string; points: string; opponent: string | null; against: string }>(
       `select r.season, t.name, round(r.points_for, 1)::text as points,
               ot.name as opponent, round(r.points_against, 1)::text as against
@@ -366,9 +409,12 @@ async function thisWeekInHistory(
         limit 1`,
       [week, season]
     ),
+    // Two decimals on both sides, unlike everywhere else in the email: the
+    // whole claim is that the game was close, and 100.2-100.0 rounded to one
+    // looks like a 0.2 margin next to a stated 0.14.
     query<{ season: number; name: string; points: string; opponent: string | null; against: string; margin: string }>(
-      `select r.season, t.name, round(r.points_for, 1)::text as points,
-              ot.name as opponent, round(r.points_against, 1)::text as against,
+      `select r.season, t.name, round(r.points_for, 2)::text as points,
+              ot.name as opponent, round(r.points_against, 2)::text as against,
               round(r.points_for - r.points_against, 2)::text as margin
          from public.team_week_results r
          join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
@@ -380,26 +426,63 @@ async function thisWeekInHistory(
         limit 1`,
       [week, season]
     ),
+    query<{ season: number; name: string; points: string; opponent: string | null; against: string; margin: string }>(
+      `select r.season, t.name, round(r.points_for, 1)::text as points,
+              ot.name as opponent, round(r.points_against, 1)::text as against,
+              round(r.points_for - r.points_against, 1)::text as margin
+         from public.team_week_results r
+         join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
+         left join public.teams ot
+           on ot.season = r.season and ot.espn_team_id = r.opponent_team_id
+        where r.week = $1 and r.season < $2 and r.result = 'W'
+          and r.points_for is not null and r.points_against is not null
+        order by r.points_for - r.points_against desc
+        limit 1`,
+      [week, season]
+    ),
+    // The all-time top-ten cutoff, so "still one of the biggest ever" is a
+    // fact about the league rather than a guess at a round number.
+    query<{ cutoff: string | null }>(
+      `select min(points_for)::text as cutoff from (
+         select points_for from public.team_week_results
+          where points_for is not null
+          order by points_for desc limit $1
+       ) t`,
+      [RECORD_WATCH_DEPTH]
+    ),
   ]);
 
-  const out: RecapHistoryNote[] = [];
-  const top = biggest[0];
-  if (top) {
-    out.push({
-      label: 'Biggest',
-      season: top.season,
-      detail: `${top.name} put up ${top.points} on ${top.opponent ?? 'the field'} (${top.against})`,
-    });
-  }
   const tight = closest[0];
-  if (tight) {
-    out.push({
-      label: 'Closest',
+  if (tight && Number(tight.margin) < 1) {
+    return [{
+      label: 'Closest ever',
       season: tight.season,
-      detail: `${tight.name} edged ${tight.opponent ?? 'the field'} ${tight.points}-${tight.against}`,
-    });
+      detail: `${tight.name} edged ${tight.opponent ?? 'the field'} ` +
+        `${tight.points}-${tight.against} — by ${tight.margin}`,
+    }];
   }
-  return out;
+
+  const top = biggest[0];
+  const cutoff = Number(topTen[0]?.cutoff);
+  if (top && Number.isFinite(cutoff) && Number(top.points) >= cutoff) {
+    return [{
+      label: 'Biggest ever',
+      season: top.season,
+      detail: `${top.name} put ${top.points} on ${top.opponent ?? 'the field'} ` +
+        `(${top.against}) — still one of the ten best weeks in league history`,
+    }];
+  }
+
+  const rout = blowout[0];
+  if (rout) {
+    return [{
+      label: 'Biggest hiding',
+      season: rout.season,
+      detail: `${rout.name} beat ${rout.opponent ?? 'the field'} ` +
+        `${rout.points}-${rout.against} — by ${rout.margin}`,
+    }];
+  }
+  return [];
 }
 
 /* ------------------------------------------------------ looking forward */
@@ -415,12 +498,16 @@ async function thisWeekInHistory(
 function powerRankings(query: Query, season: number, week: number) {
   return query<RecapPowerRow>(
     `select t.name, p.rank, round(p.score * 100, 1)::text as score,
-            (prev.rank - p.rank)::int as movement
+            (prev.rank - p.rank)::int as movement,
+            round(o.playoff_pct * 100, 0)::text as playoff_pct
        from public.power_rankings p
        join public.teams t on t.season = p.season and t.espn_team_id = p.espn_team_id
        left join public.power_rankings prev
          on prev.season = p.season and prev.week = p.week - 1
         and prev.espn_team_id = p.espn_team_id
+       left join public.playoff_odds o
+         on o.season = p.season and o.week = p.week
+        and o.espn_team_id = p.espn_team_id
       where p.season = $1 and p.week = $2
       order by p.rank`,
     [season, week]
@@ -526,7 +613,7 @@ export async function loadRecap(
     luckReport(query, season, week),
     allPlay(query, season, week),
     streaks(query, season, week),
-    theGrudge(query, season),
+    theGrudge(query, season, week),
     thisWeekInHistory(query, season, week),
     recordWatch(query, season, week),
     disputedPick(query, season, week),
