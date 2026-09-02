@@ -15,7 +15,7 @@ import type { EspnLeague } from './espn.ts';
 import {
   starterSlots, starterCount, starterSlotCounts, seasonRow, teamRows, matchupRows,
   rosterEntryRows, playerRows, weekRows, weekCompleteness, completedWeeks,
-  finalScoringPeriod, BENCH_SLOT, IR_SLOT,
+  finalScoringPeriod, BENCH_SLOT, IR_SLOT, transactionRows,
 } from './normalize.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -232,5 +232,62 @@ test('starterCount sums slot multiplicities, unlike starterSlots.size', () => {
 test('final scoring period comes from the league, not a constant', () => {
   for (const season of PLAYED) {
     assert.ok(finalScoringPeriod(history(season)) >= 16);
+  }
+});
+
+test('a transaction with no status survives, because ESPN sends some that way', () => {
+  // The bug this pins cost a whole weekly run. transactions.status was written
+  // not-null on a sample that was entirely DRAFT records, every one of which
+  // carries 'EXECUTED'. A TRADE_ACCEPT carries no status at all, and the first
+  // accepted trade of the 2026 preseason failed the load.
+  const league = {
+    seasonId: 2026,
+    transactions: [
+      { id: 'a', type: 'DRAFT', status: 'EXECUTED', scoringPeriodId: 1, teamId: 4 },
+      // The real shape, from ESPN: no `status` key at all.
+      { id: 'b', type: 'TRADE_ACCEPT', executionType: 'EXECUTE', isPending: false,
+        scoringPeriodId: 1, teamId: 9, items: [] },
+    ],
+  } as unknown as EspnLeague;
+
+  const rows = transactionRows(league, new Set([1]));
+  assert.equal(rows.length, 2, 'a status-less transaction must not be dropped');
+  const accept = rows.find((r) => r.espn_transaction_id === 'b');
+  assert.ok(accept);
+  assert.equal(accept.status, null, 'null records that ESPN did not say');
+  assert.equal(accept.type, 'TRADE_ACCEPT');
+  assert.equal(accept.bid_amount, 0);
+});
+
+test('a transaction with no type is skipped, not stored unclassifiable', () => {
+  const league = {
+    seasonId: 2026,
+    transactions: [{ id: 'x', status: 'EXECUTED', scoringPeriodId: 1 }],
+  } as unknown as EspnLeague;
+  assert.equal(transactionRows(league, new Set([1])).length, 0);
+});
+
+test('transactions outside the known weeks are left alone', () => {
+  const league = {
+    seasonId: 2026,
+    transactions: [
+      { id: 'a', type: 'DRAFT', status: 'EXECUTED', scoringPeriodId: 1 },
+      { id: 'b', type: 'DRAFT', status: 'EXECUTED', scoringPeriodId: 99 },
+    ],
+  } as unknown as EspnLeague;
+  const rows = transactionRows(league, new Set([1]));
+  assert.deepEqual(rows.map((r) => r.espn_transaction_id), ['a']);
+});
+
+test('every archived season normalizes its transactions without a null type', () => {
+  // Against the real payloads: type is the discriminator and must never be
+  // null in a stored row, whatever new envelope shapes ESPN introduces.
+  for (const season of PLAYED) {
+    const league = history(season);
+    const weeks = new Set((league.schedule ?? []).map((m) => m.matchupPeriodId));
+    for (const row of transactionRows(league, weeks)) {
+      assert.ok(row.type, `${season}: stored a transaction with no type`);
+      assert.equal(typeof row.raw, 'string');
+    }
   }
 });

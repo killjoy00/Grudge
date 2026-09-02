@@ -417,3 +417,62 @@ export function freeAgentRows(payload: unknown): FreeAgentRow[] {
   // mid-transaction rather than at the boundary.
   return [...byId.values()];
 }
+
+/* ------------------------------------------------------------ transactions */
+
+export interface TransactionRow {
+  espn_transaction_id: string;
+  season: number;
+  week: number;
+  espn_team_id: number | null;
+  type: string;
+  /** Null where ESPN sends none. See the note below -- this is not a defect. */
+  status: string | null;
+  execution_type: string | null;
+  bid_amount: number;
+  is_pending: boolean;
+  proposed_at: string | null;
+  raw: string;
+}
+
+/**
+ * League transactions, for the weeks we know about.
+ *
+ * `status` is NULLABLE and that is the whole point. Every transaction in the
+ * archive at design time was a DRAFT, and every DRAFT carries 'EXECUTED', so
+ * the column was written not-null on the strength of a sample that happened to
+ * be uniform. A TRADE_ACCEPT sends no status at all -- it carries
+ * executionType 'EXECUTE', an empty items array, and a relatedTransactionId
+ * pointing at the proposal, which is where the status actually lives. The
+ * first accepted trade of the 2026 preseason failed the entire weekly run.
+ *
+ * Null records that ESPN did not say. Defaulting to 'EXECUTED' would assert
+ * something ESPN never sent, on an envelope whose own semantics we are
+ * inferring.
+ *
+ * A transaction with no `type` IS skipped: type is the discriminator, and a
+ * row we cannot classify is worse than no row.
+ */
+export function transactionRows(
+  league: EspnLeague, knownWeeks: Set<number>
+): TransactionRow[] {
+  const out: TransactionRow[] = [];
+  for (const t of league.transactions ?? []) {
+    if (!knownWeeks.has(t.scoringPeriodId)) continue;
+    if (!t.type) continue;
+    out.push({
+      espn_transaction_id: t.id,
+      season: league.seasonId,
+      week: t.scoringPeriodId,
+      espn_team_id: t.teamId ?? null,
+      type: t.type,
+      status: t.status ?? null,
+      execution_type: t.executionType ?? null,
+      bid_amount: t.bidAmount ?? 0,
+      is_pending: t.isPending ?? false,
+      proposed_at: t.proposedDate ? new Date(t.proposedDate).toISOString() : null,
+      raw: JSON.stringify(t),
+    });
+  }
+  return out;
+}
