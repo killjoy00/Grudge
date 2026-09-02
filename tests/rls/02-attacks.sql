@@ -369,6 +369,62 @@ select test.expect_error(
     values ('fake-franchise', 'Fake')$$,
   'T42 ATTACK admin cannot rewrite league history');
 
+/* ------------------------------------------------------------------ trades
+   Trades themselves are public -- they are league history. Votes on them are
+   not: the tally is withheld until you have voted, so nobody can read the room
+   before committing, which is the same rule the predictions page runs on. */
+
+reset role; reset app.user_id;
+insert into public.trades (season, trade_id, effective_week, team_a, team_b)
+values (2026, 'rls-trade', 3, 1, 6);
+insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+values (:'admin_id', 2026, 'rls-trade', 1);
+set role app_user;
+
+set app.user_id = :'owner_id';   -- has NOT voted on this trade
+select test.expect_count(
+  $$select count(*) from public.trades where trade_id = 'rls-trade'$$, 1,
+  'T43 trades are public to every member');
+
+select test.expect_count(
+  $$select count(*) from public.trade_votes where trade_id = 'rls-trade'$$, 0,
+  'T44 ATTACK read the tally before voting');
+
+select test.expect_error(
+  format($$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+           values ('%s', 2026, 'rls-trade', 6)$$, :'admin_id'),
+  'T45 ATTACK vote as another member');
+
+select test.expect_error(
+  $$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+    values (app.current_user_id(), 2026, 'rls-trade', 11)$$,
+  'T46 ATTACK vote for a team that is not in the trade');
+
+select test.expect_rowcount(
+  $$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+    values (app.current_user_id(), 2026, 'rls-trade', 6)$$, 1,
+  'T47 a member can vote on a trade');
+
+select test.expect_count(
+  $$select count(*) from public.trade_votes where trade_id = 'rls-trade'$$, 2,
+  'T48 the tally becomes visible once you have voted');
+
+select test.expect_rowcount(
+  format($$update public.trade_votes set voted_team_id = 6 where user_id = '%s'$$, :'admin_id'), 0,
+  'T49 ATTACK change another member vote');
+
+select test.expect_error(
+  $$insert into public.trades (season, trade_id, effective_week, team_a, team_b)
+    values (2026, 'invented', 1, 1, 6)$$,
+  'T50 ATTACK invent a trade from the browser');
+
+-- Identity cleared: a pooled connection must not carry the previous request's
+-- voter into the next one and hand them the tally.
+reset app.user_id;
+select test.expect_count(
+  $$select count(*) from public.trade_votes where trade_id = 'rls-trade'$$, 0,
+  'T51 identity cleared -> the tally is invisible again');
+
 reset role; reset app.user_id;
 
 \echo ''

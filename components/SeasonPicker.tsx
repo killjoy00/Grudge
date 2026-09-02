@@ -11,6 +11,7 @@
  */
 export function SeasonPicker({
   seasons, current, basePath, heading = 'Other seasons',
+  note = 'The league did not play in 2020.',
 }: {
   seasons: number[];
   /** The season being shown, highlighted. May not be in the list (a preseason year). */
@@ -18,6 +19,13 @@ export function SeasonPicker({
   /** e.g. "/standings" */
   basePath: string;
   heading?: string;
+  /**
+   * The footnote under the chips. The 2020 gap is the right thing to say on
+   * every page that lists the league's seasons; a page listing only the years
+   * that have a particular KIND of record -- trades, say -- passes its own,
+   * because a missing 2020 there means something different.
+   */
+  note?: string | null;
 }) {
   if (seasons.length === 0) return null;
   return (
@@ -32,9 +40,7 @@ export function SeasonPicker({
           </a>
         ))}
       </div>
-      <p className="note" style={{ marginTop: 10 }}>
-        The league did not play in 2020.
-      </p>
+      {note && <p className="note" style={{ marginTop: 10 }}>{note}</p>}
     </div>
   );
 }

@@ -61,8 +61,16 @@ echo "==> applying schema"
 $PSQL -f "$WORKDIR/schema.sql"
 echo "==> applying grants + fixtures"
 $PSQL -f "$ROOT/tests/rls/01-grants-and-fixtures.sql"
-echo "==> applying membership + history migration"
-$PSQL -f "$ROOT/scripts/migrations/2026-08-31-membership-recaps-history.sql"
+# Every migration, in date order. This used to name one file, which meant each
+# new migration silently fell outside the security suite -- the tables it added
+# did not exist here, so no policy on them could ever be tested. The glob sorts
+# lexicographically and the filenames are ISO dates, so order is the order they
+# were applied in production.
+echo "==> applying migrations"
+for migration in "$ROOT"/scripts/migrations/*.sql; do
+  echo "    $(basename "$migration")"
+  $PSQL -f "$migration"
+done
 echo "==> applying and validating provisioner role grants"
 $PSQL -f "$ROOT/scripts/provisioner-role.sql"
 echo "==> running attacks"
