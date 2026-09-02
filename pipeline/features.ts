@@ -13,7 +13,10 @@ import type { MatchupRow, RosterEntryRow } from './normalize.ts';
 import { IR_SLOT } from './normalize.ts';
 import { bestLineup, expandSlots } from './lineup.ts';
 
-export const MODEL_VERSION = '2026.1';
+// Bumped when a stored model's OUTPUT changes, so a row's provenance is
+// legible: 2026.2 moved power-ranking weight from all-play to actual record
+// (40/30/20/10, was 45/30/15/10).
+export const MODEL_VERSION = '2026.2';
 
 /* ------------------------------------------------------------- team-weeks */
 
@@ -302,9 +305,9 @@ export interface PowerRanking {
  * record looks.
  *
  * Weights, chosen deliberately and stated so they can be argued with:
- *   45%  all-play win pct  — record against the whole league, schedule removed
+ *   40%  all-play win pct  — record against the whole league, schedule removed
  *   30%  points per game   — raw scoring ability
- *   15%  actual win pct    — rewards winning, but cannot dominate
+ *   20%  actual win pct    — rewards winning, but cannot dominate
  *   10%  strength of sched — average all-play pct of opponents faced
  *
  * All-play is weighted above actual record on purpose: in a 10-team league a
@@ -344,9 +347,9 @@ export function powerRankings(tw: TeamWeek[], luck: LuckWeek[]): PowerRanking[] 
     const papg = s.pointsAgainst / games(s);
     const strength = sos.get(s.teamId) ?? 0.5;
     const score =
-      0.45 * ap +
+      0.40 * ap +
       0.30 * (ppg / maxPpg) +
-      0.15 * s.winPct +
+      0.20 * s.winPct +
       0.10 * strength;
     return {
       teamId: s.teamId,

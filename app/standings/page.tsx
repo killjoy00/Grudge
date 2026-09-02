@@ -1,4 +1,7 @@
-import { getCachedSeasonList, getCachedSeasonTable } from '../../lib/cached-queries.ts';
+import {
+  getCachedPreseasonTeams, getCachedSeasonList, getCachedSeasonTable,
+} from '../../lib/cached-queries.ts';
+import { getCurrentSeason } from '../../lib/queries.ts';
 
 // Render after deployment, then cache the underlying public data for an hour.
 export const dynamic = 'force-dynamic';
@@ -17,13 +20,59 @@ function finish(place: number | null) {
 export default async function Standings({
   searchParams,
 }: { searchParams: Promise<{ season?: string }> }) {
-  const seasons = await getCachedSeasonList();
   const sp = await searchParams;
-  const season = Number(sp.season) || seasons[0]?.season;
+  // Default to the season the league is actually IN, not the newest one with
+  // results. franchise_seasons is written from results, so through the whole
+  // preseason "newest with results" is last year -- which is how this page
+  // spent the summer presenting a finished season as the current table.
+  const [seasons, current] = await Promise.all([getCachedSeasonList(), getCurrentSeason()]);
+  const season = Number(sp.season) || current || seasons[0]?.season;
   if (!season) return <p className="empty">No seasons on record yet.</p>;
 
   const [rows, luck] = await getCachedSeasonTable(season);
-  if (rows.length === 0) return <p className="empty">Nothing on record for {season}.</p>;
+
+  if (rows.length === 0) {
+    const teams = await getCachedPreseasonTeams(season);
+    if (teams.length === 0) {
+      return <p className="empty">Nothing on record for {season}.</p>;
+    }
+    const previous = seasons.find((s) => s.season < season)?.season;
+    return (
+      <>
+        <div className="page-hero compact-hero">
+          <div className="eyebrow">{season} season</div>
+          <h1>The table</h1>
+        </div>
+        <div className="card">
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th className="rank">#</th><th>Team</th>
+                  <th className="num">Record</th><th className="num">Games</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.map((t, i) => (
+                  <tr key={t.espn_team_id}>
+                    <td className="rank">{i + 1}</td>
+                    <td><a href={`/team/${t.espn_team_id}`} className="tname">{t.name}</a></td>
+                    <td className="num">0-0</td>
+                    <td className="num">{t.games}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="note">
+            Nobody has played yet, so this is the field and the schedule rather
+            than a table.{' '}
+            {previous && <a href={`/standings?season=${previous}`}>See {previous}</a>}
+          </p>
+        </div>
+      </>
+    );
+  }
 
   const luckBy = new Map(luck.map((l) => [l.espn_team_id, l]));
   const hasLuck = luck.length > 0;
@@ -34,7 +83,6 @@ export default async function Standings({
       <div className="page-hero compact-hero">
         <div className="eyebrow">{season} season</div>
         <h1>The table</h1>
-        <p>Seeding breaks ties by total points scored—the league&rsquo;s own rule.</p>
       </div>
 
       <div className="card">

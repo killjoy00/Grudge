@@ -56,6 +56,8 @@ export interface RecapAward {
   award_key: string;
   name: string | null;
   value: string;
+  /** Who they lost to, or who they benched. Null for awards with no counterpart. */
+  against: string | null;
 }
 
 export interface RecapBenchRow {
@@ -109,7 +111,11 @@ export interface RecapAllPlayRow {
   all_play_losses: number;
   wins: number;
   losses: number;
+  games: number;
   pct: string | null;
+  /** All-play rescaled to games actually played, so it sits beside the record. */
+  scaled_wins: string | null;
+  scaled_losses: string | null;
 }
 
 export interface RecapStreak {
@@ -264,6 +270,27 @@ export function grudgeLine(g: RecapGrudge): string {
     : `${won} took it. All time, ${standing}.`;
 }
 
+/**
+ * All-play on the same scale as the real record.
+ *
+ * Raw all-play counts nine games a week, so a 14-week season reads 87-39 and
+ * cannot be compared to 8-6 without arithmetic. Rescaled to games actually
+ * played it becomes 9.7-4.3, which says "should have two more wins" at a
+ * glance. Falls back to the raw figure if the scaling is unavailable.
+ */
+export function allPlayRecord(row: RecapAllPlayRow): string {
+  if (row.scaled_wins === null || row.scaled_losses === null) {
+    return `${row.all_play_wins}-${row.all_play_losses}`;
+  }
+  return `${row.scaled_wins}-${row.scaled_losses}`;
+}
+
+/** The second name an award needs: who beat them, or who they sat. */
+export function awardAside(award: RecapAward): string {
+  if (award.against === null) return '';
+  return award.award_key === 'nailbiter' ? `lost to ${award.against}` : `benched ${award.against}`;
+}
+
 /** Rank movement as an arrow. Null means the team was not ranked last week. */
 export function movementLabel(movement: number | null): string {
   if (movement === null || movement === 0) return '—';
@@ -314,11 +341,37 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
   const subject = recapSubject(recap);
 
   const border = 'border-bottom:1px solid #e5e7eb;padding:9px 6px;';
-  const h2 = 'font-size:17px;margin:30px 0 8px;letter-spacing:-.01em';
   const table = 'width:100%;border-collapse:collapse;font-size:14px';
   const sub = 'color:#6b7280;font-size:13px;margin:0 0 10px';
   const chip = 'display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;' +
     'letter-spacing:.06em;padding:2px 7px;border-radius:99px;';
+
+  /**
+   * One accent colour per section, reused for its rule, its label and its
+   * numbers. The matchup cards already earned these three -- green for the
+   * surprise, red for the blunder, indigo for the margin -- so the rest of the
+   * letter borrows the same family rather than inventing a second palette.
+   */
+  const ACCENT = {
+    games: '#4338ca', record: '#b45309', power: '#0f766e', luck: '#7c3aed',
+    streak: '#be123c', allplay: '#0369a1', disputed: '#a21caf',
+    grudge: '#9a3412', history: '#4d7c0f', awards: '#a16207',
+    standings: '#334155', predictions: '#1d4ed8', next: '#047857',
+  } as const;
+
+  /**
+   * A section header: a coloured rule, a small caps label, the title, and an
+   * optional line of explanation. Every section is built through this, which
+   * is what stops the email drifting back into an undifferentiated stack of
+   * bold text and tables.
+   */
+  const head = (accent: string, label: string, title: string, note = '') =>
+    `<div style="margin:32px 0 10px">
+       <div style="height:3px;width:34px;background:${accent};border-radius:2px"></div>
+       <div style="color:${accent};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;margin-top:9px">${escapeHtml(label)}</div>
+       <h2 style="font-size:19px;margin:2px 0 0;letter-spacing:-.02em">${title}</h2>
+       ${note ? `<p style="${sub};margin-top:5px">${note}</p>` : ''}
+     </div>`;
 
   /* ------------------------------------------------------- the matchups */
 
@@ -369,11 +422,12 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
   /* ------------------------------------------------- conditional blocks */
 
   const recordWatchHtml = recap.recordWatch.length ? `
-    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:14px 16px;margin:22px 0">
-      <div style="${chip}background:#f59e0b;color:white">Record watch</div>
-      <div style="margin-top:8px;font-size:14px;line-height:1.7">
+    <div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;border-radius:12px;padding:16px 18px;margin:24px 0">
+      <div style="${chip}background:#b45309;color:white">Record watch</div>
+      <div style="margin-top:9px;font-size:15px;line-height:1.7">
         ${recap.recordWatch.map((row) =>
-          `<strong>${escapeHtml(row.name)}</strong>'s ${escapeHtml(row.points)} is the ` +
+          `<strong>${escapeHtml(row.name)}</strong>&rsquo;s ` +
+          `<strong style="color:${ACCENT.record}">${escapeHtml(row.points)}</strong> is the ` +
           `<strong>${ordinal(row.all_time_rank)}-best week</strong> in league history.`
         ).join('<br>')}
       </div>
@@ -382,132 +436,148 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
   const disputedHtml = recap.disputed ? (() => {
     const d = recap.disputed;
     const won = d.winner === 'HOME' ? d.home_name : d.winner === 'AWAY' ? d.away_name : null;
-    return `
-    <h2 style="${h2}">Most disputed pick</h2>
-    <p style="${sub}">The game the league could not agree on.</p>
-    <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.8">
-      <strong>${escapeHtml(d.away_name)}</strong> ${d.away_votes} vote${d.away_votes === 1 ? '' : 's'}
-      &nbsp;·&nbsp;
-      <strong>${escapeHtml(d.home_name)}</strong> ${d.home_votes} vote${d.home_votes === 1 ? '' : 's'}
-      ${won ? `<div style="color:#6b7280;margin-top:4px">${escapeHtml(won)} won it.</div>` : ''}
+    const side = (name: string, votes: number, right: boolean) =>
+      `<div style="flex:1;padding:10px 12px;border-radius:8px;background:${right ? '#ecfdf5' : '#f8fafc'};` +
+      `border:1px solid ${right ? '#a7f3d0' : '#e5e7eb'}">` +
+      `<div style="font-weight:700">${escapeHtml(name)}</div>` +
+      `<div style="color:#6b7280;font-size:12px;margin-top:2px">${votes} vote${votes === 1 ? '' : 's'}` +
+      `${right ? ' &middot; right' : ''}</div></div>`;
+    return head(ACCENT.disputed, 'Split house', 'Most disputed pick',
+      'The game the league could not agree on.') + `
+    <div style="display:flex;gap:10px">
+      ${side(d.away_name, d.away_votes, won === d.away_name)}
+      ${side(d.home_name, d.home_votes, won === d.home_name)}
     </div>`;
   })() : '';
 
   /* ---------------------------------------------------------- the rest */
 
-  const powerHtml = recap.power.length ? `
-    <h2 style="${h2}">Power rankings</h2>
-    <p style="${sub}">
-      Weighted toward all-play record, so the schedule counts for less than the scoring.
-      <a href="${escapeHtml(siteUrl)}/rankings" style="color:#2563eb">See the methodology</a>.
-    </p>
+  const powerHtml = recap.power.length
+    ? head(ACCENT.power, 'The pecking order', 'Power rankings',
+        `40% all-play, 30% points per game, 20% actual record, 10% strength of schedule. ` +
+        `<a href="${escapeHtml(siteUrl)}/rankings" style="color:${ACCENT.power};font-weight:600">See the methodology</a>.`) + `
     <table role="presentation" style="${table}">
       <tr><th style="${border}text-align:left" colspan="2">Team</th>
           <th style="${border}text-align:right">Score</th>
           <th style="${border}text-align:right">Move</th>
           <th style="${border}text-align:right">Playoffs</th></tr>
       ${recap.power.map((row) =>
-        `<tr><td style="${border}color:#6b7280;width:22px">${row.rank}</td>` +
+        `<tr><td style="${border}color:${ACCENT.power};width:26px;font-weight:800">${row.rank}</td>` +
         `<td style="${border}"><strong>${escapeHtml(row.name)}</strong></td>` +
-        `<td style="${border}text-align:right">${escapeHtml(row.score)}</td>` +
-        `<td style="${border}text-align:right;color:${(row.movement ?? 0) > 0 ? '#047857' : (row.movement ?? 0) < 0 ? '#b91c1c' : '#9ca3af'}">` +
+        `<td style="${border}text-align:right;font-variant-numeric:tabular-nums">${escapeHtml(row.score)}</td>` +
+        `<td style="${border}text-align:right;font-weight:700;color:${(row.movement ?? 0) > 0 ? '#047857' : (row.movement ?? 0) < 0 ? '#b91c1c' : '#9ca3af'}">` +
         `${movementLabel(row.movement)}</td>` +
-        `<td style="${border}text-align:right">${row.playoff_pct === null ? '—' : `${escapeHtml(row.playoff_pct)}%`}</td></tr>`
+        `<td style="${border}text-align:right;font-variant-numeric:tabular-nums">${row.playoff_pct === null ? '—' : `${escapeHtml(row.playoff_pct)}%`}</td></tr>`
       ).join('')}
     </table>` : '';
 
   const luckiest = recap.luck[0];
   const unluckiest = recap.luck[recap.luck.length - 1];
-  const luckHtml = recap.luck.length >= 2 && luckiest && unluckiest ? `
-    <h2 style="${h2}">Luck report</h2>
-    <p style="${sub}">Wins banked against wins the schedule actually earned them.</p>
-    <table role="presentation" style="${table}">
-      <tr><td style="${border}"><div style="${chip}background:#dcfce7;color:#166534">Luckiest</div></td>
-          <td style="${border}"><strong>${escapeHtml(luckiest.name)}</strong>
-            <div style="color:#6b7280;font-size:12px">${luckiest.wins}-${luckiest.losses} with ${escapeHtml(signed(luckiest.luck))} wins of luck</div></td></tr>
-      <tr><td style="${border}"><div style="${chip}background:#fee2e2;color:#991b1b">Robbed</div></td>
-          <td style="${border}"><strong>${escapeHtml(unluckiest.name)}</strong>
-            <div style="color:#6b7280;font-size:12px">${unluckiest.wins}-${unluckiest.losses} with ${escapeHtml(signed(unluckiest.luck))} wins of luck</div></td></tr>
-    </table>` : '';
+  const luckHtml = recap.luck.length >= 2 && luckiest && unluckiest
+    ? head(ACCENT.luck, 'Fortune', 'Luck report',
+        'Wins banked against wins their scoring actually earned.') + `
+    <div style="display:flex;gap:10px">
+      <div style="flex:1;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:10px;padding:13px 15px">
+        <div style="${chip}background:#166534;color:white">Luckiest</div>
+        <div style="font-weight:700;margin-top:8px">${escapeHtml(luckiest.name)}</div>
+        <div style="color:#6b7280;font-size:12px;margin-top:2px">
+          ${luckiest.wins}-${luckiest.losses} &middot; <strong style="color:#166534">${escapeHtml(signed(luckiest.luck))}</strong> wins
+        </div>
+      </div>
+      <div style="flex:1;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;padding:13px 15px">
+        <div style="${chip}background:#991b1b;color:white">Robbed</div>
+        <div style="font-weight:700;margin-top:8px">${escapeHtml(unluckiest.name)}</div>
+        <div style="color:#6b7280;font-size:12px;margin-top:2px">
+          ${unluckiest.wins}-${unluckiest.losses} &middot; <strong style="color:#991b1b">${escapeHtml(signed(unluckiest.luck))}</strong> wins
+        </div>
+      </div>
+    </div>` : '';
 
-  const allPlayHtml = recap.allPlay.length ? `
-    <h2 style="${h2}">All-play</h2>
-    <p style="${sub}">What the record would be if everyone played everyone, every week.</p>
+  const allPlayHtml = recap.allPlay.length
+    ? head(ACCENT.allplay, 'Everyone, every week', 'All-play',
+        'What the record would be against the whole league each week, ' +
+        'scaled to the same number of games as the real one.') + `
     <table role="presentation" style="${table}">
       <tr><th style="${border}text-align:left">Team</th>
           <th style="${border}text-align:right">All-play</th>
           <th style="${border}text-align:right">Actual</th></tr>
       ${recap.allPlay.map((row) =>
         `<tr><td style="${border}"><strong>${escapeHtml(row.name)}</strong></td>` +
-        `<td style="${border}text-align:right">${row.all_play_wins}-${row.all_play_losses}</td>` +
-        `<td style="${border}text-align:right;color:#6b7280">${row.wins}-${row.losses}</td></tr>`
+        `<td style="${border}text-align:right;font-variant-numeric:tabular-nums">` +
+        `<strong style="color:${ACCENT.allplay}">${escapeHtml(allPlayRecord(row))}</strong>` +
+        `<span style="color:#9ca3af"> (${row.all_play_wins}-${row.all_play_losses})</span></td>` +
+        `<td style="${border}text-align:right;color:#6b7280;font-variant-numeric:tabular-nums">${row.wins}-${row.losses}</td></tr>`
       ).join('')}
     </table>` : '';
 
-  const streakHtml = recap.streaks.length ? `
-    <h2 style="${h2}">Streaks</h2>
+  const streakHtml = recap.streaks.length
+    ? head(ACCENT.streak, 'On a run', 'Streaks') + `
     <table role="presentation" style="${table}">
       ${recap.streaks.map((row) =>
         `<tr><td style="${border}"><strong>${escapeHtml(row.name)}</strong></td>` +
-        `<td style="${border}text-align:right;color:${row.result === 'W' ? '#047857' : '#b91c1c'}">` +
+        `<td style="${border}text-align:right;font-weight:700;color:${row.result === 'W' ? '#047857' : '#b91c1c'}">` +
         `${row.result === 'W' ? 'won' : 'lost'} ${row.length} straight</td></tr>`
       ).join('')}
     </table>` : '';
 
   const grudgeHtml = recap.grudge ? (() => {
     const g = recap.grudge;
-    return `
-    <h2 style="${h2}">The Grudge</h2>
-    <p style="${sub}">The game with the most history behind it this week. ESPN era, 2018 on.</p>
-    <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;font-size:14px">
-      <strong>${escapeHtml(g.home)}</strong> vs <strong>${escapeHtml(g.away)}</strong>
-      <div style="margin-top:5px">${escapeHtml(grudgeLine(g))}</div>
-      <div style="color:#6b7280;margin-top:4px">
+    return head(ACCENT.grudge, 'Old business', 'The Grudge',
+      'The game with the most history behind it this week. ESPN era, 2018 on.') + `
+    <div style="border:1px solid #fed7aa;background:#fff7ed;border-radius:12px;padding:16px 18px;font-size:15px">
+      <strong>${escapeHtml(g.home)}</strong>
+      <span style="color:#9ca3af">vs</span>
+      <strong>${escapeHtml(g.away)}</strong>
+      <div style="margin-top:6px;color:${ACCENT.grudge};font-weight:600">${escapeHtml(grudgeLine(g))}</div>
+      <div style="color:#6b7280;margin-top:4px;font-size:13px">
         ${g.games} meetings since ${g.first_season}
       </div>
     </div>`;
   })() : '';
 
-  const historyHtml = recap.history.length ? `
-    <h2 style="${h2}">This week in Grudge history</h2>
-    <table role="presentation" style="${table}">
-      ${recap.history.map((row) =>
-        `<tr><td style="${border}color:#6b7280;white-space:nowrap;vertical-align:top">` +
-        `${escapeHtml(row.label)} · ${row.season}</td>` +
-        `<td style="${border}">${escapeHtml(row.detail)}</td></tr>`
-      ).join('')}
-    </table>` : '';
+  const historyHtml = recap.history.length
+    ? head(ACCENT.history, 'The archive', 'This week in Grudge Match history') + `
+    ${recap.history.map((row) =>
+      `<div style="border-left:3px solid ${ACCENT.history};background:#f7fee7;border-radius:0 8px 8px 0;padding:12px 15px;font-size:14px">` +
+      `<div style="${chip}background:${ACCENT.history};color:white">${escapeHtml(row.label)} &middot; ${row.season}</div>` +
+      `<div style="margin-top:7px">${escapeHtml(row.detail)}</div></div>`
+    ).join('')}` : '';
 
-  const nextHtml = recap.nextWeek.length ? `
-    <h2 style="${h2}">Week ${recap.week + 1}</h2>
-    <p style="${sub}">${escapeHtml(LOCK_RULE)} The lean is the power-rating gap, not a projected score.</p>
+  const nextHtml = recap.nextWeek.length
+    ? head(ACCENT.next, 'Coming up', `Week ${recap.week + 1}`,
+        `${escapeHtml(LOCK_RULE)} The call is the power-rating gap, not a projected score.`) + `
     <table role="presentation" style="${table}">
       ${recap.nextWeek.map((game) => {
         const pick = lean(game);
         return `<tr><td style="${border}">${escapeHtml(game.away_name)} ` +
           `<span style="color:#9ca3af">at</span> ${escapeHtml(game.home_name)}</td>` +
-          `<td style="${border}text-align:right;color:#6b7280;white-space:nowrap">` +
-          `${pick ? `leans ${escapeHtml(pick.name)} (+${escapeHtml(pick.margin)} rating)` : 'pick&rsquo;em'}</td></tr>`;
+          `<td style="${border}text-align:right;white-space:nowrap">` +
+          `${pick
+            ? `<strong style="color:${ACCENT.next}">${escapeHtml(pick.name)}</strong>` +
+              `<span style="color:#9ca3af"> +${escapeHtml(pick.margin)}</span>`
+            : '<span style="color:#9ca3af">pick&rsquo;em</span>'}</td></tr>`;
       }).join('')}
     </table>
-    <p style="margin:14px 0 0;text-align:center">
-      <a href="${escapeHtml(siteUrl)}/predictions" style="display:inline-block;background:#111827;color:white;text-decoration:none;font-weight:700;padding:11px 17px;border-radius:8px">Make your picks</a>
+    <p style="margin:16px 0 0;text-align:center">
+      <a href="${escapeHtml(siteUrl)}/predictions" style="display:inline-block;background:${ACCENT.next};color:white;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:8px">Make your picks</a>
     </p>` : '';
 
   const standingsHtml = recap.standings.slice(0, 10).map((row, index) =>
-    `<tr><td style="${border}color:#6b7280">${index + 1}</td><td style="${border}"><strong>${escapeHtml(row.name)}</strong></td>` +
-    `<td style="${border}text-align:right">${escapeHtml(record(row))}</td>` +
-    `<td style="${border}text-align:right">${escapeHtml(row.points_for)}</td></tr>`
+    `<tr><td style="${border}color:${index < 6 ? ACCENT.standings : '#cbd5e1'};font-weight:800;width:26px">${index + 1}</td>` +
+    `<td style="${border}"><strong>${escapeHtml(row.name)}</strong></td>` +
+    `<td style="${border}text-align:right;font-variant-numeric:tabular-nums">${escapeHtml(record(row))}</td>` +
+    `<td style="${border}text-align:right;color:#6b7280;font-variant-numeric:tabular-nums">${escapeHtml(row.points_for)}</td></tr>`
   ).join('');
 
   const awardsHtml = recap.awards.map((award) =>
-    `<tr><td style="${border}">${escapeHtml(AWARD_LABELS[award.award_key] ?? award.award_key)}</td>` +
-    `<td style="${border}"><strong>${escapeHtml(award.name ?? '—')}</strong></td>` +
-    `<td style="${border}text-align:right">${escapeHtml(award.value)}</td></tr>`
+    `<tr><td style="${border}color:#6b7280">${escapeHtml(AWARD_LABELS[award.award_key] ?? award.award_key)}</td>` +
+    `<td style="${border}"><strong>${escapeHtml(award.name ?? '—')}</strong>` +
+    `${award.against ? `<span style="color:#9ca3af"> (${escapeHtml(awardAside(award))})</span>` : ''}</td>` +
+    `<td style="${border}text-align:right;font-variant-numeric:tabular-nums">${escapeHtml(award.value)}</td></tr>`
   ).join('');
 
-  const predictionsHtml = recap.predictions.length ? `
-    <h2 style="${h2}">Prediction leaders</h2>
+  const predictionsHtml = recap.predictions.length
+    ? head(ACCENT.predictions, 'The oracle standings', 'Prediction leaders') + `
     <table role="presentation" style="${table}">
       <tr><th style="${border}text-align:left">Member</th><th style="${border}text-align:right">Correct</th><th style="${border}text-align:right">Accuracy</th></tr>
       ${recap.predictions.slice(0, 3).map((row) =>
@@ -521,33 +591,35 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
     : `Every matchup from Week ${recap.week}, and what decided it.`;
 
   const html = `<!doctype html>
-<html><body style="margin:0;background:#f4f5f7;color:#17191f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<html><body style="margin:0;background:#eef1f6;color:#17191f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="display:none;max-height:0;overflow:hidden">${escapeHtml(preview)}</div>
   <div style="max-width:680px;margin:0 auto;padding:24px 14px">
-    <div style="background:#111827;color:white;border-radius:12px 12px 0 0;padding:24px">
-      <div style="color:#93c5fd;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">UNC Grudge Match</div>
-      <h1 style="font-size:28px;margin:5px 0 0">Week ${recap.week}</h1>
-      <div style="color:#cbd5e1;margin-top:6px;font-size:15px">${escapeHtml(introFor(recap.week))}</div>
-      <div style="color:#8fa0b8;margin-top:3px;font-size:13px">${recap.season} season</div>
+    <div style="background:linear-gradient(135deg,#111827 0%,#1e2a44 55%,#312e5f 100%);color:white;border-radius:14px 14px 0 0;padding:26px 24px 24px">
+      <div style="color:#93c5fd;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em">UNC Grudge Match</div>
+      <h1 style="font-size:34px;margin:6px 0 0;letter-spacing:-.03em">Week ${recap.week}</h1>
+      <div style="height:3px;width:46px;background:#93c5fd;border-radius:2px;margin:12px 0 11px"></div>
+      <div style="color:#e2e8f0;font-size:15px;line-height:1.5">${escapeHtml(introFor(recap.week))}</div>
+      <div style="color:#94a3b8;margin-top:4px;font-size:12px;letter-spacing:.04em">${recap.season} SEASON</div>
     </div>
-    <div style="background:white;border-radius:0 0 12px 12px;padding:24px">
-      <h2 style="${h2};margin-top:0">This week&rsquo;s games</h2>
+    <div style="background:white;border-radius:0 0 14px 14px;padding:8px 24px 26px">
+      ${head(ACCENT.games, 'The tape', 'This week&rsquo;s games')}
       ${gamesHtml}
       ${recordWatchHtml}
       ${powerHtml}
-      ${nextHtml}
       ${luckHtml}
       ${streakHtml}
       ${allPlayHtml}
       ${disputedHtml}
       ${grudgeHtml}
       ${historyHtml}
-      ${recap.awards.length ? `<h2 style="${h2}">Awards</h2><table role="presentation" style="${table}">${awardsHtml}</table>` : ''}
-      <h2 style="${h2}">Standings</h2>
+      ${recap.awards.length ? head(ACCENT.awards, 'Hardware', 'Awards') + `<table role="presentation" style="${table}">${awardsHtml}</table>` : ''}
+      ${head(ACCENT.standings, 'Where it stands', 'Standings',
+        'The top six make the bracket.')}
       <table role="presentation" style="${table}"><tr><th style="${border}"></th><th style="${border}text-align:left">Team</th><th style="${border}text-align:right">Record</th><th style="${border}text-align:right">Points</th></tr>${standingsHtml}</table>
       ${predictionsHtml}
-      <p style="margin:30px 0 8px;text-align:center"><a href="${escapeHtml(siteUrl)}" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:8px">Open the full recap</a></p>
-      <p style="color:#6b7280;font-size:12px;text-align:center;margin:20px 0 0">Sent to members of the UNC Grudge Match fantasy league.</p>
+      ${nextHtml}
+      <p style="margin:32px 0 8px;text-align:center"><a href="${escapeHtml(siteUrl)}" style="display:inline-block;background:#111827;color:white;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:8px">Open the full site</a></p>
+      <p style="color:#9ca3af;font-size:12px;text-align:center;margin:18px 0 0">Sent to members of the UNC Grudge Match fantasy league.</p>
     </div>
   </div>
 </body></html>`;
@@ -587,7 +659,7 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
   const nextText = recap.nextWeek.map((game) => {
     const pick = lean(game);
     return `${game.away_name} at ${game.home_name}` +
-      (pick ? ` — leans ${pick.name} (+${pick.margin} rating)` : " — pick'em");
+      (pick ? ` — ${pick.name} by ${pick.margin} (power rating)` : " — pick'em");
   }).join('\n');
 
   const luckText = luckiest && unluckiest && recap.luck.length >= 2
@@ -600,7 +672,8 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
   ).join('\n');
 
   const allPlayText = recap.allPlay.map((row) =>
-    `${row.name} — ${row.all_play_wins}-${row.all_play_losses} all-play (actual ${row.wins}-${row.losses})`
+    `${row.name} — ${allPlayRecord(row)} all-play ` +
+    `(${row.all_play_wins}-${row.all_play_losses} raw; actual ${row.wins}-${row.losses})`
   ).join('\n');
 
   const grudgeText = recap.grudge
@@ -617,9 +690,11 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
       `${recap.disputed.home_name} ${recap.disputed.home_votes}`
     : '';
 
-  const awardText = recap.awards.map((award) =>
-    `${AWARD_LABELS[award.award_key] ?? award.award_key}: ${award.name ?? '—'} (${award.value})`
-  ).join('\n');
+  const awardText = recap.awards.map((award) => {
+    const aside = award.against ? `, ${awardAside(award)}` : '';
+    return `${AWARD_LABELS[award.award_key] ?? award.award_key}: ` +
+      `${award.name ?? '—'} (${award.value}${aside})`;
+  }).join('\n');
   const standingsText = recap.standings.slice(0, 10).map((row, index) =>
     `${index + 1}. ${row.name} — ${record(row)}, ${row.points_for} points`
   ).join('\n');
@@ -633,17 +708,17 @@ export function renderWeeklyRecap(recap: WeeklyRecap, rawSiteUrl: string): Rende
     `THIS WEEK'S GAMES\n${gameText}`,
     recordWatchText && `RECORD WATCH\n${recordWatchText}`,
     powerText && `POWER RANKINGS\n${powerText}`,
-    nextText && `WEEK ${recap.week + 1}\n${LOCK_RULE}\n${nextText}`,
     luckText && `LUCK REPORT\n${luckText}`,
     streakText && `STREAKS\n${streakText}`,
     allPlayText && `ALL-PLAY\n${allPlayText}`,
     disputedText && `MOST DISPUTED PICK\n${disputedText}`,
     grudgeText && `THE GRUDGE\n${grudgeText}`,
-    historyText && `THIS WEEK IN GRUDGE HISTORY\n${historyText}`,
+    historyText && `THIS WEEK IN GRUDGE MATCH HISTORY\n${historyText}`,
     awardText && `AWARDS\n${awardText}`,
     `STANDINGS\n${standingsText}`,
     predictionText && `PREDICTION LEADERS\n${predictionText}`,
-    `Full recap: ${siteUrl}`,
+    nextText && `COMING UP — WEEK ${recap.week + 1}\n${LOCK_RULE}\n${nextText}`,
+    `Full site: ${siteUrl}`,
   ].filter(Boolean).join('\n\n');
 
   return { subject, html, text };

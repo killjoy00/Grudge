@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   ['/', 'Scoreboard'],
   ['/standings', 'Standings'],
-  ['/rankings', 'Power'],
+  ['/rankings', 'Power Rankings'],
   ['/odds', 'Odds'],
   ['/predictions', 'Predictions'],
   ['/history', 'History'],
