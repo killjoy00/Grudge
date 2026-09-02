@@ -99,7 +99,7 @@ export default async function History() {
       <div className="page-hero">
         <div className="eyebrow">The permanent record</div>
         <h1>League history</h1>
-        <p>Franchises endure. Team names change. Managers come, go, and occasionally return.</p>
+        <p>Franchises endure. Team names change.</p>
       </div>
 
       {franchises.length === 0 ? (
@@ -151,19 +151,6 @@ export default async function History() {
               rows={managerRows(currentManagers)}
             />
           </div>
-
-          {formerManagers.length > 0 && (
-            <>
-              <h3 style={{ marginTop: 26 }}>Former managers</h3>
-              <p className="sub">Everyone who has held a franchise and moved on.</p>
-              <div className="card">
-                <SortableTable
-                  columns={[{ key: 'name', label: 'Manager' }, ...RECORD_COLUMNS]}
-                  rows={managerRows(formerManagers)}
-                />
-              </div>
-            </>
-          )}
 
           <h2>Champions</h2>
           <div className="card">
@@ -285,6 +272,21 @@ export default async function History() {
           above. Rivalries and weekly detail hang off these team IDs.
         </p>
       </div>
+
+      {/* Last on the page: everyone who has held a franchise and moved on.
+          Current managers are what anyone came here to compare. */}
+      {formerManagers.length > 0 && (
+        <>
+          <h2>Former managers</h2>
+          <p className="sub">Everyone who has held a franchise and moved on.</p>
+          <div className="card">
+            <SortableTable
+              columns={[{ key: 'name', label: 'Manager' }, ...RECORD_COLUMNS]}
+              rows={managerRows(formerManagers)}
+            />
+          </div>
+        </>
+      )}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { getCachedPlayedSeasons, getCachedPowerRankings } from '../../lib/cached-queries.ts';
+import { getCurrentSeason } from '../../lib/queries.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,20 +11,48 @@ interface Components {
 export default async function Rankings({
   searchParams,
 }: { searchParams: Promise<{ season?: string }> }) {
-  const seasons = await getCachedPlayedSeasons();
   const sp = await searchParams;
-  const season = Number(sp.season) || seasons[0]?.season;
+  // The season the league is in, not the newest one with games in it. Power
+  // rankings need results, so an unplayed season shows a preseason note rather
+  // than silently serving last year's order as though it were current.
+  const [seasons, current] = await Promise.all([getCachedPlayedSeasons(), getCurrentSeason()]);
+  const season = Number(sp.season) || current || seasons[0]?.season;
   if (!season) return <p className="empty">No completed seasons yet.</p>;
 
   const rows = await getCachedPowerRankings(season);
+
+  if (rows.length === 0) {
+    const previous = seasons.find((s) => s.season < season)?.season;
+    return (
+      <>
+        <div className="page-hero compact-hero">
+          <div className="eyebrow">{season} season</div>
+          <h1>Power Rankings</h1>
+          <p>
+            40% all-play record · 30% points per game · 20% actual record ·
+            10% strength of schedule.
+          </p>
+        </div>
+        <div className="callout">
+          Every one of those inputs is a result, so there is nothing to rank
+          until week 1 is in the books.{' '}
+          {previous && <a href={`/rankings?season=${previous}`}>See the {previous} rankings</a>}
+        </div>
+      </>
+    );
+  }
+
   const top = rows[0] ? Number(rows[0].score) : 1;
 
   return (
     <>
       <div className="page-hero compact-hero">
         <div className="eyebrow">{season} · through week {rows[0]?.week ?? '—'}</div>
-        <h1>Power, not luck</h1>
-        <p>Who has actually played like the best team, schedule noise removed.</p>
+        <h1>Power Rankings</h1>
+        <p>
+          40% all-play record · 30% points per game · 20% actual record ·
+          10% strength of schedule.
+        </p>
       </div>
 
       <div className="card">

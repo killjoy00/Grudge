@@ -30,7 +30,11 @@ const full: WeeklyRecap = {
       },
     },
   }],
-  awards: [{ award_key: 'high_scorer', name: 'The <Penguins>', value: '111.7' }],
+  awards: [
+    { award_key: 'high_scorer', name: 'The <Penguins>', value: '111.7', against: null },
+    { award_key: 'nailbiter', name: 'Run & Hide', value: '3.8', against: 'The <Penguins>' },
+    { award_key: 'worst_bench', name: 'Run & Hide', value: '11.4', against: 'Jerry Jeudy' },
+  ],
   bench: [{ name: 'Run & Hide', points_for: '101.2', optimal_points: '119.8', points_left_on_bench: '18.6' }],
   standings: [{ name: 'The <Penguins>', wins: 3, losses: 0, ties: 0, points_for: '340.1' }],
   predictions: [{ display_name: 'Ryan', correct: 8, points: '8', accuracy: '0.8' }],
@@ -46,7 +50,11 @@ const full: WeeklyRecap = {
     { name: 'The <Penguins>', luck: '2.3', wins: 3, losses: 0 },
     { name: 'Run & Hide', luck: '-1.7', wins: 1, losses: 2 },
   ],
-  allPlay: [{ name: 'The <Penguins>', all_play_wins: 24, all_play_losses: 3, wins: 3, losses: 0, pct: '0.8889' }],
+  allPlay: [{
+    name: 'The <Penguins>', all_play_wins: 24, all_play_losses: 3,
+    wins: 3, losses: 0, games: 3, pct: '0.8889',
+    scaled_wins: '2.7', scaled_losses: '0.3',
+  }],
   streaks: [{ name: 'The <Penguins>', result: 'W', length: 4 }],
   grudge: {
     home: 'The <Penguins>', away: 'Run & Hide', winner: 'AWAY',
@@ -82,14 +90,14 @@ test('every section renders when the week has one', () => {
   for (const heading of [
     'This week&rsquo;s games', 'Record watch', 'Power rankings', 'Week 4', 'Luck report',
     'Streaks', 'All-play', 'Most disputed pick', 'The Grudge',
-    'This week in Grudge history', 'Awards', 'Standings', 'Prediction leaders',
+    'This week in Grudge Match history', 'Awards', 'Standings', 'Prediction leaders',
   ]) {
     assert.ok(html.includes(heading), `missing HTML section: ${heading}`);
   }
   for (const heading of [
     "THIS WEEK'S GAMES", 'RECORD WATCH', 'POWER RANKINGS', 'WEEK 4', 'LUCK REPORT',
     'STREAKS', 'ALL-PLAY', 'MOST DISPUTED PICK', 'THE GRUDGE',
-    'THIS WEEK IN GRUDGE HISTORY', 'STANDINGS',
+    'THIS WEEK IN GRUDGE MATCH HISTORY', 'STANDINGS',
   ]) {
     assert.ok(text.includes(heading), `missing text section: ${heading}`);
   }
@@ -102,7 +110,7 @@ test('a quiet week prints no heading it cannot fill', () => {
   const { html, text } = renderWeeklyRecap(quiet, SITE);
   for (const heading of [
     'Record watch', 'Most disputed pick', 'The Grudge',
-    'This week in Grudge history', 'Streaks', 'All-play', 'Luck report',
+    'This week in Grudge Match history', 'Streaks', 'All-play', 'Luck report',
     'Power rankings',
   ]) {
     assert.ok(!html.includes(heading), `rendered an empty section: ${heading}`);
@@ -141,7 +149,7 @@ test('league data is HTML-escaped, and left alone in the text alternative', () =
   assert.match(html, /The &lt;Penguins&gt;/);
   assert.doesNotMatch(html, /The <Penguins>/);
   assert.match(text, /Run & Hide 101\.2 at The <Penguins> 111\.7/);
-  assert.match(text, /Full recap: https:\/\/grudge\.planitnow\.us/);
+  assert.match(text, /Full site: https:\/\/grudge\.planitnow\.us/);
 });
 
 test("the subject leads with the week's top performance, and falls back cleanly", () => {
@@ -240,4 +248,32 @@ test('playoff odds ride along with the rankings, and tolerate having none', () =
 test('the power rankings link out to the methodology', () => {
   const { html } = renderWeeklyRecap(full, SITE);
   assert.match(html, /https:\/\/grudge\.planitnow\.us\/rankings/);
+});
+
+test('all-play is reported on the same scale as the real record', () => {
+  // 24-3 over three weeks is nine games a week; nobody can hold that against
+  // a 3-0 without doing arithmetic. Scaled, it reads 2.7-0.3.
+  const { html, text } = renderWeeklyRecap(full, SITE);
+  assert.match(html, /2\.7-0\.3/);
+  assert.match(html, /\(24-3\)/);          // the raw figure survives, in brackets
+  assert.match(text, /2\.7-0\.3 all-play/);
+  assert.match(text, /24-3 raw/);
+});
+
+test('awards name the other party where there is one', () => {
+  const { html, text } = renderWeeklyRecap(full, SITE);
+  assert.match(html, /lost to The &lt;Penguins&gt;/);
+  assert.match(html, /benched Jerry Jeudy/);
+  assert.match(text, /lost to The <Penguins>/);
+  assert.match(text, /benched Jerry Jeudy/);
+  // An award with no counterpart gets no empty brackets.
+  assert.doesNotMatch(html, /Highest score<\/td><td[^>]*><strong>[^<]*<\/strong><span[^>]*> \(\)/);
+});
+
+test("next week closes the letter rather than interrupting it", () => {
+  const { html, text } = renderWeeklyRecap(full, SITE);
+  // It must come after the standings, not before them.
+  assert.ok(html.indexOf('Week 4') > html.indexOf('Standings'),
+    'the Week 4 preview should sit at the end of the email');
+  assert.ok(text.indexOf('COMING UP — WEEK 4') > text.indexOf('STANDINGS'));
 });

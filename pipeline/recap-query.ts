@@ -31,10 +31,26 @@ const POSITION_CASE = `case p.default_position_id
 /** How many top-10 all-time weeks a score has to beat to be worth calling out. */
 const RECORD_WATCH_DEPTH = 10;
 
+/**
+ * The latest REGULAR-SEASON week with results.
+ *
+ * The recap is a regular-season letter: weeks 1 through 14. The playoff weeks
+ * are a six-team bracket where most of the league is already done, and half
+ * these sections (standings, streaks, next week's picks) mean nothing there.
+ *
+ * The bound is read from the season's own settings rather than hardcoded to
+ * 14, because the league has not always played fourteen -- 2018 and 2019 ran
+ * thirteen -- and a constant here would quietly drop a week if it ever changes
+ * again. Belt and braces: team_week_results only ever holds regular-season
+ * weeks today, and this stays correct if that changes.
+ */
 async function latestPlayedWeek(query: Query, season: number): Promise<number | null> {
   const rows = await query<{ week: number | null }>(
-    `select max(week)::int as week from public.team_week_results
-      where season = $1 and points_for is not null`,
+    `select max(r.week)::int as week
+       from public.team_week_results r
+       join public.seasons s on s.season = r.season
+      where r.season = $1 and r.points_for is not null
+        and r.week <= s.regular_season_weeks`,
     [season]
   );
   const week = Number(rows[0]?.week);
@@ -279,20 +295,36 @@ function luckReport(query: Query, season: number, week: number) {
   );
 }
 
-/** What the record would be if everyone played everyone, every week. */
+/**
+ * What the record would be if everyone played everyone, every week.
+ *
+ * Reported on the SAME SCALE as the real record. Raw all-play is 87-39 over a
+ * 14-week season because each week is nine games, and nobody can hold that
+ * against a 8-6 without doing arithmetic in their head. Scaled to games
+ * actually played it becomes 9.7-4.3, which sits next to 8-6 and says
+ * immediately that this team should have two more wins. The raw figure is
+ * still carried, in brackets, for anyone who wants it.
+ */
 function allPlay(query: Query, season: number, week: number) {
   return query<RecapAllPlayRow>(
     `select t.name,
             sum(r.all_play_wins)::int as all_play_wins,
             sum(r.all_play_losses)::int as all_play_losses,
             max(r.cum_wins)::int as wins, max(r.cum_losses)::int as losses,
+            count(*)::int as games,
             round(sum(r.all_play_wins)::numeric
-                  / nullif(sum(r.all_play_wins + r.all_play_losses), 0), 4)::text as pct
+                  / nullif(sum(r.all_play_wins + r.all_play_losses), 0), 4)::text as pct,
+            round(count(*) * sum(r.all_play_wins)::numeric
+                  / nullif(sum(r.all_play_wins + r.all_play_losses), 0), 1)::text
+              as scaled_wins,
+            round(count(*) * sum(r.all_play_losses)::numeric
+                  / nullif(sum(r.all_play_wins + r.all_play_losses), 0), 1)::text
+              as scaled_losses
        from public.team_week_results r
        join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
       where r.season = $1 and r.week <= $2 and r.all_play_wins is not null
       group by t.name
-      order by 6 desc`,
+      order by 7 desc`,
     [season, week]
   );
 }
@@ -571,10 +603,24 @@ export async function loadRecap(
          join public.teams ht on ht.season = m.season and ht.espn_team_id = m.home_team_id
         where m.season = $1 and m.week = $2 and m.is_final
         order by m.espn_matchup_id`, [season, week]),
+    // `against` is the second name an award needs to make sense: who the
+    // heartbreak was suffered against, and who was left on the bench. The
+    // others have no counterpart and carry null.
     query<RecapAward>(
-      `select a.award_key, t.name, round(a.value, 1)::text as value
+      `select a.award_key, t.name, round(a.value, 1)::text as value,
+              case a.award_key
+                when 'nailbiter' then w.name
+                when 'worst_bench' then bp.full_name
+              end as against
          from public.weekly_awards a
          left join public.teams t on t.season = a.season and t.espn_team_id = a.espn_team_id
+         left join public.teams w
+           on a.award_key = 'nailbiter' and w.season = a.season
+          and w.espn_team_id = (a.detail ->> 'winnerId')::int
+         left join public.team_week_results r
+           on a.award_key = 'worst_bench' and r.season = a.season
+          and r.week = a.week and r.espn_team_id = a.espn_team_id
+         left join public.players bp on bp.espn_player_id = r.worst_bench_player_id
         where a.season = $1 and a.week = $2
         order by array_position(array['high_scorer','low_scorer','blowout','nailbiter','worst_bench'], a.award_key)`,
       [season, week]),

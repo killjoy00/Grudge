@@ -238,6 +238,28 @@ export async function getManagerHistory() {
  * 2005-2017 and the ESPN era render through one path. Ordered by the league's
  * own seeding rule: win percentage, then total points.
  */
+/**
+ * The field for a season that has not played yet.
+ *
+ * franchise_seasons is written from RESULTS, so it holds nothing until week 1
+ * settles -- which is why the standings and rankings pages both used to fall
+ * back to last season and insist it was current. The teams and the schedule
+ * are loaded well before kickoff, so an unplayed season can still show who is
+ * in it, at 0-0.
+ */
+export async function getPreseasonTeams(season: number) {
+  return asPublic<{ espn_team_id: number; name: string; games: number }>(
+    `select t.espn_team_id, t.name,
+            (select count(*) from public.matchups m
+              where m.season = t.season
+                and t.espn_team_id in (m.home_team_id, m.away_team_id))::int as games
+       from public.teams t
+      where t.season = $1
+      order by t.name`,
+    [season]
+  );
+}
+
 export async function getSeasonStandings(season: number) {
   return asPublic<{
     franchise_key: string; current_name: string; team_name: string;

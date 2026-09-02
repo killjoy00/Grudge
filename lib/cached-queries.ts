@@ -15,6 +15,7 @@ import {
   getFranchiseSeasons,
   getLuck,
   getPlayedSeasons,
+  getPreseasonTeams,
   getPlayoffOdds,
   getPowerRankings,
   getSeasonChampions,
@@ -43,6 +44,13 @@ export const getCachedStandings = unstable_cache(
 export const getCachedSeasonTable = unstable_cache(
   async (season: number) => Promise.all([getSeasonStandings(season), getLuck(season)]),
   ['season-table'],
+  { revalidate: 3600 }
+);
+
+/** The ten teams of a season that has not kicked off yet, at 0-0. */
+export const getCachedPreseasonTeams = unstable_cache(
+  getPreseasonTeams,
+  ['preseason-teams'],
   { revalidate: 3600 }
 );
 
