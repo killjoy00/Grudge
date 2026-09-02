@@ -1,5 +1,6 @@
 import { getCachedPlayedSeasons, getCachedPowerRankings } from '../../lib/cached-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
+import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,6 @@ export default async function Rankings({
   const rows = await getCachedPowerRankings(season);
 
   if (rows.length === 0) {
-    const previous = seasons.find((s) => s.season < season)?.season;
     return (
       <>
         <div className="page-hero compact-hero">
@@ -35,9 +35,10 @@ export default async function Rankings({
         </div>
         <div className="callout">
           Every one of those inputs is a result, so there is nothing to rank
-          until week 1 is in the books.{' '}
-          {previous && <a href={`/rankings?season=${previous}`}>See the {previous} rankings</a>}
+          until week 1 is in the books. Click below for previous seasons.
         </div>
+        <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
+                      basePath="/rankings" />
       </>
     );
   }
@@ -79,7 +80,7 @@ export default async function Rankings({
         <details>
           <summary>How this is calculated</summary>
           <p className="note" style={{ marginTop: 10 }}>
-            45% all-play win percentage, 30% points per game, 15% actual win percentage,
+            40% all-play win percentage, 30% points per game, 20% actual win percentage,
             10% strength of schedule.
             <br /><br />
             All-play — your record if you played every team every week — is weighted
@@ -89,6 +90,9 @@ export default async function Rankings({
           </p>
         </details>
       </div>
+
+      <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
+                    basePath="/rankings" />
     </>
   );
 }

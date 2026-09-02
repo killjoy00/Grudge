@@ -13,6 +13,7 @@ import {
   getFranchiseHistory,
   getFranchiseManagers,
   getFranchiseSeasons,
+  getFranchiseKeyPlayers,
   getLuck,
   getPlayedSeasons,
   getPreseasonTeams,
@@ -91,6 +92,7 @@ export const getCachedFranchiseFile = unstable_cache(
   async (espnTeamId: number) => Promise.all([
     getFranchiseSeasons(espnTeamId),
     getFranchiseManagers(espnTeamId),
+    getFranchiseKeyPlayers(espnTeamId),
   ]),
   ['franchise-file'],
   { revalidate: 86400 }

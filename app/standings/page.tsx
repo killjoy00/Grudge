@@ -3,6 +3,7 @@ import {
 } from '../../lib/cached-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
+import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 
 // Render after deployment, then cache the underlying public data for an hour.
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,6 @@ export default async function Standings({
     if (teams.length === 0) {
       return <p className="empty">Nothing on record for {season}.</p>;
     }
-    const previous = seasons.find((s) => s.season < season)?.season;
     return (
       <>
         <div className="page-hero compact-hero">
@@ -70,10 +70,11 @@ export default async function Standings({
           </div>
           <p className="note">
             Nobody has played yet, so this is the field and the schedule rather
-            than a table.{' '}
-            {previous && <a href={`/standings?season=${previous}`}>See {previous}</a>}
+            than a table. Click below for previous seasons.
           </p>
         </div>
+        <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
+                      basePath="/standings" />
       </>
     );
   }
@@ -170,23 +171,8 @@ export default async function Standings({
         </p>
       </div>
 
-      {seasons.length > 1 && (
-        <div className="card">
-          <strong style={{ fontSize: 14 }}>Other seasons</strong>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-            {seasons.map((s) => (
-              <a key={s.season} href={`/standings?season=${s.season}`}
-                 className={`btn${s.season === season ? '' : ' btn-quiet'}`}
-                 style={{ padding: '6px 12px' }}>
-                {s.season}
-              </a>
-            ))}
-          </div>
-          <p className="note" style={{ marginTop: 10 }}>
-            The league did not play in 2020.
-          </p>
-        </div>
-      )}
+      <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
+                    basePath="/standings" />
     </>
   );
 }

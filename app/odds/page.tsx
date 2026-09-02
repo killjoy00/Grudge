@@ -1,5 +1,6 @@
 import { getCachedPlayedSeasons, getCachedPlayoffOdds } from '../../lib/cached-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
+import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,6 @@ export default async function Odds({
   const rows = await getCachedPlayoffOdds(season);
 
   if (rows.length === 0) {
-    const previous = seasons.find((s) => s.season < season)?.season;
     return (
       <>
         <div className="page-hero compact-hero">
@@ -28,9 +28,10 @@ export default async function Odds({
         <div className="callout">
           With no games played, every team&rsquo;s remaining schedule is the whole
           season and the simulation would just be telling you the field is even.
-          Odds appear once week 1 is scored.{' '}
-          {previous && <a href={`/odds?season=${previous}`}>See the {previous} odds</a>}
+          Odds appear once week 1 is scored. Click below for previous seasons.
         </div>
+        <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
+                      basePath="/odds" />
       </>
     );
   }
@@ -85,6 +86,9 @@ export default async function Odds({
           </p>
         </details>
       </div>
+
+      <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
+                    basePath="/odds" />
     </>
   );
 }

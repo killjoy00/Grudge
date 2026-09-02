@@ -330,6 +330,41 @@ export async function getSeasonStandings(season: number) {
 }
 
 /** Season by season for the franchise that owns an ESPN team id. */
+/**
+ * The three players who carried each season, from 2018 on.
+ *
+ * Ranked by points they scored IN THE STARTING LINEUP, not by points scored
+ * while rostered. A player who put up 200 on the bench did nothing for this
+ * team, and a "key player" list that counted him would be describing the
+ * waiver wire rather than the season.
+ *
+ * Nothing before 2018: roster_entries comes from ESPN boxscores, and the
+ * 2005-2017 archive is season totals with no player detail at all. Those
+ * seasons return no rows and the page shows nothing rather than a blank.
+ */
+export async function getFranchiseKeyPlayers(espnTeamId: number) {
+  return asPublic<{
+    season: number; full_name: string; position_id: number | null;
+    points: string; starts: number;
+  }>(
+    `select season, full_name, position_id, points, starts from (
+       select r.season, p.full_name, p.default_position_id as position_id,
+              round(sum(r.applied_points), 1)::text as points,
+              count(*)::int as starts,
+              row_number() over (
+                partition by r.season order by sum(r.applied_points) desc
+              ) as rn
+         from public.roster_entries r
+         join public.players p using (espn_player_id)
+        where r.espn_team_id = $1 and r.is_starter and r.applied_points is not null
+        group by r.season, p.full_name, p.default_position_id
+     ) ranked
+      where rn <= 3
+      order by season desc, rn`,
+    [espnTeamId]
+  );
+}
+
 export async function getFranchiseSeasons(espnTeamId: number) {
   return asPublic<{
     season: number; team_name: string; wins: number; losses: number; ties: number;
