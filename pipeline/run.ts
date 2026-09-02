@@ -303,7 +303,7 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
     entries = entries.concat(rosterEntryRows(bx, week, starters));
   }
   statements.push(...upsertChunked('public.players',
-    ['espn_player_id', 'full_name', 'default_position_id', 'pro_team_id'],
+    ['espn_player_id', 'full_name', 'default_position_id', 'pro_team_id', 'eligible_slots'],
     players as unknown as Record<string, unknown>[], ['espn_player_id']));
   summary.players = players.length;
 

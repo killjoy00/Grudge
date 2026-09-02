@@ -22,6 +22,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { rosterEntryRows, starterSlots, starterSlotCounts } from './normalize.ts';
+import { MIN_WEEKS_DEFAULT } from './trade.ts';
 import { expandSlots } from './lineup.ts';
 import {
   starterDemand, replacementLevels, findTrades, POSITIONS, type PlayerSeason,
@@ -40,7 +41,7 @@ const TEAM = opt('team') ? Number(opt('team')) : null;
  * still produce confident-looking output, which is exactly the failure mode
  * this whole approach exists to avoid.
  */
-const MIN_WEEKS = Number(opt('min-weeks') ?? 4);
+const MIN_WEEKS = Number(opt('min-weeks') ?? MIN_WEEKS_DEFAULT);
 
 const readGz = (p: string) => JSON.parse(gunzipSync(readFileSync(p)).toString());
 
