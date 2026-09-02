@@ -320,15 +320,21 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
   margin-left: 6px;
   padding: 1px 6px;
   border-radius: 999px;
-  font-size: 10px;
+  /* 10px uppercase at letter-spacing was legible only if you already knew what
+     it said. 11px with a touch more tracking reads at a glance. */
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   vertical-align: middle;
 }
 .tag.best { color: var(--win); background: #eaf6ef; }
 .tag.worst { color: var(--loss); background: #fcecec; }
-.tag.era { color: var(--muted); background: var(--navy-2); }
+/* Was --muted (#617383) on --navy-2 (#102f4f): grey on dark navy, about 1.6:1
+   and effectively unreadable. Dark ink on a light ground instead, matching the
+   pattern the other two tags already use. Also carries the "You" marker on the
+   predictions table, which had the same problem. */
+.tag.era { color: var(--navy); background: var(--surface-2); border: 1px solid var(--line); }
 .title-row { background: #fbf7ea; }
 
 /* ------------------------------------------------- predictions: matchups */

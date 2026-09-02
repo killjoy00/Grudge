@@ -1,5 +1,5 @@
 import { getCachedFranchiseFile } from '../../../lib/cached-queries.ts';
-import { getTeams, getRivalries, getCurrentSeason } from '../../../lib/queries.ts';
+import { getTeams, getRivalries, getCurrentSeason, espnTeamUrl } from '../../../lib/queries.ts';
 
 export const revalidate = 3600;
 
@@ -61,6 +61,14 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
         <div className="eyebrow">Franchise file</div>
         <h1>{team.name}</h1>
         <p>{team.owners ?? 'Unknown owner'}</p>
+        {/* Straight to the live roster. This site keeps the history; ESPN keeps
+            the lineup, and there is no reason to make anyone go and find it. */}
+        <p style={{ marginTop: 10 }}>
+          <a className="btn btn-quiet" href={espnTeamUrl(teamId, season)}
+             target="_blank" rel="noopener noreferrer">
+            Roster on ESPN ↗
+          </a>
+        </p>
       </div>
 
       {bySeason.length > 0 && (
