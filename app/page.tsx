@@ -4,6 +4,7 @@ import {
   getBenchWatch, getComments, getStandings, getPlayoffWeek,
 } from '../lib/queries.ts';
 import { Comments } from '../components/Comments.tsx';
+import { EspnMatchupLink, EspnTeamLink } from '../components/EspnLink.tsx';
 import { asPublic } from '../lib/db.ts';
 
 export const dynamic = 'force-dynamic';
@@ -118,12 +119,22 @@ export default async function Home() {
           return (
             <div className="match" key={g.espn_matchup_id}>
               <div className={`side ${awayWon ? 'win' : g.is_final ? 'lose' : ''}`}>
-                <span>{g.away_name}</span>
+                <span>
+                  {g.away_name}
+                  <EspnTeamLink teamId={g.away_team_id} season={season} />
+                </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.away_points ?? '—'}</span>
               </div>
-              <span className="vs">at</span>
+              <span className="vs">
+                at
+                <EspnMatchupLink season={season} week={playoffs.week}
+                                 teamId={g.away_team_id} label="ESPN" />
+              </span>
               <div className={`side ${homeWon ? 'win' : g.is_final ? 'lose' : ''}`}>
-                <span>{g.home_name}</span>
+                <span>
+                  {g.home_name}
+                  <EspnTeamLink teamId={g.home_team_id} season={season} />
+                </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.home_points ?? '—'}</span>
               </div>
             </div>
@@ -188,12 +199,22 @@ export default async function Home() {
           return (
             <div className="match" key={g.espn_matchup_id}>
               <div className={`side ${awayWon ? 'win' : g.is_final ? 'lose' : ''}`}>
-                <span>{g.away_name}</span>
+                <span>
+                  {g.away_name}
+                  <EspnTeamLink teamId={g.away_team_id} season={season} />
+                </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.away_points ?? '—'}</span>
               </div>
-              <span className="vs">at</span>
+              <span className="vs">
+                at
+                <EspnMatchupLink season={season} week={week}
+                                 teamId={g.away_team_id} label="ESPN" />
+              </span>
               <div className={`side ${homeWon ? 'win' : g.is_final ? 'lose' : ''}`}>
-                <span>{g.home_name}</span>
+                <span>
+                  {g.home_name}
+                  <EspnTeamLink teamId={g.home_team_id} season={season} />
+                </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.home_points ?? '—'}</span>
               </div>
             </div>

@@ -90,19 +90,29 @@ export default async function Predictions() {
         <>
           <h2>Week {open.week}</h2>
           <div className="card">
-            {locked ? (
-              <p className="note">
-                Week {open.week} is locked — picks closed Saturday at midnight ET.
-                The database rejects late changes, so nobody can sneak one in.
-              </p>
-            ) : matchups.length === 0 ? (
+            {matchups.length === 0 ? (
               <div className="empty">No matchups scheduled.</div>
             ) : (
               <>
                 <p className="note" style={{ marginBottom: 12 }}>
-                  Tap a team to pick it to win. Saves immediately, and you can
-                  change your mind as often as you like until Saturday midnight ET.
+                  {locked ? (
+                    <>
+                      Week {open.week} is locked — picks closed Saturday at midnight
+                      ET, and the database rejects late changes. Your picks are shown
+                      below; the ESPN link on each matchup follows it live.
+                    </>
+                  ) : (
+                    <>
+                      Tap a team to pick it to win. Saves immediately, and you can
+                      change your mind as often as you like until Saturday midnight ET.
+                    </>
+                  )}
                 </p>
+                {/* Rendered even when locked. The board used to be replaced by a
+                    bare note the moment picks closed, which hid the matchups for
+                    the whole weekend -- exactly when people want to see what they
+                    picked and follow the games. The buttons disable themselves,
+                    and a late write is refused by the database regardless. */}
                 <PickForm
                   season={season}
                   week={open.week}

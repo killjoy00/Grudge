@@ -1,5 +1,6 @@
 import { getCachedFranchiseFile } from '../../../lib/cached-queries.ts';
-import { getTeams, getRivalries, getCurrentSeason, espnTeamUrl } from '../../../lib/queries.ts';
+import { getTeams, getRivalries, getCurrentSeason } from '../../../lib/queries.ts';
+import { espnTeamUrl } from '../../../lib/espn-links.ts';
 
 export const revalidate = 3600;
 

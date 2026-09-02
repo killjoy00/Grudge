@@ -2,6 +2,7 @@ import {
   getCachedPreseasonTeams, getCachedSeasonList, getCachedSeasonTable,
 } from '../../lib/cached-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
+import { EspnTeamLink } from '../../components/EspnLink.tsx';
 
 // Render after deployment, then cache the underlying public data for an hour.
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,10 @@ export default async function Standings({
                 {teams.map((t, i) => (
                   <tr key={t.espn_team_id}>
                     <td className="rank">{i + 1}</td>
-                    <td><a href={`/team/${t.espn_team_id}`} className="tname">{t.name}</a></td>
+                    <td>
+                      <a href={`/team/${t.espn_team_id}`} className="tname">{t.name}</a>
+                      <EspnTeamLink teamId={t.espn_team_id} season={season} />
+                    </td>
                     <td className="num">0-0</td>
                     <td className="num">{t.games}</td>
                   </tr>
@@ -111,8 +115,13 @@ export default async function Standings({
                     <td className="rank">{i + 1}</td>
                     <td>
                       {r.espn_team_id !== null ? (
-                        <a href={`/team/${r.espn_team_id}`} className="tname">{r.team_name}</a>
+                        <>
+                          <a href={`/team/${r.espn_team_id}`} className="tname">{r.team_name}</a>
+                          <EspnTeamLink teamId={r.espn_team_id} season={season} />
+                        </>
                       ) : (
+                        // Pre-2018 archive seasons have no ESPN team id, so
+                        // there is nothing to link to and we say so by omission.
                         <span className="tname">{r.team_name}</span>
                       )}
                       {r.team_name !== r.current_name && (

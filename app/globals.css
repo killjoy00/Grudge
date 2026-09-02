@@ -407,3 +407,31 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
   .matchup-body { grid-template-columns: 1fr; gap: 6px; }
   .matchup-vs { justify-self: center; }
 }
+
+/* Outbound links to ESPN.
+   Deliberately quiet: the team name beside it is the primary link (to the
+   franchise file, which is what this site is for) and this must not compete
+   with it. Sized and spaced to stay tappable on a phone regardless. */
+.espn-link {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 1px 5px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.espn-link:hover, .espn-link:focus-visible {
+  color: white;
+  background: var(--carolina-deep);
+  border-color: var(--carolina-deep);
+}
+/* On the dark scoreboard rows the muted grey would vanish. */
+.match .espn-link { color: var(--accent); border-color: var(--line); }
+.matchup-head .espn-link { margin-left: auto; }
