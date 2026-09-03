@@ -164,6 +164,19 @@ export default async function Trades({
         </p>
       </div>
 
+      {/* An accepted trade is not a trade yet. ESPN holds it in a review
+          window, and nothing here can see it until the players actually move
+          and the Tuesday run picks that up -- so the league will otherwise
+          wonder why a deal everyone just agreed to is missing. */}
+      {season === current && (
+        <p className="note trade-pending-note">
+          A trade appears here once ESPN actually moves the players. An accepted
+          deal sits in ESPN&rsquo;s review window first, and this page picks it up
+          on the following Tuesday &mdash; so a trade agreed this week shows up
+          next week.
+        </p>
+      )}
+
       {cards.length === 0 ? (
         <div className="callout">
           No trades in {season} yet. Click below for the seasons that have them.
@@ -213,70 +226,70 @@ export default async function Trades({
 
       <div className="card">
         <details>
-          <summary>How a trade is scored, and where these came from</summary>
-          <p className="note" style={{ marginTop: 10 }}>
-            A trade is scored by what it did to your lineup, not by adding up
-            points. For every week from the trade forward we take the roster you
-            actually had, work out the best lineup it could have fielded from
-            what those players really scored, then do the same for the roster
-            you <em>would</em> have had &mdash; the players you received taken back
-            out, the players you gave up put back in. The difference is what the
-            trade was worth that week. Add up the weeks.
-            <br /><br />
-            Position adjusts itself that way, exactly. A tight end who fills an
-            empty TE slot is worth all of his points; a fourth running back is
-            worth whatever he adds over the third, which is usually nothing.
-            That is also what stops a 2-for-4 reading as a rout for whoever
-            received four bodies: the extra two only count in the weeks they
-            would genuinely have started. Byes and injuries need no special case
-            either, and because it uses your <em>best</em> lineup rather than the
-            one you set, it scores the trade and not your Sunday morning. What
-            you actually started is reported next to it, because winning a trade
-            and benching the guy is its own kind of story.
-            <br /><br />
-            A traded player counts only while the team that got him keeps him.
-            Cut someone you traded for and you are left with the hole where the
-            player you gave up used to be. Cut someone you were traded and he
-            stops counting for the other side too &mdash; you cannot lose a trade
-            to a player your rival threw away.
-            <br /><br />
-            Because the two sides are measured against different rosters, both
-            can come out ahead. That is not a bug in the arithmetic; it is what a
-            good trade looks like, and it is labelled when it happens.
-            <br /><br />
-            Kickers and defences are left out entirely. Nobody trades for a
-            kicker on purpose, and when one rides along in a deal his points are
-            noise that can move a verdict without meaning anything. They are
-            still listed &mdash; the trade happened &mdash; just marked as not
-            counted.
-            <br /><br />
-            ESPN does not publish what was in a trade. The only record it serves
-            is an acceptance envelope with an empty item list, pointing at a
-            proposal no endpoint returns. So the contents here are reconstructed
-            from what it does serve — weekly rosters — by two rules.
-            <br /><br />
-            From 2026 on, the transaction ledger accounts for every waiver claim
-            and drop, so a player who changes teams with nothing to explain it
-            was traded. That was checked before it was trusted: replaying every
-            draft, waiver and roster move over 161 players reproduced all ten
-            current rosters exactly, which is what makes an unexplained move
-            evidence rather than a gap.
-            <br /><br />
-            The archived seasons back to 2018 kept weekly rosters but no
-            transactions at all, so there a waiver claim and a one-sided trade
-            are indistinguishable. Only a genuine two-way swap is claimed for
-            those years — both teams receiving somebody in the same week — and
-            those trades are marked <span className="tag era">Reconstructed</span>.
-            It separates cleanly: about twenty one-way waiver moves a season
-            against two to six swaps. The cost is that a one-sided deal before
-            2026 is invisible, and 2005–2017 predates the roster data entirely.
-          </p>
+          <summary>How a trade is scored</summary>
+          <div className="note trade-explainer">
+            <p>
+              Not by adding up points &mdash; by what it did to your lineup. Each
+              week after the trade we take your real roster, work out the best
+              lineup it could have fielded, then do the same for the roster you
+              would have had without the trade. The gap is what the trade was
+              worth that week.
+            </p>
+
+            <p><strong>Example: week 10, 2024.</strong> Austin Bubbs sent Kareem
+              Hunt to the Penguins for Chris Olave. Olave scored 0.0 in all eight
+              remaining weeks &mdash; he never played again. Hunt scored 63.9.</p>
+            <ul>
+              <li>
+                <strong>Bubbs, &minus;17.4 to their lineup.</strong> Keeping Hunt
+                would have added 17.4 points to his best lineups. Not 63.9,
+                because Bubbs had other backs: Hunt only counts in the weeks he
+                would actually have started, and only by the margin.
+              </li>
+              <li>
+                <strong>Penguins, +31.1 to their lineup and &minus;1.6 over
+                replacement.</strong> Both true. Hunt was a mediocre starting back
+                in absolute terms, but better than what they had on the bench.
+              </li>
+            </ul>
+
+            <p><strong>So the two numbers ask different questions.</strong>{' '}
+              <em>To their lineup</em> &mdash; did this put points on my field,
+              measured against the team I actually had. <em>Over replacement</em>
+              &mdash; was the player any good, measured against a freely available
+              body at his position. A dash means he never reached the lineup, so
+              there was nothing to measure.</p>
+
+            <p><strong>Voting</strong> opens on the Tuesday after the week a trade
+              takes effect and runs for seven days. A deal made between the draft
+              and week 1 opens when week 1 finishes and closes when week 2 does;
+              one made during week 1 opens a week after that. This season only.
+              Your pick stays private until you make it, then you see the
+              league&rsquo;s.</p>
+
+            <p><strong>Also:</strong> the best lineup is used, not the one you set,
+              so this scores the trade and not your Sunday morning &mdash; what you
+              actually started is shown alongside. A player counts only while the
+              team that got him keeps him. Both sides can gain, and that is what a
+              good trade looks like. Kickers and defences are listed but not
+              counted.</p>
+
+            <p><strong>Where these came from.</strong> ESPN publishes no trade
+              contents, so they are reconstructed from weekly rosters. From 2026
+              the transaction ledger explains every waiver move, so a player who
+              changes teams with nothing to explain it was traded. Earlier seasons
+              have no transactions at all, so only genuine two-way swaps are
+              claimed and those are marked{' '}
+              <span className="tag era">Reconstructed</span> &mdash; a one-sided
+              deal from those years is invisible, and nothing before 2018 has the
+              data.</p>
+          </div>
         </details>
       </div>
 
       <SeasonPicker seasons={seasons} current={season} basePath="/trades"
                     heading="Seasons with trades"
-                    note="Only seasons ESPN gave us transactions for appear here." />
+                    note="2018 is as far back as the weekly roster data goes." />
     </>
   );
 }
