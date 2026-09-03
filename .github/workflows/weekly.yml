@@ -143,6 +143,47 @@ jobs:
             npm run recap -- --skip-if-empty
           fi
 
+      # A FAILED TUESDAY IS INVISIBLE WITHOUT THIS.
+      #
+      # This pipeline once failed on its very first database connection and
+      # went on failing for weeks. Nobody noticed, because a workflow that
+      # fails on a schedule tells no one -- there is no red X anywhere a person
+      # actually looks. The site just quietly served last week's numbers.
+      #
+      # curl rather than a node script on purpose: the failure being reported
+      # may BE `npm ci` or the test step, so this cannot depend on node_modules
+      # existing. curl and jq are on the runner image regardless.
+      #
+      # Fires for manual runs too. A retry you fired and walked away from is
+      # exactly when you want the mail, and it means the first manual run also
+      # proves the alert path works.
+      - name: Alert on failure
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+          ALERT_EMAIL: ${{ vars.PIPELINE_ALERT_EMAIL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGER: ${{ github.event_name }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$RECAP_FROM_EMAIL" ] || [ -z "$ALERT_EMAIL" ]; then
+            echo "::warning::Pipeline failed and NO ALERT WAS SENT. Set the PIPELINE_ALERT_EMAIL repository variable (RECAP_FROM_EMAIL and RESEND_API_KEY must also be present)."
+            exit 0
+          fi
+          body=$(jq -n \
+            --arg from "$RECAP_FROM_EMAIL" \
+            --arg to "$ALERT_EMAIL" \
+            --arg subject "Grudge pipeline FAILED ($TRIGGER) -- $(date -u +'%a %-d %b')" \
+            --arg url "$RUN_URL" \
+            '{from: $from, to: [$to], subject: $subject,
+              text: ("The weekly Grudge pipeline failed.\n\nUntil it succeeds the site keeps serving whatever it had before this run -- standings, power rankings, odds and the trade tab will be a week stale, and no recap went out.\n\nLogs: " + $url + "\n\nThe run is safe to repeat: every write is an upsert. Fix the cause, then re-run it from the Actions tab.")}')
+          code=$(curl -sS -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H 'Content-Type: application/json' \
+            -d "$body" -o /tmp/alert.json -w '%{http_code}')
+          echo "Resend responded $code"
+          cat /tmp/alert.json || true
+
       - name: Summary
         if: always()
         run: |
