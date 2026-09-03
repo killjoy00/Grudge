@@ -73,6 +73,27 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/score-predictions.ts
 
+      # THE RECORD BOOKS, REBUILT EVERY WEEK.
+      #
+      # Until this step existed, franchise_seasons was only ever written when a
+      # person remembered to run two scripts by hand. The rest of the history
+      # page comes out of the weekly tables and stayed current; the all-time
+      # records, the champions, and every franchise file did not. A season
+      # could finish in December and still be missing from the record books in
+      # March, with nothing anywhere to say so.
+      #
+      # Derive is a pure function of files in the repo, so it is safe to run
+      # weekly: mid-season it rebuilds exactly what is already committed and
+      # the commit step below sees no change. The week the season ends,
+      # seasonIsComplete() starts returning true, the generated CSVs gain a
+      # year, and it lands in the database on its own.
+      #
+      # Import replaces rather than merges, so re-running it is not additive.
+      - name: Rebuild league history
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run history:refresh
+
       # Free-agent ownership snapshot. Runs BEFORE the commit, with the other
       # database writes, so a kona_player_info outage fails the week loudly and
       # writes nothing -- the same contract as everything else here. Placing it

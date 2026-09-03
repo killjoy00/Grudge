@@ -5,6 +5,7 @@ import {
   espnManagerSeasons,
   espnSeasonResults,
   franchiseForTeam,
+  seasonIsComplete,
   wasPlayed,
 } from './espn-archive.ts';
 import type { EspnLeague } from './espn-archive.ts';
@@ -157,6 +158,39 @@ test('a season the league never played is skipped, not imported as 0-0', () => {
   });
   assert.equal(wasPlayed(unplayed), false);
   assert.equal(wasPlayed(espnLeague()), true);
+  assert.equal(seasonIsComplete(unplayed), false);
+  assert.equal(seasonIsComplete(espnLeague()), true);
+});
+
+// The season being played right now is captured by the weekly pipeline and
+// read by the same archive code. Every one of these cases used to reach
+// espnSeasonResults and throw, which did not just skip the live season -- it
+// took the whole rebuild down with it, finished seasons included.
+test('a season still being played is skipped rather than crashing the rebuild', () => {
+  const midSeason = (mutate: (league: EspnLeague) => void) => {
+    const league = espnLeague();
+    mutate(league);
+    return league;
+  };
+
+  assert.equal(seasonIsComplete(midSeason((l) => {
+    l.teams![1]!.record!.overall!.losses = 0;      // a week still to play
+  })), false, 'short regular season');
+
+  assert.equal(seasonIsComplete(midSeason((l) => {
+    for (const team of l.teams!) team.rankCalculatedFinal = 0;  // ESPN ranks at the end
+  })), false, 'no final placement');
+
+  assert.equal(seasonIsComplete(midSeason((l) => {
+    l.schedule![0]!.winner = 'UNDECIDED';          // the final is in progress
+  })), false, 'undecided bracket');
+
+  assert.equal(seasonIsComplete(midSeason((l) => {
+    l.settings = {};                              // schedule length unknown
+  })), false, 'no scheduled length');
+
+  // And the rebuild still produces the finished seasons around it.
+  assert.equal(seasonIsComplete(espnLeague()), true);
 });
 
 test('a bracket winner that ESPN does not rank first is a contradiction', () => {
@@ -234,7 +268,18 @@ test('the generated files are what both eras derive to', () => {
   const history = buildLeagueHistory(readArchiveSources());
   assert.equal(toSeasonResultsCsv(history.seasons), readArchiveFile('season-results.csv'));
   assert.equal(toManagerSeasonsCsv(history.managerSeasons), readArchiveFile('manager-seasons.csv'));
-  assert.deepEqual(history.skipped, [2020], 'the league did not play in 2020');
+  // Not a literal list. 2020 is skipped forever -- the league did not play it
+  // -- and the season currently under way is skipped until it finishes, so
+  // hardcoding the set here would fail every September when the pipeline
+  // captures a new year, and pass only by being edited annually.
+  assert.ok(history.skipped.includes(2020), 'the league did not play in 2020');
+  const finished = Math.max(...history.seasons.map((row) => row.season));
+  for (const season of history.skipped) {
+    if (season === 2020) continue;
+    assert.ok(season > finished,
+      `${season} is skipped but sits inside the finished record -- that is a rebuild failure, ` +
+      'not a season in progress');
+  }
 });
 
 test('the record runs 2005 to the present with no gap but 2020', () => {

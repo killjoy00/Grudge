@@ -13,6 +13,7 @@
     "clerk:email": "tsx scripts/clerk-email-template.ts",
     "history:derive": "tsx scripts/derive-league-history.ts",
     "history:import": "tsx scripts/import-manual-history.ts",
+    "history:refresh": "npm run history:derive && npm run history:import -- --franchises=data/manual-history/franchises.csv --seasons=data/manual-history/season-results.csv --managers=data/manual-history/managers.csv --manager-seasons=data/manual-history/manager-seasons.csv",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test pipeline/*.test.ts lib/*.test.ts"
   },
