@@ -497,3 +497,11 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
    are visibly outside the arithmetic rather than silently dropped. */
 .trade-uncounted { color: var(--muted); }
 .trade-nocount { font-size: 11px; font-style: italic; }
+/* The explainer is read once, so it is set as prose rather than as one dense
+   block: headed paragraphs and a short list beat a wall of text. */
+.trade-explainer { margin-top: 10px; }
+.trade-explainer p { margin: 0 0 10px; }
+.trade-explainer p:last-child { margin-bottom: 0; }
+.trade-explainer ul { margin: 0 0 10px; padding-left: 18px; }
+.trade-explainer li { margin-bottom: 6px; }
+.trade-pending-note { margin: 0 0 14px; }
