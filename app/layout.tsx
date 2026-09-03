@@ -40,7 +40,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="spacer" />
               <AuthButton />
             </div>
-            <Nav />
+            {/* The tab strip scrolls horizontally on a phone -- seven tabs
+                cannot fit in 375px. This wrapper exists solely to hang a
+                right-edge fade off, so it is visible that there is more. */}
+            <div className="tabs-wrap">
+              <Nav />
+            </div>
           </header>
           <main className="wrap">{children}</main>
           <footer className="site-footer">
