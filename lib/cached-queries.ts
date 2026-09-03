@@ -24,6 +24,7 @@ import {
   getSeasonStandings,
   getStandings,
   getTopScoringWeeks,
+  getTopPlayerWeeks,
   getManagerHistory,
 } from './queries.ts';
 
@@ -83,6 +84,7 @@ export const getCachedHistory = unstable_cache(
     getManagerHistory(),
     getSeasonChampions(),
     getTopScoringWeeks(10),
+    getTopPlayerWeeks(10),
   ]),
   ['all-time-history'],
   { revalidate: 86400 }

@@ -16,19 +16,48 @@ import { getPool, getPoolOpportunities, getSnapshotCoverage } from '../../../lib
 import { getCurrentSeason } from '../../../lib/queries.ts';
 import { adminProfile } from '../../../lib/admin.ts';
 import { notFound } from 'next/navigation';
+import SortableTable from '../../../components/SortableTable.tsx';
+import type { SortColumn, SortRow } from '../../../components/SortableTable.tsx';
 
 export const dynamic = 'force-dynamic';
 
-function pct(v: string | null) {
-  return v === null ? '—' : `${Number(v).toFixed(1)}%`;
+/**
+ * A delta as a sortable cell.
+ *
+ * The sort value is the number, never the text: sorting "flat" and "+3.1" as
+ * strings would put every unchanged player between the risers and the fallers.
+ * A missing value sorts to the bottom rather than reading as zero, because "we
+ * have no second snapshot yet" is not the same as "did not move".
+ */
+function deltaCell(v: string | null) {
+  if (v === null) return { v: null, d: '—' };
+  const n = Number(v);
+  if (Math.abs(n) < 0.05) return { v: n, d: 'flat' };
+  return { v: n, d: `${n > 0 ? '+' : ''}${n.toFixed(1)}`, tone: n > 0 ? 'up' as const : 'down' as const };
 }
 
-function delta(v: string | null) {
-  if (v === null) return <span className="tsub">—</span>;
-  const n = Number(v);
-  if (Math.abs(n) < 0.05) return <span className="tsub">flat</span>;
-  return <span className={n > 0 ? 'up' : 'down'}>{n > 0 ? '+' : ''}{n.toFixed(1)}</span>;
+/** Percent as a sortable cell: sorts on the number, shows one decimal. */
+function pctCell(v: string | null) {
+  return v === null ? { v: null, d: '—' } : { v: Number(v), d: `${Number(v).toFixed(1)}%` };
 }
+
+const OPPORTUNITY_COLUMNS: SortColumn[] = [
+  { key: 'player', label: 'Player' },
+  { key: 'pos', label: 'Pos' },
+  { key: 'owned', label: 'Owned', numeric: true, title: 'Sort by percent of ESPN leagues rostering him' },
+  { key: 'started', label: 'Started', numeric: true },
+  { key: 'espn', label: 'ESPN \u0394', numeric: true, title: "Sort by ESPN's own weekly ownership change" },
+];
+
+const POOL_COLUMNS: SortColumn[] = [
+  { key: 'player', label: 'Player' },
+  { key: 'pos', label: 'Pos' },
+  { key: 'owned', label: 'Owned', numeric: true },
+  { key: 'espn', label: 'ESPN \u0394', numeric: true },
+  { key: 'ours', label: 'Ours \u0394', numeric: true },
+  { key: 'value', label: '$', numeric: true, title: 'Sort by average auction value' },
+  { key: 'status', label: 'Status' },
+];
 
 export default async function Pool({
   searchParams,
@@ -64,6 +93,32 @@ export default async function Pool({
 
   const haveTrend = pool.some((p) => p.our_percent_change !== null);
 
+  const opportunityRows: SortRow[] = opportunities.map((p) => ({
+    key: String(p.espn_player_id),
+    cells: {
+      player: { v: p.full_name ?? '' },
+      pos: { v: p.position ?? '' },
+      owned: pctCell(p.percent_owned),
+      started: pctCell(p.percent_started),
+      espn: deltaCell(p.espn_percent_change),
+    },
+  }));
+
+  const poolRows: SortRow[] = pool.map((p) => ({
+    key: String(p.espn_player_id),
+    cells: {
+      player: { v: p.full_name ?? '' },
+      pos: { v: p.position ?? '' },
+      owned: pctCell(p.percent_owned),
+      espn: deltaCell(p.espn_percent_change),
+      ours: deltaCell(p.our_percent_change),
+      value: p.auction_value_avg === null
+        ? { v: null, d: '—' }
+        : { v: Number(p.auction_value_avg), d: Number(p.auction_value_avg).toFixed(1) },
+      status: { v: p.status ?? '—' },
+    },
+  }));
+
   return (
     <>
       <h1>Free agents</h1>
@@ -87,26 +142,11 @@ export default async function Pool({
           Ranked by how much of ESPN owns them, not by projection. These are the
           players the rest of the platform rates that nobody here has claimed.
         </p>
-        <div className="scroll">
-          <table>
-            <thead>
-              <tr><th>Player</th><th>Pos</th><th>Owned</th><th>Started</th><th>Trend</th></tr>
-            </thead>
-            <tbody>
-              {opportunities.map((p) => (
-                <tr key={p.espn_player_id}>
-                  <td>{p.full_name}</td>
-                  <td className="tsub">{p.position}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{pct(p.percent_owned)}</td>
-                  <td className="tsub" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {pct(p.percent_started)}
-                  </td>
-                  <td>{delta(p.espn_percent_change)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SortableTable
+          columns={OPPORTUNITY_COLUMNS}
+          rows={opportunityRows}
+          initialSort="owned"
+        />
       </div>
 
       <div className="card">
@@ -118,31 +158,11 @@ export default async function Pool({
             It fills in from the next capture onward.
           </p>
         )}
-        <div className="scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Player</th><th>Pos</th><th>Owned</th>
-                <th>ESPN Δ</th><th>Ours Δ</th><th>$</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pool.map((p) => (
-                <tr key={p.espn_player_id}>
-                  <td>{p.full_name}</td>
-                  <td className="tsub">{p.position}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{pct(p.percent_owned)}</td>
-                  <td>{delta(p.espn_percent_change)}</td>
-                  <td>{delta(p.our_percent_change)}</td>
-                  <td className="tsub" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {p.auction_value_avg === null ? '—' : Number(p.auction_value_avg).toFixed(1)}
-                  </td>
-                  <td className="tsub">{p.status ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SortableTable
+          columns={POOL_COLUMNS}
+          rows={poolRows}
+          initialSort="owned"
+        />
         <p className="note">
           Status is whatever ESPN returned, uninterpreted. Every player observed so far
           has come back <code>WAIVERS</code>; <code>FREEAGENT</code> is requested by the

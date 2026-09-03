@@ -1,6 +1,7 @@
 import SortableTable from '../../components/SortableTable.tsx';
 import type { SortColumn, SortRow } from '../../components/SortableTable.tsx';
 import { getCachedHistory } from '../../lib/cached-queries.ts';
+import { POSITIONS } from '../../pipeline/trade.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ function totalsCells(row: TotalsRow): SortRow['cells'] {
 }
 
 export default async function History() {
-  const [espnEra, playedSeasons, franchises, managers, champions, topWeeks] =
+  const [espnEra, playedSeasons, franchises, managers, champions, topWeeks, topPlayers] =
     await getCachedHistory();
   const played = champions.length;
   const first = champions.length ? champions[champions.length - 1]!.season : null;
@@ -228,6 +229,56 @@ export default async function History() {
                           {row.points_against}
                           {row.result === 'L' && ' — and lost'}
                         </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {topPlayers.length > 0 && (
+        <>
+          <h2>Biggest individual weeks</h2>
+          <p className="sub">
+            The ten best single-week performances by one player, ESPN era. A
+            &ldquo;benched&rdquo; marker means exactly what it says.
+          </p>
+          <div className="card">
+            <div className="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th className="rank">#</th><th>Player</th>
+                    <th className="num">Points</th><th>Week</th><th>Rostered by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topPlayers.map((row, index) => (
+                    <tr key={`${row.season}-${row.week}-${row.espn_player_id}`}
+                        className={index === 0 ? 'title-row' : undefined}>
+                      <td className="rank">{index + 1}</td>
+                      <td>
+                        <span className="tname">{row.full_name ?? 'Unknown player'}</span>
+                        <span className="tsub block">
+                          {POSITIONS[row.default_position_id ?? 0] ?? '—'}
+                        </span>
+                      </td>
+                      <td className="num"><strong>{row.points}</strong></td>
+                      <td>
+                        <a href={`/standings?season=${row.season}`}>
+                          {row.season} wk {row.week}
+                        </a>
+                      </td>
+                      <td>
+                        <a href={`/team/${row.espn_team_id}`} className="tname">{row.team}</a>
+                        {!row.is_starter && (
+                          <span className="tag era" title="This score was on the bench — it counted for nobody.">
+                            benched
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

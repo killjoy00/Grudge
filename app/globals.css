@@ -13,6 +13,10 @@
   --text: #122333;
   --muted: #617383;
   --accent: #2879ad;
+  /* Small-text blue. --accent is a fill colour and manages only 4.2:1 at
+     11px on the tinted card grounds (surface-2, and the green "ahead" tint on
+     a trade card), which fails AA. This clears 5.5:1 on all three. */
+  --link-ink: #20678f;
   --win: #16734b;
   --loss: #b43f3f;
   --warn: #a86512;
@@ -376,7 +380,10 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
   align-items: center;
   padding: 7px 12px;
   border-bottom: 1px solid var(--line);
-  color: var(--muted);
+  /* Muted grey clears AA here only barely (4.82:1) and this is 11px uppercase
+     bold -- the size and tracking are what made it hard, not the ratio alone.
+     navy-2 takes it to 13.4:1 at no cost. */
+  color: var(--navy-2);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -423,12 +430,20 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
   display: inline-block;
   margin-left: 7px;
   padding: 1px 5px;
-  color: var(--muted);
+  /* Was 10px muted grey -- the other half of the "espn / archive is hard to
+     read" complaint. .tag.era was raised to 11px and darkened at the time and
+     this was missed, which is why the history page came out legible and the
+     predictions page, where an ESPN link sits in every matchup head, did not.
+     Accent rather than grey because it is a link and should look like one; it
+     clears AA on both the card and matchup grounds (4.66:1), where muted grey
+     on surface-2 does not (4.37:1). Tracking eased a touch to absorb the
+     extra pixel. */
+  color: var(--link-ink);
   border: 1px solid var(--line);
   border-radius: 3px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: .05em;
+  letter-spacing: .04em;
   text-transform: uppercase;
   text-decoration: none;
   vertical-align: middle;
@@ -439,8 +454,9 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
   background: var(--carolina-deep);
   border-color: var(--carolina-deep);
 }
-/* On the dark scoreboard rows the muted grey would vanish. */
-.match .espn-link { color: var(--accent); border-color: var(--line); }
+/* On the dark scoreboard rows the muted grey would vanish -- but --accent was
+   no better, managing 3.6:1 on the navy. Carolina blue gets 7:1. */
+.match .espn-link { color: var(--carolina); border-color: var(--line-dark); }
 .matchup-head .espn-link { margin-left: auto; }
 
 /* ------------------------------------------------------------------ trades

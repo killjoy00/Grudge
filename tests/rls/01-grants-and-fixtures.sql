@@ -52,9 +52,28 @@ insert into public.team_owners (season, espn_team_id, swid, is_primary) values
   (2026,1,'{E35025E4-F300-48D8-9AF1-EEE1911BFD65}',false);
 
 -- Week 1 OPEN (kickoff ahead), week 2 LOCKED (kickoff past).
+--
+-- THE MARGINS ARE 8 AND 10 DAYS, NOT 3 AND 3, AND THAT IS LOAD-BEARING.
+-- run.sh applies every migration AFTER this file, and 2026-09-02-saturday-lock
+-- unconditionally overwrites locks_at with saturday_lock(first_kickoff_at) --
+-- Sunday 00:00 Eastern of the week the kickoff falls in. So the locks_at
+-- written here is decorative; the kickoff is what actually decides the lock,
+-- and it gets snapped to a weekly boundary that can move it by up to six days
+-- in either direction.
+--
+-- A three-day margin was inside that swing, so whether the suite passed
+-- depended on what day of the week you ran it: on a Thursday, week 2's
+-- Monday kickoff snapped forward to the coming Sunday, week 2 stopped being
+-- locked, T12's attack insert succeeded, and the row it left behind collided
+-- with the locked-week fixture forty lines later in 02-attacks.sql.
+--
+-- These bounds hold on every day of the week. saturday_lock(k) is never more
+-- than 6 days after k and never more than 1 day before it, so a kickoff 10
+-- days past locks at least 4 days ago, and one 8 days out locks at least 7
+-- days from now. Keep that slack if you ever touch these numbers.
 insert into public.weeks (season, week, first_kickoff_at, locks_at, status) values
-  (2026,1, now() + interval '3 days', now() + interval '3 days','upcoming'),
-  (2026,2, now() - interval '3 days', now() - interval '3 days','final');
+  (2026,1, now() + interval '8 days',  now() + interval '8 days',  'upcoming'),
+  (2026,2, now() - interval '10 days', now() - interval '10 days', 'final');
 
 insert into public.matchups (season, espn_matchup_id, week, home_team_id, away_team_id) values
   (2026, 1, 1, 6, 1),

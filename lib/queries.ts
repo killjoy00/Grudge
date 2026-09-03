@@ -449,6 +449,38 @@ export async function getTopScoringWeeks(limit = 10) {
   );
 }
 
+/**
+ * The biggest single-week performances by an individual player, ESPN era.
+ *
+ * `is_starter` comes along because it is the most interesting column: Derrick
+ * Henry's 49.8 in week 14 of 2018 was scored on somebody's BENCH, and a table
+ * that quietly omitted that would be hiding the best story in it.
+ *
+ * Restricted to weeks whose results are in, so an in-progress week cannot
+ * put a partial score on an all-time list.
+ */
+export async function getTopPlayerWeeks(limit = 10) {
+  return asPublic<{
+    season: number; week: number; espn_player_id: number;
+    full_name: string | null; default_position_id: number | null;
+    points: string; espn_team_id: number; team: string; is_starter: boolean;
+  }>(
+    `select r.season, r.week, r.espn_player_id,
+            p.full_name, p.default_position_id,
+            round(r.applied_points, 1)::text as points,
+            r.espn_team_id, t.name as team, r.is_starter
+       from public.roster_entries r
+       join public.players p using (espn_player_id)
+       join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
+       join public.weeks w
+         on w.season = r.season and w.week = r.week and w.results_complete
+      where r.applied_points is not null
+      order by r.applied_points desc
+      limit $1`,
+    [limit]
+  );
+}
+
 /** One row per played season, newest first, for the title roll. */
 export async function getSeasonChampions() {
   return asPublic<{
@@ -507,12 +539,23 @@ export async function getMyPicks(season: number, week: number) {
   return rows ?? [];
 }
 
+/**
+ * A season's pick records.
+ *
+ * `incorrect` is the loss count and is read, not derived. Callers used to
+ * compute losses as picks_made - correct, which counted every pick you had
+ * made but that had not been played yet -- so picking all five week-one games
+ * showed a 0-5 record before kickoff. `pending` is those unplayed picks and
+ * belongs nowhere near a win-loss line.
+ */
 export async function getLeaderboard(season: number) {
   const [rows] = await asUser<{
     user_id: string; display_name: string | null; picks_made: number;
-    correct: number; points: string; accuracy: string | null;
+    decided: number; correct: number; incorrect: number; pushed: number;
+    pending: number; points: string; accuracy: string | null;
   }>((q) => [
-    q(`select user_id, display_name, picks_made::int, correct::int,
+    q(`select user_id, display_name, picks_made::int, decided::int, correct::int,
+              incorrect::int, pushed::int, pending::int,
               points::text, accuracy::text
          from public.prediction_leaderboard
         where season = $1
@@ -568,14 +611,16 @@ export async function getWeekMatchups(season: number, week: number) {
   );
 }
 
-/** Every player's prediction record across all seasons. */
+/** Every manager's prediction record across all seasons. See getLeaderboard. */
 export async function getAllTimeLeaderboard() {
   const [rows] = await asUser<{
     user_id: string; display_name: string | null; picks_made: number;
-    correct: number; points: string; accuracy: string | null;
+    decided: number; correct: number; incorrect: number; pushed: number;
+    pending: number; points: string; accuracy: string | null;
     first_season: number; last_season: number;
   }>((q) => [
-    q(`select user_id, display_name, picks_made::int, correct::int,
+    q(`select user_id, display_name, picks_made::int, decided::int, correct::int,
+              incorrect::int, pushed::int, pending::int,
               points::text, accuracy::text, first_season, last_season
          from public.prediction_leaderboard_alltime
         order by points desc, correct desc`),
