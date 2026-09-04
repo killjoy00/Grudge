@@ -449,6 +449,38 @@ export async function getTopScoringWeeks(limit = 10) {
   );
 }
 
+/**
+ * The biggest single-week performances by an individual player, ESPN era.
+ *
+ * `is_starter` comes along because it is the most interesting column: Derrick
+ * Henry's 49.8 in week 14 of 2018 was scored on somebody's BENCH, and a table
+ * that quietly omitted that would be hiding the best story in it.
+ *
+ * Restricted to weeks whose results are in, so an in-progress week cannot
+ * put a partial score on an all-time list.
+ */
+export async function getTopPlayerWeeks(limit = 10) {
+  return asPublic<{
+    season: number; week: number; espn_player_id: number;
+    full_name: string | null; default_position_id: number | null;
+    points: string; espn_team_id: number; team: string; is_starter: boolean;
+  }>(
+    `select r.season, r.week, r.espn_player_id,
+            p.full_name, p.default_position_id,
+            round(r.applied_points, 1)::text as points,
+            r.espn_team_id, t.name as team, r.is_starter
+       from public.roster_entries r
+       join public.players p using (espn_player_id)
+       join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
+       join public.weeks w
+         on w.season = r.season and w.week = r.week and w.results_complete
+      where r.applied_points is not null
+      order by r.applied_points desc
+      limit $1`,
+    [limit]
+  );
+}
+
 /** One row per played season, newest first, for the title roll. */
 export async function getSeasonChampions() {
   return asPublic<{
@@ -507,12 +539,23 @@ export async function getMyPicks(season: number, week: number) {
   return rows ?? [];
 }
 
+/**
+ * A season's pick records.
+ *
+ * `incorrect` is the loss count and is read, not derived. Callers used to
+ * compute losses as picks_made - correct, which counted every pick you had
+ * made but that had not been played yet -- so picking all five week-one games
+ * showed a 0-5 record before kickoff. `pending` is those unplayed picks and
+ * belongs nowhere near a win-loss line.
+ */
 export async function getLeaderboard(season: number) {
   const [rows] = await asUser<{
     user_id: string; display_name: string | null; picks_made: number;
-    correct: number; points: string; accuracy: string | null;
+    decided: number; correct: number; incorrect: number; pushed: number;
+    pending: number; points: string; accuracy: string | null;
   }>((q) => [
-    q(`select user_id, display_name, picks_made::int, correct::int,
+    q(`select user_id, display_name, picks_made::int, decided::int, correct::int,
+              incorrect::int, pushed::int, pending::int,
               points::text, accuracy::text
          from public.prediction_leaderboard
         where season = $1
@@ -568,14 +611,127 @@ export async function getWeekMatchups(season: number, week: number) {
   );
 }
 
-/** Every player's prediction record across all seasons. */
+/**
+ * What ESPN expected of each side of each matchup in a week, captured before
+ * kickoff by pipeline/preview.ts. `captured_at` is returned because the page
+ * says "as of Tuesday" and has to mean it.
+ */
+export async function getWeekProjections(season: number, week: number) {
+  return asPublic<{
+    espn_matchup_id: number; espn_team_id: number;
+    projected_points: string; starters: number; captured_at: string;
+  }>(
+    `select espn_matchup_id, espn_team_id,
+            round(projected_points, 1)::text as projected_points,
+            starters, captured_at
+       from public.matchup_projections
+      where season = $1 and week = $2`,
+    [season, week]
+  );
+}
+
+/** ESPN's own pick record, to sit in the leaderboard beside the league's. */
+export async function getEspnRecord(season: number) {
+  const rows = await asPublic<{
+    picks_made: number; decided: number; correct: number; incorrect: number;
+    pushed: number; pending: number; accuracy: string | null;
+  }>(
+    `select picks_made::int, decided::int, correct::int, incorrect::int,
+            pushed::int, pending::int, accuracy::text
+       from public.espn_prediction_record where season = $1`,
+    [season]
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Each team's three-to-five best players, for the reminder on the picks page.
+ *
+ * TWO SOURCES, because in week 1 the honest answer to "who are this team's
+ * stars" is not in the scoring data -- there is none. So:
+ *
+ *   week 1     the earliest draft picks. What a manager spent the third
+ *              overall pick on is the league's own statement about who that
+ *              team's best player is.
+ *   week 2+    points actually scored IN THE STARTING LINEUP this season,
+ *              which is the same rule the franchise pages use. A player who
+ *              put up 200 on somebody's bench did nothing for them.
+ *
+ * Either way the list is drawn from the CURRENT roster -- the most recent
+ * completed week's -- so a player who has been traded away stops being named
+ * as a reason to fear his old team.
+ */
+export async function getTeamStars(season: number, week: number, per = 4) {
+  if (week <= 1) {
+    return asPublic<{
+      espn_team_id: number; espn_player_id: number; full_name: string | null;
+      default_position_id: number | null; basis: string; detail: string;
+    }>(
+      `select d.espn_team_id, d.espn_player_id, p.full_name, p.default_position_id,
+              'draft' as basis,
+              'R' || d.round || ' P' || d.round_pick as detail
+         from public.draft_picks d
+         left join public.players p using (espn_player_id)
+        where d.season = $1
+          and d.overall_pick in (
+            select overall_pick from public.draft_picks i
+             where i.season = d.season and i.espn_team_id = d.espn_team_id
+             order by i.overall_pick
+             limit $2)
+        order by d.espn_team_id, d.overall_pick`,
+      [season, per]
+    );
+  }
+  return asPublic<{
+    espn_team_id: number; espn_player_id: number; full_name: string | null;
+    default_position_id: number | null; basis: string; detail: string;
+  }>(
+    // `current` is the newest completed week's roster; `scored` sums starting
+    // points across the season for the players still on it.
+    `with latest as (
+       select max(w.week) as week from public.weeks w
+        where w.season = $1 and w.results_complete
+     ),
+     current as (
+       select r.espn_team_id, r.espn_player_id
+         from public.roster_entries r, latest l
+        where r.season = $1 and r.week = l.week
+     ),
+     scored as (
+       select c.espn_team_id, c.espn_player_id,
+              coalesce(sum(r.applied_points) filter (where r.is_starter), 0) as points
+         from current c
+         left join public.roster_entries r
+           on r.season = $1 and r.espn_player_id = c.espn_player_id
+          and r.espn_team_id = c.espn_team_id
+        group by c.espn_team_id, c.espn_player_id
+     ),
+     ranked as (
+       select s.*, row_number() over (
+                partition by s.espn_team_id order by s.points desc) as rn
+         from scored s
+     )
+     select r.espn_team_id, r.espn_player_id, p.full_name, p.default_position_id,
+            'scoring' as basis,
+            round(r.points, 1)::text || ' pts' as detail
+       from ranked r
+       left join public.players p using (espn_player_id)
+      where r.rn <= $2 and r.points > 0
+      order by r.espn_team_id, r.rn`,
+    [season, per]
+  );
+}
+
+/** Every manager's prediction record across all seasons. See getLeaderboard. */
 export async function getAllTimeLeaderboard() {
   const [rows] = await asUser<{
     user_id: string; display_name: string | null; picks_made: number;
-    correct: number; points: string; accuracy: string | null;
+    decided: number; correct: number; incorrect: number; pushed: number;
+    pending: number; points: string; accuracy: string | null;
     first_season: number; last_season: number;
   }>((q) => [
-    q(`select user_id, display_name, picks_made::int, correct::int,
+    q(`select user_id, display_name, picks_made::int, decided::int, correct::int,
+              incorrect::int, pushed::int, pending::int,
               points::text, accuracy::text, first_season, last_season
          from public.prediction_leaderboard_alltime
         order by points desc, correct desc`),

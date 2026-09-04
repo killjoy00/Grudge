@@ -370,6 +370,74 @@ export function powerRankings(tw: TeamWeek[], luck: LuckWeek[]): PowerRanking[] 
   return rows;
 }
 
+/**
+ * The same question asked of 2005-2017, where the only surviving numbers are a
+ * season's final record and its season point totals.
+ *
+ * WHY THIS IS A SEPARATE MODEL RATHER THAN THE ONE ABOVE WITH GAPS.
+ * Two of the four inputs above are computed from week-by-week scores, and
+ * nothing before 2018 has them: all-play needs everyone's score in the same
+ * week, strength of schedule needs to know who played whom. Feeding those a
+ * neutral 0.5 would not be a ranking with missing data, it would be a ranking
+ * where half the weight is a constant -- every team carrying the same 25
+ * points of nothing, and the order decided by the other half anyway. Better to
+ * say plainly which two numbers this uses.
+ *
+ * Weights:
+ *   70%  points per game   — scaled against the season's best, as above
+ *   30%  actual win pct
+ *
+ * The modern model spends 70 of its 100 points on scoring (40 all-play, 30
+ * points per game) and 20 on record, because all-play is a scoring measure
+ * wearing a record's clothes. Dropping what cannot be computed and keeping
+ * that ratio gives roughly 78/22; 70/30 is the same judgement rounded to
+ * something a person can hold in their head, and leans slightly toward record
+ * since record is the one thing these seasons are certain about.
+ *
+ * Scores are NOT comparable across eras and are not meant to be. Within a
+ * season the scale matches the modern model, so a 2011 ranking reads the same
+ * way a 2024 one does.
+ */
+export interface LegacySeasonTeam {
+  teamId: number | null;
+  franchiseKey: string;
+  name: string;
+  wins: number; losses: number; ties: number;
+  pointsFor: number;
+}
+
+export interface LegacyRanking extends LegacySeasonTeam {
+  rank: number;
+  score: number;
+  winPct: number;
+  pointsForPerGame: number;
+}
+
+export function legacyPowerRankings(teams: LegacySeasonTeam[]): LegacyRanking[] {
+  const games = (t: LegacySeasonTeam) => Math.max(1, t.wins + t.losses + t.ties);
+  const ppgOf = (t: LegacySeasonTeam) => t.pointsFor / games(t);
+  // Guarded the same way the modern model guards it: a season with no points
+  // recorded must not divide by zero and hand every team a NaN score.
+  const maxPpg = Math.max(...teams.map(ppgOf), 1);
+
+  const rows = teams.map((t) => {
+    const winPct = (t.wins + t.ties / 2) / games(t);
+    const ppg = ppgOf(t);
+    return {
+      ...t,
+      rank: 0,
+      score: round4(0.70 * (ppg / maxPpg) + 0.30 * winPct),
+      winPct: round4(winPct),
+      pointsForPerGame: round2(ppg),
+    };
+  });
+  // Points per game breaks a tie, matching the league's own rule that total
+  // points settles an equal record.
+  rows.sort((a, b) => b.score - a.score || b.pointsForPerGame - a.pointsForPerGame);
+  rows.forEach((r, i) => { r.rank = i + 1; });
+  return rows;
+}
+
 /* ----------------------------------------------------------- weekly awards */
 
 export interface WeeklyAward {

@@ -45,11 +45,22 @@ step emits every assignment the archive knows about, so a manager the league
 stops crediting disappears instead of lingering from an earlier run. Supplying
 no manager files, or empty ones, prunes nothing.
 
-Adding a new ESPN season is only `node scripts/backfill-history.mjs`, then
-`npm run history:derive` and the import above — no mapping changes unless
-someone new joins the league, in which case add their SWID to
-`espn-managers.csv` (the derivation fails loudly on an unmapped account rather
-than dropping the team).
+`npm run history:refresh` is those two commands in order, with the arguments
+already filled in. **The weekly pipeline runs it every Tuesday**, so a season
+joins the record books by itself the week it finishes — nobody has to notice
+that it ended.
+
+That works because the archive reads BOTH `data/history/` (the one-off
+2018-2025 backfill) and `data/seasons/` (where the weekly pipeline writes, so
+every season from 2026 on), and because `seasonIsComplete()` skips a season
+whose record, placements or bracket ESPN has not settled yet. Mid-season the
+rebuild is a no-op that regenerates the files byte for byte; the week the final
+is decided, the season appears.
+
+Adding an *older* ESPN season is still `node scripts/backfill-history.mjs`,
+then `npm run history:refresh` — no mapping changes unless someone new joins
+the league, in which case add their SWID to `espn-managers.csv` (the derivation
+fails loudly on an unmapped account rather than dropping the team).
 
 ## What had to be reconstructed, and what did not
 

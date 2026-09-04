@@ -1,9 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
 import {
   getCurrentSeason, getOpenWeek, getWeekMatchups, getMyPicks, getLeaderboard,
-  getAllTimeLeaderboard,
+  getAllTimeLeaderboard, getWeekProjections, getEspnRecord, getTeamStars,
 } from '../../lib/queries.ts';
 import { PickForm } from '../../components/PickForm.tsx';
+import type { Projection, Star } from '../../components/PickForm.tsx';
+import { POSITIONS } from '../../pipeline/trade.ts';
 import { isAdmin } from '../../lib/admin.ts';
 
 // User state -- never cached.
@@ -28,20 +30,70 @@ function pct(accuracy: string | null) {
   return accuracy ? `${(Number(accuracy) * 100).toFixed(0)}%` : '—';
 }
 
+interface PickRecord { correct: number; incorrect: number; pushed: number }
+
+/**
+ * A pick record, from the counts rather than by subtraction.
+ *
+ * This used to read `correct - (picks_made - correct)`, which treated every
+ * pick you had made but not yet played as a loss. Ties are shown only when
+ * there are any, because "4-3-0" invites a question nobody has.
+ */
+function record(r: PickRecord | undefined) {
+  if (!r) return '0-0';
+  return r.pushed > 0
+    ? `${r.correct}-${r.incorrect}-${r.pushed}`
+    : `${r.correct}-${r.incorrect}`;
+}
+
 export default async function Predictions() {
   const { userId } = await auth.protect();
   const season = await getCurrentSeason();
   const open = await getOpenWeek(season);
 
-  const [matchups, picks, board, allTime] = await Promise.all([
+  const [matchups, picks, board, allTime, projRows, starRows, espn] = await Promise.all([
     open ? getWeekMatchups(season, open.week) : Promise.resolve([]),
     open ? getMyPicks(season, open.week) : Promise.resolve([]),
     getLeaderboard(season),
     getAllTimeLeaderboard(),
+    open ? getWeekProjections(season, open.week) : Promise.resolve([]),
+    open ? getTeamStars(season, open.week) : Promise.resolve([]),
+    getEspnRecord(season),
   ]);
 
   const initial: Record<number, number> = {};
   for (const p of picks) initial[p.espn_matchup_id] = p.predicted_winner_team_id;
+
+  // ESPN's projection, keyed by matchup. Both sides are required: one side
+  // alone is not a comparison, and rendering it would invite the reader to
+  // treat a lone number as a verdict.
+  const projections: Record<number, Projection> = {};
+  const byMatchup = new Map<number, typeof projRows>();
+  for (const row of projRows) {
+    byMatchup.set(row.espn_matchup_id, [...(byMatchup.get(row.espn_matchup_id) ?? []), row]);
+  }
+  for (const m of matchups) {
+    const sides = byMatchup.get(m.espn_matchup_id) ?? [];
+    const home = sides.find((s) => s.espn_team_id === m.home_team_id);
+    const away = sides.find((s) => s.espn_team_id === m.away_team_id);
+    if (!home || !away) continue;
+    projections[m.espn_matchup_id] = {
+      home: Number(home.projected_points),
+      away: Number(away.projected_points),
+      capturedAt: home.captured_at,
+    };
+  }
+
+  const stars: Record<number, Star[]> = {};
+  for (const row of starRows) {
+    (stars[row.espn_team_id] ??= []).push({
+      espn_player_id: row.espn_player_id,
+      full_name: row.full_name,
+      position: POSITIONS[row.default_position_id ?? 0] ?? '—',
+      detail: row.detail,
+    });
+  }
+  const starBasis = starRows[0]?.basis ?? null;
 
   const lockAt = open?.locks_at ?? open?.first_kickoff_at ?? null;
   const locked = lockAt ? new Date(lockAt).getTime() <= Date.now() : true;
@@ -52,7 +104,8 @@ export default async function Predictions() {
   // Everyone who has ever picked, this season's players first.
   const players = allTime.length > 0 ? allTime : board.map((row) => ({
     user_id: row.user_id, display_name: row.display_name,
-    picks_made: 0, correct: 0, points: '0', accuracy: null,
+    picks_made: 0, decided: 0, correct: 0, incorrect: 0, pushed: 0, pending: 0,
+    points: '0', accuracy: null,
     first_season: season, last_season: season,
   }));
 
@@ -74,11 +127,14 @@ export default async function Predictions() {
       <div className="stat-strip three">
         <div>
           <span>Your {season} record</span>
-          <strong>{mine.season ? `${mine.season.correct}-${mine.season.picks_made - mine.season.correct}` : '0-0'}</strong>
+          <strong>{record(mine.season)}</strong>
+          {mine.season && mine.season.pending > 0 && (
+            <small className="block note">{mine.season.pending} awaiting kickoff</small>
+          )}
         </div>
         <div>
           <span>Your all-time record</span>
-          <strong>{mine.allTime ? `${mine.allTime.correct}-${mine.allTime.picks_made - mine.allTime.correct}` : '0-0'}</strong>
+          <strong>{record(mine.allTime)}</strong>
         </div>
         <div>
           <span>All-time accuracy</span>
@@ -113,12 +169,24 @@ export default async function Predictions() {
                     the whole weekend -- exactly when people want to see what they
                     picked and follow the games. The buttons disable themselves,
                     and a late write is refused by the database regardless. */}
+                {starBasis && (
+                  <p className="note" style={{ marginBottom: 12 }}>
+                    {starBasis === 'draft'
+                      ? 'Under each team, its earliest draft picks — nobody has scored ' +
+                        'anything yet, so what a manager spent their first picks on is ' +
+                        'the best guide to who they are counting on.'
+                      : 'Under each team, its highest scorers so far this season, ' +
+                        'counting only points put up in the starting lineup.'}
+                  </p>
+                )}
                 <PickForm
                   season={season}
                   week={open.week}
                   matchups={matchups}
                   initial={initial}
                   locked={locked}
+                  projections={projections}
+                  stars={stars}
                 />
               </>
             )}
@@ -164,17 +232,44 @@ export default async function Predictions() {
                         {row.user_id === userId && <span className="tag era">You</span>}
                       </td>
                       <td className="num">
-                        {s ? `${s.correct}-${s.picks_made - s.correct}` : '0-0'}
+                        {record(s)}
                       </td>
                       <td className="num">{pct(s?.accuracy ?? null)}</td>
-                      <td className="num">{row.correct}-{row.picks_made - row.correct}</td>
+                      <td className="num">{record(row)}</td>
                       <td className="num">{pct(row.accuracy)}</td>
                     </tr>
                   );
                 })}
+                {/* ESPN, as the house line to beat.
+                    Not a member and not a row in `predictions` -- its pick is
+                    derived from the projection it published, so it cannot be
+                    edited, cannot see anyone else's picks, and cannot drift
+                    from the number the matchup box showed. All-time is left
+                    blank rather than backfilled: projections were only
+                    captured from the week this shipped, and a record covering
+                    a different set of games is not a comparison. */}
+                {espn && (
+                  <tr className="espn-row">
+                    <td>
+                      <span className="tname">ESPN projections</span>
+                      <span className="tag era">Not a manager</span>
+                    </td>
+                    <td className="num">{record(espn)}</td>
+                    <td className="num">{pct(espn.accuracy)}</td>
+                    <td className="num">—</td>
+                    <td className="num">—</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
+        )}
+        {espn && (
+          <p className="note" style={{ marginTop: 10 }}>
+            ESPN&rsquo;s pick is whichever side its Tuesday projection put ahead. It is
+            captured before the games and never revised, so beating it means beating
+            the number you were shown, not one written afterwards.
+          </p>
         )}
       </div>
 

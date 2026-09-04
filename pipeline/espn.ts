@@ -196,6 +196,30 @@ export async function fetchBoxscore(season: number, week: number): Promise<EspnL
   );
 }
 
+export interface EspnDraftPick {
+  overallPickNumber: number;
+  roundId: number;
+  roundPickNumber: number;
+  teamId: number;
+  playerId: number;
+  keeper?: boolean;
+}
+
+export interface EspnDraftDetail {
+  draftDetail?: { drafted?: boolean; inProgress?: boolean; picks?: EspnDraftPick[] };
+}
+
+/**
+ * The draft board. `drafted` is false while ESPN is still serving the
+ * placeholder board it generates before the draft, whose picks name nobody --
+ * so the flag is checked rather than the array length.
+ */
+export async function fetchDraft(season: number): Promise<EspnDraftDetail> {
+  return fetchJson<EspnDraftDetail>(
+    `${BASE}/seasons/${season}/segments/0/leagues/${LEAGUE_ID}?view=mDraftDetail`
+  );
+}
+
 /** NFL kickoff times -- the source of truth for when a week's picks lock. */
 export async function fetchProSchedule(season: number): Promise<ProGame[]> {
   const data = await fetchJson<{ settings?: { proTeams?: { proGamesByScoringPeriod?: Record<string, ProGame[]> }[] } }>(

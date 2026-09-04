@@ -16,7 +16,9 @@ import {
   starterSlots, starterCount, starterSlotCounts, seasonRow, teamRows, matchupRows,
   rosterEntryRows, playerRows, weekRows, weekCompleteness, completedWeeks,
   finalScoringPeriod, BENCH_SLOT, IR_SLOT, transactionRows,
+  matchupProjectionRows, draftPickRows,
 } from './normalize.ts';
+import type { EspnDraftDetail } from './espn.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const readGz = (p: string) => JSON.parse(gunzipSync(readFileSync(p)).toString()) as EspnLeague;
@@ -290,4 +292,151 @@ test('every archived season normalizes its transactions without a null type', ()
       assert.equal(typeof row.raw, 'string');
     }
   }
+});
+
+/* ------------------------------------------------ the week ahead: ESPN's own */
+
+test('ESPN projections total the starting lineup, against real payloads', () => {
+  // Run over played weeks because those are the archived payloads we have.
+  // The arithmetic is identical for an unplayed week -- statSourceId 1 is
+  // served either way -- and this checks the part that could actually be
+  // wrong: which entries are summed.
+  //
+  // NOT every archived season carries real projections. 2023 serves
+  // statSourceId 1 for every player with appliedTotal 0 -- ESPN stops backing
+  // historical projections at some age. So the slot semantics are checked
+  // everywhere and the magnitude only where there is a number to check, with a
+  // guard below so that cannot quietly become nowhere.
+  let seasonsWithProjections = 0;
+  for (const season of PLAYED) {
+    const league = history(season);
+    const starters = starterSlots(league);
+    const expected = starterCount(league);
+    const rows = matchupProjectionRows(boxscore(season, 1), 1, starters);
+
+    assert.ok(rows.length >= 8, `${season}: only ${rows.length} sides projected`);
+    for (const row of rows) {
+      // AT MOST the full lineup, not exactly it. Teams really do leave a
+      // starting slot empty -- 2023 team 1 went into week 1 with no D/ST and
+      // started nine. That is the case `starters` exists to record, so
+      // asserting equality here would be asserting that managers are tidy.
+      assert.ok(row.starters > 0 && row.starters <= expected,
+        `${season} team ${row.espn_team_id}: counted ${row.starters} of at most ${expected}`);
+      // A plausible fantasy total. The failure this guards is summing the
+      // whole roster including the bench, which lands near double.
+      assert.ok(row.projected_points < 250,
+        `${season} team ${row.espn_team_id}: projected ${row.projected_points}, bench included?`);
+    }
+    // Most teams do field a full lineup, so a change that started dropping
+    // legitimate starters would still be caught.
+    assert.ok(rows.filter((r) => r.starters === expected).length >= rows.length - 2,
+      `${season}: ${rows.filter((r) => r.starters < expected).length} sides short of a full lineup`);
+
+    // Every side of every matchup in that week, and no duplicates.
+    const ids = rows.map((r) => r.espn_team_id);
+    assert.equal(new Set(ids).size, ids.length, `${season}: a team was projected twice`);
+
+    if (rows.every((r) => r.projected_points > 0)) seasonsWithProjections++;
+  }
+  assert.ok(seasonsWithProjections >= 3,
+    `only ${seasonsWithProjections} archived season(s) had real projections -- if this reaches ` +
+    'zero the magnitude is no longer being checked anywhere');
+});
+
+test('the projection is the projection, not the score', () => {
+  // Reading statSourceId 0 by mistake would pass every check above and turn
+  // "what ESPN expected" into "what happened", which is the one thing this
+  // feature must never do.
+  const season = 2025;
+  const league = history(season);
+  const bx = boxscore(season, 1);
+  const projected = matchupProjectionRows(bx, 1, starterSlots(league));
+  const actual = new Map<number, number>();
+  for (const m of bx.schedule ?? []) {
+    if (m.matchupPeriodId !== 1) continue;
+    for (const side of [m.home, m.away]) if (side) actual.set(side.teamId, side.totalPoints ?? 0);
+  }
+  const same = projected.filter((r) => Math.abs(r.projected_points - (actual.get(r.espn_team_id) ?? 0)) < 0.01);
+  assert.equal(same.length, 0, 'a projected total exactly equalled the real score');
+});
+
+test('a side with no starting lineup is skipped, not projected at zero', () => {
+  // Writing 0.0 would hand the opponent a free correct pick in ESPN's record.
+  const bx = {
+    seasonId: 2026,
+    schedule: [{
+      id: 1, matchupPeriodId: 1,
+      home: { teamId: 1, rosterForCurrentScoringPeriod: { entries: [] } },
+      away: {
+        teamId: 2,
+        rosterForCurrentScoringPeriod: {
+          entries: [{
+            playerId: 5, lineupSlotId: 2,
+            playerPoolEntry: { player: { id: 5, fullName: 'X', stats: [
+              { statSourceId: 1, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: 12.5 },
+            ] } },
+          }],
+        },
+      },
+    }],
+  } as unknown as EspnLeague;
+  const rows = matchupProjectionRows(bx, 1, new Set([2]));
+  assert.deepEqual(rows.map((r) => r.espn_team_id), [2]);
+  assert.equal(rows[0]!.projected_points, 12.5);
+});
+
+test('a missing projection counts as zero from a starter who is still counted', () => {
+  const bx = {
+    seasonId: 2026,
+    schedule: [{
+      id: 1, matchupPeriodId: 1,
+      home: {
+        teamId: 1,
+        rosterForCurrentScoringPeriod: {
+          entries: [
+            { playerId: 5, lineupSlotId: 2, playerPoolEntry: { player: { id: 5, fullName: 'A', stats: [
+              { statSourceId: 1, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: 10 }] } } },
+            // On a bye, or ESPN simply has no number for him. Expecting
+            // nothing from a slot is a real prediction about that team.
+            { playerId: 6, lineupSlotId: 2, playerPoolEntry: { player: { id: 6, fullName: 'B' } } },
+            // Bench: never counted.
+            { playerId: 7, lineupSlotId: 20, playerPoolEntry: { player: { id: 7, fullName: 'C', stats: [
+              { statSourceId: 1, statSplitTypeId: 1, scoringPeriodId: 1, appliedTotal: 99 }] } } },
+          ],
+        },
+      },
+    }],
+  } as unknown as EspnLeague;
+  const [row] = matchupProjectionRows(bx, 1, new Set([2]));
+  assert.equal(row!.projected_points, 10);
+  assert.equal(row!.starters, 2);
+});
+
+test('the draft board keeps team defences, whose ESPN ids are negative', () => {
+  // -16034 is a D/ST, not a corrupt row. A `playerId > 0` filter drops exactly
+  // one pick per team and does it silently.
+  const detail = {
+    draftDetail: {
+      drafted: true,
+      picks: [
+        { overallPickNumber: 1, roundId: 1, roundPickNumber: 1, teamId: 10, playerId: 4429795 },
+        { overallPickNumber: 112, roundId: 12, roundPickNumber: 2, teamId: 3, playerId: -16034 },
+        { overallPickNumber: 113, roundId: 12, roundPickNumber: 3, teamId: 0, playerId: 0 },
+      ],
+    },
+  } as EspnDraftDetail;
+  const rows = draftPickRows(detail, 2026);
+  assert.deepEqual(rows.map((r) => r.espn_player_id), [4429795, -16034]);
+  assert.equal(rows[1]!.round, 12);
+  assert.equal(rows[1]!.espn_team_id, 3);
+});
+
+test('an undrafted board is not loaded as a table full of nobody', () => {
+  const detail = {
+    draftDetail: {
+      drafted: false,
+      picks: [{ overallPickNumber: 1, roundId: 1, roundPickNumber: 1, teamId: 0, playerId: 0 }],
+    },
+  } as EspnDraftDetail;
+  assert.deepEqual(draftPickRows(detail, 2026), []);
 });

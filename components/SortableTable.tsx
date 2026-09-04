@@ -27,6 +27,12 @@ export interface SortCell {
   sub?: string;
   note?: string;
   pill?: 'w' | 'l' | 'warn';
+  /**
+   * Green for a rise, red for a fall. For columns that are a delta, where the
+   * sign is the point -- a pill would be far too loud for a whole column of
+   * them, and the plain text alone loses the direction at a glance.
+   */
+  tone?: 'up' | 'down';
 }
 
 export interface SortRow {
@@ -111,7 +117,9 @@ export default function SortableTable({
                   ? <span className={`pill ${cell.pill}`}>{text}</span>
                   : cell?.href
                     ? <a href={cell.href} className="tname">{text}</a>
-                    : column.numeric ? text : <span className="tname">{text}</span>;
+                    : cell?.tone
+                      ? <span className={cell.tone}>{text}</span>
+                      : column.numeric ? text : <span className="tname">{text}</span>;
                 return (
                   <td key={column.key} className={column.numeric ? 'num' : undefined}>
                     {body}

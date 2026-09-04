@@ -71,6 +71,47 @@ export function wasPlayed(league: EspnLeague): boolean {
   });
 }
 
+/**
+ * Is this season OVER? Everything below reads ESPN's settled numbers -- final
+ * placement, the full regular-season record, the decided bracket -- and
+ * espnSeasonResults throws rather than guess when any of them is unsettled.
+ *
+ * That is the right behaviour for a corrupt archive and the wrong behaviour
+ * for the season being played right now, which is simply not finished yet. So
+ * the caller asks this first and skips, and a live season joins the record
+ * books on its own the week it ends, with nobody deciding when.
+ *
+ * The checks are exactly the ones espnSeasonResults enforces, in the same
+ * order, so "complete" here means "espnSeasonResults will not throw". Keep
+ * them in step: a check added there without one here turns a skip back into
+ * a crash mid-season.
+ */
+export function seasonIsComplete(league: EspnLeague): boolean {
+  const teams = league.teams ?? [];
+  if (teams.length === 0 || !wasPlayed(league)) return false;
+
+  // Every team has played the whole regular season.
+  const scheduled = league.settings?.scheduleSettings?.matchupPeriodCount ?? null;
+  if (scheduled === null) return false;
+  for (const team of teams) {
+    const record = overall(team);
+    if (record.wins + record.losses + record.ties !== scheduled) return false;
+  }
+
+  // ESPN has ranked the league 1..N. Mid-season every team reads 0.
+  const places = teams.map((team) => team.rankCalculatedFinal ?? 0).sort((a, b) => a - b);
+  if (!places.every((place, index) => place === index + 1)) return false;
+
+  // The bracket is decided. A playoff game still in progress has no winner,
+  // and playoffRecords refuses to say who advanced.
+  for (const matchup of league.schedule ?? []) {
+    if (matchup.playoffTierType !== TITLE_BRACKET) continue;
+    if (matchup.home?.teamId === undefined || matchup.away?.teamId === undefined) continue;
+    if (matchup.winner !== 'HOME' && matchup.winner !== 'AWAY') return false;
+  }
+  return true;
+}
+
 export function franchiseForTeam(
   mappings: FranchiseIdMapping[], espnTeamId: number, season: number
 ): string {

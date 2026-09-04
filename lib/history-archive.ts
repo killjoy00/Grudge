@@ -10,7 +10,7 @@
  */
 
 import type { EspnLeague, FranchiseIdMapping } from './espn-archive.ts';
-import { espnManagerSeasons, espnSeasonResults, wasPlayed } from './espn-archive.ts';
+import { espnManagerSeasons, espnSeasonResults, seasonIsComplete } from './espn-archive.ts';
 import { expandManagerTenures, parseCsv, parseManagerTenures } from './manual-history.ts';
 import type { ManualManagerSeason, ManualSeasonResult } from './manual-history.ts';
 import { derivePlayoffRecords, PLAYOFF_FIELD } from './playoff-bracket.ts';
@@ -168,7 +168,11 @@ export function buildLeagueHistory(sources: ArchiveSources): LeagueHistory {
   const skipped: number[] = [];
 
   for (const { season, league } of [...sources.espnLeagues].sort((a, b) => a.season - b.season)) {
-    if (!wasPlayed(league)) {
+    // Skipped, not failed. Two different seasons land here: one ESPN created
+    // and the league never played (2020), and the one being played right now.
+    // Both are "no settled record to file yet", and neither is a reason to
+    // refuse to rebuild the archive for the seasons that ARE finished.
+    if (!seasonIsComplete(league)) {
       skipped.push(season);
       continue;
     }

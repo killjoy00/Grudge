@@ -20,7 +20,7 @@ import type { RosterEntryRow } from './normalize.ts';
 import { matchupRows, rosterEntryRows, starterSlots, starterSlotCounts } from './normalize.ts';
 import {
   teamWeeks, standings, luckIndex, seasonLuck, optimalLineup,
-  powerRankings, weeklyAwards, playoffOdds, headToHead,
+  powerRankings, legacyPowerRankings, weeklyAwards, playoffOdds, headToHead,
 } from './features.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -272,6 +272,50 @@ test('power rankings correlate with the actual champion-ish teams', () => {
     assert.ok((st.get(top.teamId)?.winPct ?? 0) >= 0.4,
       `${season}: top power team has win pct ${st.get(top.teamId)?.winPct}`);
   }
+});
+
+// ------------------------------------------------ the 2005-2017 ranking
+
+const legacyTeam = (
+  name: string, wins: number, losses: number, pointsFor: number, ties = 0
+) => ({ teamId: null, franchiseKey: name, name, wins, losses, ties, pointsFor });
+
+test('the archive ranking is ordered, bounded, and on the modern scale', () => {
+  const ranked = legacyPowerRankings([
+    legacyTeam('best', 10, 4, 1600),
+    legacyTeam('lucky', 10, 4, 1300),
+    legacyTeam('unlucky', 5, 9, 1550),
+    legacyTeam('worst', 3, 11, 1100),
+  ]);
+  assert.deepEqual(ranked.map((r) => r.name), ['best', 'unlucky', 'lucky', 'worst']);
+  ranked.forEach((r, i) => assert.equal(r.rank, i + 1));
+  // The season's top scorer gets the full 0.70 of the points term, so the
+  // ceiling is 1.0 and the floor is above zero -- the same range the modern
+  // model produces, which is what lets the two share a bar chart.
+  for (const r of ranked) assert.ok(r.score > 0 && r.score <= 1, `${r.name}: ${r.score}`);
+  assert.equal(ranked[0]!.score, Number((0.70 + 0.30 * (10 / 14)).toFixed(4)));
+});
+
+test('the archive ranking ranks scoring above record, but not without limit', () => {
+  // A team that scored the most and won the fewest still should not be first:
+  // 30% of the model is record, and this is the case that proves it is doing
+  // something rather than being a points leaderboard with extra steps.
+  const [first] = legacyPowerRankings([
+    legacyTeam('gunner', 2, 12, 1600),
+    legacyTeam('winner', 12, 2, 1500),
+  ]);
+  assert.equal(first!.name, 'winner');
+});
+
+test('the archive ranking survives a season with no points on file', () => {
+  const ranked = legacyPowerRankings([legacyTeam('a', 1, 0, 0), legacyTeam('b', 0, 1, 0)]);
+  for (const r of ranked) assert.ok(Number.isFinite(r.score), `${r.name} scored ${r.score}`);
+  assert.deepEqual(ranked.map((r) => r.name), ['a', 'b']);
+});
+
+test('a tie counts as half a win, as it does everywhere else', () => {
+  const [tied] = legacyPowerRankings([legacyTeam('t', 6, 6, 1400, 2)]);
+  assert.equal(tied!.winPct, 0.5);
 });
 
 test('weekly awards fire on real weeks', () => {

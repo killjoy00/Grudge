@@ -1,19 +1,25 @@
-import { getCachedPlayedSeasons, getCachedPlayoffOdds } from '../../lib/cached-queries.ts';
+import { getCachedPlayoffOdds } from '../../lib/cached-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
-import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Odds({
-  searchParams,
-}: { searchParams: Promise<{ season?: string }> }) {
-  const sp = await searchParams;
-  // The season the league is in, not the newest one with games in it. Same trap
-  // the standings and rankings pages fell into: odds are simulated FROM
-  // results, so "newest with results" is last year for the whole preseason.
-  const [seasons, current] = await Promise.all([getCachedPlayedSeasons(), getCurrentSeason()]);
-  const season = Number(sp.season) || current || seasons[0]?.season;
-  if (!season) return <p className="empty">No completed seasons yet.</p>;
+/**
+ * Playoff odds, current season only.
+ *
+ * THERE IS DELIBERATELY NO SEASON PICKER HERE, and this is the one page on the
+ * site where that is right. Every other page answers a question that stays
+ * interesting once a season is over -- who won, who scored most, who beat
+ * whom. This page answers "who is going to make the playoffs", and for a
+ * finished season that is not a projection, it is a fact you can look up on
+ * the standings. A 2024 row reading "83% to make the playoffs" next to a team
+ * that either did or did not is noise dressed as analysis.
+ *
+ * Historical playoff_odds rows are left in the database untouched -- the recap
+ * joins them for its power-rankings block. They are simply not offered here.
+ */
+export default async function Odds() {
+  const season = await getCurrentSeason();
+  if (!season) return <p className="empty">No season is under way.</p>;
 
   const rows = await getCachedPlayoffOdds(season);
 
@@ -28,10 +34,8 @@ export default async function Odds({
         <div className="callout">
           With no games played, every team&rsquo;s remaining schedule is the whole
           season and the simulation would just be telling you the field is even.
-          Odds appear once week 1 is scored. Click below for previous seasons.
+          Odds appear once week 1 is scored.
         </div>
-        <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
-                      basePath="/odds" />
       </>
     );
   }
@@ -83,12 +87,12 @@ export default async function Odds({
             <strong>What it ignores:</strong> injuries, bye weeks, trades, waiver
             pickups, and hot streaks. Weeks are drawn independently. So treat a 95%
             as &ldquo;very likely&rdquo;, not a promise.
+            <br /><br />
+            Only the current season appears here. Odds for a finished season are
+            not a projection — the standings already tell you who got in.
           </p>
         </details>
       </div>
-
-      <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
-                    basePath="/odds" />
     </>
   );
 }

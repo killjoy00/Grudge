@@ -24,6 +24,7 @@ import {
   getSeasonStandings,
   getStandings,
   getTopScoringWeeks,
+  getTopPlayerWeeks,
   getManagerHistory,
 } from './queries.ts';
 
@@ -56,6 +57,17 @@ export const getCachedPreseasonTeams = unstable_cache(
   { revalidate: 3600 }
 );
 
+/**
+ * The season table on its own, for the archive-era power ranking. Separate
+ * from getCachedSeasonTable because that one also fetches the luck index,
+ * which does not exist before 2018 and is not wanted here.
+ */
+export const getCachedArchiveSeason = unstable_cache(
+  getSeasonStandings,
+  ['archive-season'],
+  { revalidate: 86400 }
+);
+
 /** Every season on record, newest first -- the archive era included. */
 export const getCachedSeasonList = unstable_cache(
   getSeasonChampions,
@@ -83,6 +95,7 @@ export const getCachedHistory = unstable_cache(
     getManagerHistory(),
     getSeasonChampions(),
     getTopScoringWeeks(10),
+    getTopPlayerWeeks(10),
   ]),
   ['all-time-history'],
   { revalidate: 86400 }
