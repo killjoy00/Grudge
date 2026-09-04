@@ -427,23 +427,61 @@ export async function getFranchiseManagers(espnTeamId: number) {
  * team_week_results, and the 2005-2017 archive is season totals with no
  * week-by-week detail. Playoff weeks count -- a 190 is a 190.
  */
+/**
+ * The biggest single-week team scores, PLAYOFFS INCLUDED.
+ *
+ * READ FROM `matchups`, NOT `team_week_results`, and that is the whole point.
+ * team_week_results stops at the last regular-season week -- pipeline/
+ * compute.ts filters to `m.week <= regular` before building it -- because that
+ * table also feeds the standings, the luck index, all-play records, cumulative
+ * W-L and the power rankings, none of which may count a playoff game. That
+ * filter is right and stays; it just makes the table the wrong source for a
+ * question about the biggest score ever, which quietly excluded four weeks of
+ * every season. 2024 week 16 belongs eighth on this list and was missing.
+ *
+ * `matchups` carries every week with both scores, so the fix is a different
+ * source rather than a change to what the pipeline computes.
+ *
+ * Consolation-ladder games count. They are real games with real scores, and
+ * `playoff_tier` comes back so the page can say which round rather than
+ * passing a fifth-place game off as a title run. A bye is stored as a matchup
+ * with no opponent and never reaches the database, so nothing here is a team
+ * scoring against nobody.
+ */
 export async function getTopScoringWeeks(limit = 10) {
   return asPublic<{
     season: number; week: number; espn_team_id: number; name: string;
     points: string; opponent: string | null; points_against: string;
-    result: string | null;
+    result: string | null; playoff_tier: string | null;
   }>(
-    `select r.season, r.week, r.espn_team_id, t.name,
-            round(r.points_for, 1)::text as points,
+    `with sides as (
+       select m.season, m.week, m.playoff_tier,
+              m.home_team_id as espn_team_id, m.home_points as points_for,
+              m.away_team_id as opponent_team_id, m.away_points as points_against,
+              case m.winner when 'HOME' then 'W' when 'AWAY' then 'L'
+                            when 'TIE' then 'T' end as result
+         from public.matchups m
+        where m.is_final and m.home_points is not null
+       union all
+       select m.season, m.week, m.playoff_tier,
+              m.away_team_id, m.away_points,
+              m.home_team_id, m.home_points,
+              case m.winner when 'AWAY' then 'W' when 'HOME' then 'L'
+                            when 'TIE' then 'T' end
+         from public.matchups m
+        where m.is_final and m.away_points is not null
+     )
+     select s.season, s.week, s.espn_team_id, t.name,
+            round(s.points_for, 1)::text as points,
             ot.name as opponent,
-            round(r.points_against, 1)::text as points_against,
-            r.result
-       from public.team_week_results r
-       join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
+            round(s.points_against, 1)::text as points_against,
+            s.result,
+            nullif(s.playoff_tier, 'NONE') as playoff_tier
+       from sides s
+       join public.teams t on t.season = s.season and t.espn_team_id = s.espn_team_id
        left join public.teams ot
-         on ot.season = r.season and ot.espn_team_id = r.opponent_team_id
-      where r.points_for is not null
-      order by r.points_for desc
+         on ot.season = s.season and ot.espn_team_id = s.opponent_team_id
+      order by s.points_for desc
       limit $1`,
     [limit]
   );
@@ -464,16 +502,25 @@ export async function getTopPlayerWeeks(limit = 10) {
     season: number; week: number; espn_player_id: number;
     full_name: string | null; default_position_id: number | null;
     points: string; espn_team_id: number; team: string; is_starter: boolean;
+    playoff_tier: string | null;
   }>(
+    // This list ALREADY covered the playoffs -- roster_entries runs to the end
+    // of the bracket, unlike team_week_results -- so the tier is joined only
+    // to label those rows, matching the team table above. Nothing is added to
+    // or removed from the list by this join.
     `select r.season, r.week, r.espn_player_id,
             p.full_name, p.default_position_id,
             round(r.applied_points, 1)::text as points,
-            r.espn_team_id, t.name as team, r.is_starter
+            r.espn_team_id, t.name as team, r.is_starter,
+            nullif(m.playoff_tier, 'NONE') as playoff_tier
        from public.roster_entries r
        join public.players p using (espn_player_id)
        join public.teams t on t.season = r.season and t.espn_team_id = r.espn_team_id
        join public.weeks w
          on w.season = r.season and w.week = r.week and w.results_complete
+       left join public.matchups m
+         on m.season = r.season and m.week = r.week
+        and r.espn_team_id in (m.home_team_id, m.away_team_id)
       where r.applied_points is not null
       order by r.applied_points desc
       limit $1`,

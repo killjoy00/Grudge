@@ -9,6 +9,20 @@ function record(wins: number, losses: number, ties: number) {
   return `${wins}-${losses}${ties ? `-${ties}` : ''}`;
 }
 
+/**
+ * Which bracket a playoff week belongs to.
+ *
+ * The two consolation ladders are collapsed into one word deliberately -- the
+ * distinction between them is league plumbing nobody thinks in -- but they are
+ * NOT folded in with the title bracket, because a 172 in a fifth-place game
+ * and a 172 in a semi-final are different achievements and the table should
+ * not quietly present one as the other. Regular-season rows arrive with a null
+ * tier and carry no label at all.
+ */
+function roundName(tier: string) {
+  return tier === 'WINNERS_BRACKET' ? 'Playoffs' : 'Consolation';
+}
+
 /** Sorting a W-L record means sorting its win percentage, not its text. */
 function rate(wins: number, losses: number, ties: number) {
   const games = wins + losses + ties;
@@ -197,8 +211,8 @@ export default async function History() {
         <>
           <h2>Biggest weeks</h2>
           <p className="sub">
-            The ten highest single-week scores. ESPN era only — the 2005–2017
-            archive keeps season totals, not week-by-week scores.
+            The ten highest single-week scores, playoffs included. ESPN era only —
+            the 2005–2017 archive keeps season totals, not week-by-week scores.
           </p>
           <div className="card">
             <div className="scroll">
@@ -222,6 +236,9 @@ export default async function History() {
                         <a href={`/standings?season=${row.season}`}>
                           {row.season} wk {row.week}
                         </a>
+                        {row.playoff_tier && (
+                          <span className="tsub block">{roundName(row.playoff_tier)}</span>
+                        )}
                       </td>
                       <td>
                         {row.opponent ?? '—'}
@@ -243,8 +260,9 @@ export default async function History() {
         <>
           <h2>Biggest individual weeks</h2>
           <p className="sub">
-            The ten best single-week performances by one player, ESPN era. A
-            &ldquo;benched&rdquo; marker means exactly what it says.
+            The ten best single-week performances by one player, playoffs
+            included, ESPN era. A &ldquo;benched&rdquo; marker means exactly what
+            it says.
           </p>
           <div className="card">
             <div className="scroll">
@@ -271,6 +289,9 @@ export default async function History() {
                         <a href={`/standings?season=${row.season}`}>
                           {row.season} wk {row.week}
                         </a>
+                        {row.playoff_tier && (
+                          <span className="tsub block">{roundName(row.playoff_tier)}</span>
+                        )}
                       </td>
                       <td>
                         <a href={`/team/${row.espn_team_id}`} className="tname">{row.team}</a>
