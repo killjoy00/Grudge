@@ -73,6 +73,27 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/score-predictions.ts
 
+      # THE WEEK AHEAD, captured before it is played.
+      #
+      # Everything above this point is about a week that is over. This is the
+      # one step that looks forward: ESPN's projection for each side of the
+      # coming week, plus the draft board.
+      #
+      # It MUST run now rather than on demand. ESPN revises projections right
+      # up to kickoff, so a number read on Sunday is not the one it published
+      # on Tuesday -- and the record the site keeps against ESPN would then be
+      # scored against a forecast nobody was ever shown. One snapshot a week,
+      # and that snapshot is both what the page displays and what it settles
+      # against.
+      #
+      # Runs after the scoring step so a failure here cannot stop the week's
+      # real results from landing, and before the commit like everything else
+      # that writes.
+      - name: Capture the week ahead
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx pipeline/preview.ts
+
       # THE RECORD BOOKS, REBUILT EVERY WEEK.
       #
       # Until this step existed, franchise_seasons was only ever written when a

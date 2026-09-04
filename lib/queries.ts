@@ -611,6 +611,117 @@ export async function getWeekMatchups(season: number, week: number) {
   );
 }
 
+/**
+ * What ESPN expected of each side of each matchup in a week, captured before
+ * kickoff by pipeline/preview.ts. `captured_at` is returned because the page
+ * says "as of Tuesday" and has to mean it.
+ */
+export async function getWeekProjections(season: number, week: number) {
+  return asPublic<{
+    espn_matchup_id: number; espn_team_id: number;
+    projected_points: string; starters: number; captured_at: string;
+  }>(
+    `select espn_matchup_id, espn_team_id,
+            round(projected_points, 1)::text as projected_points,
+            starters, captured_at
+       from public.matchup_projections
+      where season = $1 and week = $2`,
+    [season, week]
+  );
+}
+
+/** ESPN's own pick record, to sit in the leaderboard beside the league's. */
+export async function getEspnRecord(season: number) {
+  const rows = await asPublic<{
+    picks_made: number; decided: number; correct: number; incorrect: number;
+    pushed: number; pending: number; accuracy: string | null;
+  }>(
+    `select picks_made::int, decided::int, correct::int, incorrect::int,
+            pushed::int, pending::int, accuracy::text
+       from public.espn_prediction_record where season = $1`,
+    [season]
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Each team's three-to-five best players, for the reminder on the picks page.
+ *
+ * TWO SOURCES, because in week 1 the honest answer to "who are this team's
+ * stars" is not in the scoring data -- there is none. So:
+ *
+ *   week 1     the earliest draft picks. What a manager spent the third
+ *              overall pick on is the league's own statement about who that
+ *              team's best player is.
+ *   week 2+    points actually scored IN THE STARTING LINEUP this season,
+ *              which is the same rule the franchise pages use. A player who
+ *              put up 200 on somebody's bench did nothing for them.
+ *
+ * Either way the list is drawn from the CURRENT roster -- the most recent
+ * completed week's -- so a player who has been traded away stops being named
+ * as a reason to fear his old team.
+ */
+export async function getTeamStars(season: number, week: number, per = 4) {
+  if (week <= 1) {
+    return asPublic<{
+      espn_team_id: number; espn_player_id: number; full_name: string | null;
+      default_position_id: number | null; basis: string; detail: string;
+    }>(
+      `select d.espn_team_id, d.espn_player_id, p.full_name, p.default_position_id,
+              'draft' as basis,
+              'R' || d.round || ' P' || d.round_pick as detail
+         from public.draft_picks d
+         left join public.players p using (espn_player_id)
+        where d.season = $1
+          and d.overall_pick in (
+            select overall_pick from public.draft_picks i
+             where i.season = d.season and i.espn_team_id = d.espn_team_id
+             order by i.overall_pick
+             limit $2)
+        order by d.espn_team_id, d.overall_pick`,
+      [season, per]
+    );
+  }
+  return asPublic<{
+    espn_team_id: number; espn_player_id: number; full_name: string | null;
+    default_position_id: number | null; basis: string; detail: string;
+  }>(
+    // `current` is the newest completed week's roster; `scored` sums starting
+    // points across the season for the players still on it.
+    `with latest as (
+       select max(w.week) as week from public.weeks w
+        where w.season = $1 and w.results_complete
+     ),
+     current as (
+       select r.espn_team_id, r.espn_player_id
+         from public.roster_entries r, latest l
+        where r.season = $1 and r.week = l.week
+     ),
+     scored as (
+       select c.espn_team_id, c.espn_player_id,
+              coalesce(sum(r.applied_points) filter (where r.is_starter), 0) as points
+         from current c
+         left join public.roster_entries r
+           on r.season = $1 and r.espn_player_id = c.espn_player_id
+          and r.espn_team_id = c.espn_team_id
+        group by c.espn_team_id, c.espn_player_id
+     ),
+     ranked as (
+       select s.*, row_number() over (
+                partition by s.espn_team_id order by s.points desc) as rn
+         from scored s
+     )
+     select r.espn_team_id, r.espn_player_id, p.full_name, p.default_position_id,
+            'scoring' as basis,
+            round(r.points, 1)::text || ' pts' as detail
+       from ranked r
+       left join public.players p using (espn_player_id)
+      where r.rn <= $2 and r.points > 0
+      order by r.espn_team_id, r.rn`,
+    [season, per]
+  );
+}
+
 /** Every manager's prediction record across all seasons. See getLeaderboard. */
 export async function getAllTimeLeaderboard() {
   const [rows] = await asUser<{

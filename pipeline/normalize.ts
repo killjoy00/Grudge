@@ -5,7 +5,9 @@
  * payloads in data/history/ and exploration/raw/, which is how the derived
  * numbers get checked against seven real seasons rather than asserted.
  */
-import type { EspnLeague, EspnMatchup, EspnRosterEntry, ProGame } from './espn.ts';
+import type {
+  EspnDraftDetail, EspnLeague, EspnMatchup, EspnRosterEntry, ProGame,
+} from './espn.ts';
 
 /* Bench and IR. A slot is a STARTER iff its league count > 0 and it is not one
    of these -- derived from settings, never hardcoded, so a roster-settings
@@ -222,6 +224,97 @@ export function rosterEntryRows(
     if (m.away) push(m.away.teamId, m.away.rosterForCurrentScoringPeriod?.entries ?? []);
   }
   return out;
+}
+
+export interface MatchupProjectionRow {
+  season: number;
+  week: number;
+  espn_matchup_id: number;
+  espn_team_id: number;
+  projected_points: number;
+  starters: number;
+}
+
+/**
+ * What ESPN expects each side to score in a week that has NOT been played.
+ *
+ * ESPN publishes no win probability. It publishes a projection per player, and
+ * its own matchup view shows the sum over the starting lineup -- so that sum
+ * is ESPN's number, and the higher one is the side it is picking. Nothing is
+ * modelled here; this is arithmetic on what ESPN served.
+ *
+ * A player with no projection contributes 0 and is still counted as a starter,
+ * which is right: ESPN expecting nothing from a slot is a real prediction
+ * about that team, not missing data. `starters` is returned so a lineup with
+ * an actually empty slot can be told apart from a weak one.
+ *
+ * Bench and IR are excluded exactly as they are from a real score.
+ */
+export function matchupProjectionRows(
+  boxscore: EspnLeague,
+  week: number,
+  starters: Set<number>
+): MatchupProjectionRow[] {
+  const out: MatchupProjectionRow[] = [];
+  for (const m of boxscore.schedule ?? []) {
+    if (m.matchupPeriodId !== week) continue;
+    for (const side of [m.home, m.away]) {
+      if (!side) continue;
+      let points = 0;
+      let count = 0;
+      for (const e of side.rosterForCurrentScoringPeriod?.entries ?? []) {
+        if (!starters.has(e.lineupSlotId)) continue;
+        points += projectedPoints(e, week) ?? 0;
+        count += 1;
+      }
+      // A side with nothing in its starting slots is not a 0.0 projection, it
+      // is an absent lineup. Writing it as 0 would hand the other team a free
+      // correct pick in ESPN's record.
+      if (count === 0) continue;
+      out.push({
+        season: boxscore.seasonId,
+        week,
+        espn_matchup_id: m.id,
+        espn_team_id: side.teamId,
+        projected_points: Number(points.toFixed(2)),
+        starters: count,
+      });
+    }
+  }
+  return out;
+}
+
+export interface DraftPickRow {
+  season: number;
+  overall_pick: number;
+  round: number;
+  round_pick: number;
+  espn_team_id: number;
+  espn_player_id: number;
+  is_keeper: boolean;
+}
+
+/** The draft board, straight from mDraftDetail. */
+export function draftPickRows(detail: EspnDraftDetail, season: number): DraftPickRow[] {
+  // `drafted` false means the board is a placeholder ESPN generated before the
+  // draft happened, with picks that name nobody. Loading it would fill the
+  // table with team 0 / player 0 rows.
+  if (!detail.draftDetail?.drafted) return [];
+  return (detail.draftDetail.picks ?? [])
+    // NEGATIVE ids are real. ESPN identifies a team defence with one (-16034
+    // is a D/ST, not a corrupt row), so the test is "not zero", not
+    // "positive". Filtering on `> 0` drops exactly ten picks from a sixteen
+    // round draft -- every defence, one per team -- and does it silently.
+    .filter((p) => p.playerId !== 0 && p.teamId > 0)
+    .map((p) => ({
+      season,
+      overall_pick: p.overallPickNumber,
+      round: p.roundId,
+      round_pick: p.roundPickNumber,
+      espn_team_id: p.teamId,
+      espn_player_id: p.playerId,
+      is_keeper: Boolean(p.keeper),
+    }));
 }
 
 /** Players seen anywhere in a boxscore, for the shared `players` table. */

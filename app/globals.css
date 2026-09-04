@@ -417,6 +417,50 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
 .pick-owner { color: var(--muted); font-size: 12px; }
 .matchup .pick.on .pick-owner { color: rgb(255 255 255 / .82); }
 
+/* Each team's best players, inside the pick button under the name.
+   A reminder, not a roster: quiet enough that the team name still reads as
+   the thing you are tapping, but 12px rather than 11 because these are proper
+   nouns being scanned, not a label being glanced at. --navy-2 rather than
+   --muted for the same reason the matchup head moved: 13.4:1 against 4.82. */
+.pick-stars {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 4px;
+  color: var(--navy-2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.pick-star-pos {
+  display: inline-block;
+  min-width: 26px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.matchup .pick.on .pick-stars { color: rgb(255 255 255 / .9); }
+.matchup .pick.on .pick-star-pos { color: rgb(255 255 255 / .68); }
+
+/* ESPN's projection, under the two buttons and spanning both -- it is a
+   statement about the matchup, not about either side, and putting it inside
+   one button would read as that team's claim. */
+.matchup-projection {
+  margin: 0;
+  padding: 9px 12px 11px;
+  color: var(--navy-2);
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.matchup-projection strong { font-weight: 750; }
+
+/* ESPN in the manager table. Tinted rather than bolded: it is a benchmark in
+   a list of people, and should read as belonging to the table without
+   pretending to be one of the league. */
+.espn-row td { background: rgb(120 173 210 / .07); }
+
 @media (max-width: 560px) {
   .matchup-body { grid-template-columns: 1fr; gap: 6px; }
   .matchup-vs { justify-self: center; }

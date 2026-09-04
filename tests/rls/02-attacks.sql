@@ -427,6 +427,37 @@ select test.expect_error(
     values (2026, 'invented', 1, 1, 6)$$,
   'T51 ATTACK invent a trade from the browser');
 
+-- ------------------------------------------ ESPN projections and the draft
+--
+-- Both are league-public read and pipeline-only write. The read side matters
+-- as much as the write side here: the projection is the one thing on the
+-- predictions page that IS visible before kickoff, so a policy that hid it
+-- would silently empty the feature rather than break it.
+
+select test.expect_ok(
+  $$select count(*) from public.matchup_projections$$,
+  'T53 ESPN projections are readable before kickoff');
+
+select test.expect_error(
+  $$insert into public.matchup_projections
+      (season, week, espn_matchup_id, espn_team_id, projected_points, starters)
+    values (2026, 1, 1, 6, 999.9, 10)$$,
+  'T54 ATTACK invent an ESPN projection');
+
+select test.expect_error(
+  $$update public.matchup_projections set projected_points = 0$$,
+  'T55 ATTACK rewrite an ESPN projection after the fact');
+
+select test.expect_ok(
+  $$select count(*) from public.draft_picks$$,
+  'T56 the draft board is readable');
+
+select test.expect_error(
+  $$insert into public.draft_picks
+      (season, overall_pick, round, round_pick, espn_team_id, espn_player_id)
+    values (2026, 1, 1, 1, 6, 1)$$,
+  'T57 ATTACK rewrite the draft board');
+
 -- Identity cleared: a pooled connection must not carry the previous request's
 -- voter into the next one and hand them the tally.
 reset app.user_id;
