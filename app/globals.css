@@ -17,6 +17,14 @@
      11px on the tinted card grounds (surface-2, and the green "ahead" tint on
      a trade card), which fails AA. This clears 5.5:1 on all three. */
   --link-ink: #20678f;
+  /* --carolina-deep as a TEXT GROUND. It is a fine fill for a bar or a
+     border, but white on it is only 4.36:1, so the picked matchup card --
+     the one place it sits behind body-size words -- failed AA, and the
+     manager name on it managed 3.67. Mixed 36% toward navy, which is the
+     lightest it can be while every opacity the card paints with clears 4.5,
+     and still 2.37:1 apart from the unpicked navy so picked reads as picked.
+     Kept separate from --carolina-deep so bars and borders are untouched. */
+  --pick-on: #275c82;
   --win: #16734b;
   --loss: #b43f3f;
   --warn: #a86512;
@@ -192,7 +200,7 @@ button:hover:not(:disabled), .btn:hover { color: var(--navy); background: var(--
 button:disabled { opacity: .52; cursor: not-allowed; }
 .btn-quiet { color: var(--navy); background: transparent; border-color: var(--line-dark); }
 button.pick { flex: 1; min-height: 48px; text-align: left; }
-button.pick.on { color: white; background: var(--carolina-deep); border-color: var(--carolina-deep); }
+button.pick.on { color: white; background: var(--pick-on); border-color: var(--pick-on); }
 .pickrow { display: flex; gap: 8px; margin: 10px 0; }
 input[type="text"], input[type="email"], select, textarea {
   width: 100%; padding: 10px 11px; color: var(--text); background: white;
@@ -404,18 +412,38 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
   font: 700 12px/1 Georgia, serif;
   font-style: italic;
 }
+/* A PICK CARD IS NOT A BUTTON, TYPOGRAPHICALLY.
+   It is one in markup, because tapping it is the whole interaction -- and
+   that is exactly how this went wrong. The global `button` rule sets
+   850-weight 12px UPPERCASE with letter-spacing, which is right for SAVE and
+   wrong for "Jaxon Smith-Njigba": every team name, manager and player on the
+   picks page was rendering as a heavy all-caps label. Names are proper nouns
+   and have to read as words, so this opts out of all four and sets its own
+   scale. Anything nested inherits it, which is why the parts below set only
+   size and weight.
+   On `.pick` rather than `.matchup .pick` because the trade ballot uses the
+   same class for the same job -- tap a team -- and had the same problem. */
+.pick {
+  font: 400 15px/1.35 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+}
 .matchup .pick {
   display: flex;
   flex-direction: column;
   gap: 3px;
   justify-content: center;
   min-height: 62px;
-  padding: 10px 12px;
-  text-align: left;
+  padding: 11px 12px;
 }
-.pick-team { font-weight: 750; line-height: 1.25; }
-.pick-owner { color: var(--muted); font-size: 12px; }
-.matchup .pick.on .pick-owner { color: rgb(255 255 255 / .82); }
+.pick-team { font-size: 15.5px; font-weight: 700; line-height: 1.25; }
+/* BOTH states are dark grounds -- unpicked is --navy from the button rule,
+   picked is --carolina-deep -- so every colour here is white at an opacity,
+   never one of the navy inks. Setting --navy-2 on the star list is what made
+   the unpicked cards unreadable: 1.4:1, dark text on a dark card. */
+.pick-owner { color: rgb(255 255 255 / .74); font-size: 12.5px; }
+.matchup .pick.on .pick-owner { color: rgb(255 255 255 / .86); }
 
 /* Each team's best players, inside the pick button under the name.
    A reminder, not a roster: quiet enough that the team name still reads as
@@ -425,23 +453,25 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
 .pick-stars {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  margin-top: 4px;
-  color: var(--navy-2);
-  font-size: 12px;
-  line-height: 1.35;
+  gap: 2px;
+  margin-top: 6px;
+  color: rgb(255 255 255 / .88);
+  font-size: 13px;
+  line-height: 1.4;
 }
+/* The position is the one thing here that IS a label rather than a name, so
+   it keeps the small-caps treatment the rest of the card just dropped. */
 .pick-star-pos {
   display: inline-block;
-  min-width: 26px;
-  color: var(--muted);
+  min-width: 27px;
+  color: rgb(255 255 255 / .6);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .04em;
+  letter-spacing: .05em;
   text-transform: uppercase;
 }
-.matchup .pick.on .pick-stars { color: rgb(255 255 255 / .9); }
-.matchup .pick.on .pick-star-pos { color: rgb(255 255 255 / .68); }
+.matchup .pick.on .pick-stars { color: rgb(255 255 255 / .95); }
+.matchup .pick.on .pick-star-pos { color: rgb(255 255 255 / .72); }
 
 /* ESPN's projection, under the two buttons and spanning both -- it is a
    statement about the matchup, not about either side, and putting it inside
