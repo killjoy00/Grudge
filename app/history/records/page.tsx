@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { DraftRecordsSection } from '../../../components/DraftRecordsSection.tsx';
 import { HistoryNav } from '../../../components/HistoryNav.tsx';
+import { getDraftRecords } from '../../../lib/draft-records.ts';
 import { getCachedHistoryRecords } from '../../../lib/history-cache.ts';
 import { franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
 import type { AllSeasonRecordRow, MatchupRecordRow } from '../../../lib/history-queries.ts';
@@ -113,13 +115,14 @@ function LuckTable({ title, rows }: { title: string; rows: SeasonLuckRecordRow[]
 }
 
 export default async function RecordsPage() {
-  const [[seasons, games], topWeeks, topPlayers, powerChampions, luckiest, unluckiest] = await Promise.all([
+  const [[seasons, games], topWeeks, topPlayers, powerChampions, luckiest, unluckiest, draftRecords] = await Promise.all([
     getCachedHistoryRecords(),
     getTopScoringWeeks(10),
     getTopPlayerWeeks(10),
     getPowerRankingChampions(),
     getLuckiestSeasons(10),
     getUnluckiestSeasons(10),
+    getDraftRecords(),
   ]);
   const eligible = seasons.filter((row) => row.points_for !== null);
   const qualityScores = makeQualityScores(eligible);
@@ -137,7 +140,7 @@ export default async function RecordsPage() {
       <div className="page-hero">
         <div className="eyebrow">The record book</div>
         <h1>League records</h1>
-        <p>Season achievements, game marks, power champions and schedule luck in one place.</p>
+        <p>Season achievements, game marks, draft archaeology, power champions and schedule luck in one place.</p>
       </div>
 
       <HistoryNav current="records" />
@@ -199,6 +202,8 @@ export default async function RecordsPage() {
           </tr>
         ))}</tbody>
       </table></div></div>
+
+      <DraftRecordsSection records={draftRecords} />
 
       <h2>Power-ranking champions</h2>
       <p className="sub">The team ranked #1 after the final regular-season week, using the same current 40/30/20/10 formula in every recoverable season.</p>
