@@ -8,7 +8,7 @@ between **authoritative season results** and **recovered ESPN evidence**.
 | era | authoritative season result | recovered supporting evidence |
 |---|---|---|
 | 2005–2017 | commissioner spreadsheet transcription: final standings and playoff finish order | ESPN weekly team scoreboards and draft recaps |
-| 2018–2025 | ESPN archive | weekly player lineups, transactions, matchups, standings; draft boards still need a targeted recapture |
+| 2018–2025 | ESPN archive | weekly player lineups, transactions, matchups, standings and recovered draft boards |
 | 2026 onward | live ESPN pipeline | full current capture: scores, lineups, draft, transactions, projections and derived features |
 
 The league did not play in 2020. ESPN created a shell season, but it contains no
@@ -37,7 +37,8 @@ The recovery also established the limits:
   shells but no roster entries, so individual player weeks, optimal lineups and
   points-left-on-bench cannot be reconstructed before 2018.
 
-Those limits are shown directly in `/history/vault` rather than hidden in code.
+Those limits are shown in the archive coverage reference rather than hidden in
+code.
 
 ## Score-derived history
 
@@ -47,7 +48,9 @@ used today. `npm run history:scores` rebuilds, for 2005–2017:
 - `team_week_results` (record, PF/PA, median and all-play fields; lineup fields
   remain null);
 - `luck_index`;
-- `power_rankings`.
+- `power_rankings`;
+- score-only `weekly_awards`: high scorer, low scorer, biggest blowout and
+  nailbiter. `worst_bench` remains absent because it requires player lineups.
 
 Power rankings use **the exact current formula in every season**:
 
@@ -115,32 +118,39 @@ it joins the permanent record automatically.
 
 ## What each history surface owns
 
-The archive is intentionally split by question instead of repeating the same
-lists on multiple pages:
+There is **one user-facing History destination** in the global navigation.
+Everything else hangs from that hub instead of presenting four parallel history
+tabs:
 
-- **`/history` — directory and timeline.** Seasons, permanent franchises,
-  managers, champions and links into the specialized books.
+- **`/history` — hub, directory and timeline.** Seasons, permanent franchises,
+  managers and champions live here. It links into the two genuinely distinct
+  deep-dive views below.
 - **`/history/records` — record book.** Best seasons, offenses, team-game marks,
   individual player weeks where available, final power champions and schedule
   luck extremes.
 - **`/history/rivalries` — head-to-head book.** Every durable franchise pairing,
   playoff series, superlatives and full game ledgers back to 2005.
-- **`/history/vault` — evidence room.** Coverage matrix and raw season files:
-  scoreboards, drafts and transactions, including explicit missing-source gaps.
+- **`/history/vault` — supporting reference, not a peer navigation tab.** Coverage
+  matrix and raw season source material: scoreboards, drafts and transactions.
+  It is linked from the History hub and individual season files when source
+  provenance matters.
 - **`/history/<season>` — season file.** The bridge between the commissioner
-  result, recovered weekly evidence, standings, power ranking and Vault data.
+  result, recovered weekly evidence, standings, power ranking and source data.
 - **franchise pages — permanent slot record.** Manager eras, renames, titles,
   season metrics, weekly receipts and rivalries.
 - **manager pages — person record.** Career totals across franchise changes,
   regular-season crowns, season metrics and weekly receipts.
 
-## Draft-board gap, 2018–2025
+## Draft-board recovery, 2018–2025
 
 The historical 2018–2025 archive was originally captured without
-`mDraftDetail`, so production currently has no draft picks for those seasons.
-This is **not an ESPN limitation**. A targeted authenticated recapture can fill
-that hole without touching the already-complete matchup/transaction history.
-The Vault labels it a recoverable gap until that recapture is performed.
+`mDraftDetail`. On September 5, 2026, a targeted authenticated repair fetched
+only that ESPN view and merged it into the existing archives without replacing
+matchups, standings, rosters or transactions.
+
+The repair added 1,150 draft picks across the seven played seasons in that span:
+2018, 2019 and 2021 each have 170 picks; 2022–2025 each have 160. Those boards are
+now imported into production and the artificial Vault gap is closed.
 
 ## Playoff reconstruction before 2018
 

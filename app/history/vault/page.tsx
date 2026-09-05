@@ -19,9 +19,9 @@ export default async function HistoryVaultPage() {
   return (
     <>
       <div className="page-hero">
-        <div className="eyebrow">The evidence room</div>
-        <h1>The Vault</h1>
-        <p>What ESPN actually preserved, season by season — including the gaps. Records and conclusions live elsewhere; this is the source material.</p>
+        <div className="eyebrow">The Vault</div>
+        <h1>Data coverage & source material</h1>
+        <p>A reference for what ESPN actually preserved, season by season. This supports the history pages; it is not a separate record book.</p>
       </div>
 
       <HistoryNav current="vault" />
@@ -42,8 +42,8 @@ export default async function HistoryVaultPage() {
         </div>
         <div className="card">
           <span className="eyebrow">2018–2025</span>
-          <h3>Full weekly detail + transactions</h3>
-          <p className="note">Player-level boxscores and historical transactions survive. Draft boards are the one artificial hole: the original capture omitted <code>mDraftDetail</code>, so those boards are recoverable but not yet loaded.</p>
+          <h3>Full weekly detail + drafts</h3>
+          <p className="note">Player-level boxscores, transaction history and draft boards are all on file. The draft boards were recovered separately because the original historical capture had omitted ESPN&rsquo;s <code>mDraftDetail</code> view.</p>
         </div>
         <div className="card">
           <span className="eyebrow">2026 onward</span>
@@ -53,7 +53,7 @@ export default async function HistoryVaultPage() {
       </div>
 
       <h2>Season evidence matrix</h2>
-      <p className="sub">Open a year for its raw weekly scoreboard, draft board and transaction archaeology. “Gap” means the source is recoverable but has not been captured yet; “Unavailable” means ESPN no longer returns it.</p>
+      <p className="sub">Open a year for its source scoreboard, draft board and transaction archaeology. “Gap” means a recoverable source has not been captured; “Unavailable” means ESPN no longer returns it.</p>
       <div className="card">
         <div className="scroll">
           <table>
