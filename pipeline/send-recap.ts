@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { connect } from './db.ts';
 import { loadRecap, type Query } from './recap-query.ts';
 import { renderWeeklyRecap, type WeeklyRecap } from './recap.ts';
+import { addPickupHighlights, loadNotablePickups } from './pickup-recap.ts';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -126,7 +127,8 @@ async function sendOne(
 }
 
 async function main() {
-  const recap = await loadRecap(queryClient(), { season: SEASON, week: REQUESTED_WEEK });
+  const query = queryClient();
+  const recap = await loadRecap(query, { season: SEASON, week: REQUESTED_WEEK });
   if (!recap) {
     // A season that has not started is a normal state for the scheduled job,
     // but a bare invocation asking for a recap that cannot exist is an error.
@@ -135,7 +137,8 @@ async function main() {
     return;
   }
   const siteUrl = process.env.RECAP_SITE_URL?.trim() || 'https://grudge.planitnow.us';
-  const rendered = renderWeeklyRecap(recap, siteUrl);
+  const pickups = await loadNotablePickups(query, recap.season, recap.week);
+  const rendered = addPickupHighlights(renderWeeklyRecap(recap, siteUrl), pickups);
 
   if (DRY_RUN) {
     console.log(rendered.subject);
@@ -160,7 +163,6 @@ async function main() {
     return;
   }
 
-  const query = queryClient();
   const recipients = await loadRecipients(query);
   if (recipients.length === 0) {
     console.log(`${recap.season} week ${recap.week}: no active members opted into recaps.`);
