@@ -137,3 +137,54 @@ export async function getRivalrySeries(teamA: number, teamB: number) {
   ]);
   return { teams, games };
 }
+
+/**
+ * Raw ESPN-era team-ID totals, INCLUDING playoffs.
+ *
+ * The history page has always described this bottom table as the raw ESPN feed
+ * with playoff games included, but its old query read team_week_results -- a
+ * derived table that intentionally stops at the regular season. Read matchups
+ * directly here so the numbers finally match the label without contaminating
+ * standings, luck, all-play, or power rankings.
+ */
+export async function getEspnEraAllTime() {
+  return asPublic<{
+    espn_team_id: number; name: string; seasons: number; wins: number; losses: number;
+    ties: number; points_for: string; best_season: number | null;
+  }>(
+    `with sides as (
+       select m.season, m.home_team_id as espn_team_id,
+              m.home_points as points_for,
+              case m.winner when 'HOME' then 1 else 0 end as wins,
+              case m.winner when 'AWAY' then 1 else 0 end as losses,
+              case m.winner when 'TIE' then 1 else 0 end as ties
+         from public.matchups m
+        where m.is_final and m.home_team_id is not null and m.home_points is not null
+       union all
+       select m.season, m.away_team_id,
+              m.away_points,
+              case m.winner when 'AWAY' then 1 else 0 end,
+              case m.winner when 'HOME' then 1 else 0 end,
+              case m.winner when 'TIE' then 1 else 0 end
+         from public.matchups m
+        where m.is_final and m.away_team_id is not null and m.away_points is not null
+     ), totals as (
+       select espn_team_id,
+              count(distinct season)::int as seasons,
+              sum(wins)::int as wins,
+              sum(losses)::int as losses,
+              sum(ties)::int as ties,
+              sum(points_for) as points_for
+         from sides
+        group by espn_team_id
+     )
+     select t.espn_team_id, t.name, x.seasons, x.wins, x.losses, x.ties,
+            round(x.points_for, 1)::text as points_for,
+            null::int as best_season
+       from totals x
+       join public.teams t
+         on t.espn_team_id = x.espn_team_id
+        and t.season = (select max(season) from public.teams)
+      order by x.wins desc, x.points_for desc`
+  );
+}
