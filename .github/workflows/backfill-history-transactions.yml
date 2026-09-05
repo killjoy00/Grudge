@@ -41,6 +41,35 @@ jobs:
 
       - run: npm ci
 
+      - name: Resolve ESPN archive range
+        id: range
+        shell: bash
+        run: |
+          requested_from='${{ inputs.from_season }}'
+          requested_to='${{ inputs.to_season }}'
+
+          if ! [[ "$requested_from" =~ ^[0-9]{4}$ && "$requested_to" =~ ^[0-9]{4}$ ]]; then
+            echo "::error::Season inputs must be four-digit years."
+            exit 1
+          fi
+          if [ "$requested_from" -gt "$requested_to" ]; then
+            echo "::error::First season cannot be after last season."
+            exit 1
+          fi
+
+          effective_from="$requested_from"
+          if [ "$effective_from" -lt 2018 ]; then
+            effective_from=2018
+            echo "::notice::Skipping ${requested_from}-2017. Those seasons are manual-history years and have no ESPN archive to repair."
+          fi
+          if [ "$requested_to" -lt "$effective_from" ]; then
+            echo "::error::Requested range does not include any ESPN-archive seasons (2018+)."
+            exit 1
+          fi
+
+          echo "from=$effective_from" >> "$GITHUB_OUTPUT"
+          echo "to=$requested_to" >> "$GITHUB_OUTPUT"
+
       - name: Check temporary ESPN credentials
         env:
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
@@ -61,7 +90,7 @@ jobs:
         env:
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
           ESPN_S2: ${{ secrets.ESPN_S2 }}
-        run: npm run history:transactions -- --from=${{ inputs.from_season }} --to=${{ inputs.to_season }} --skip-probe
+        run: npm run history:transactions -- --from=${{ steps.range.outputs.from }} --to=${{ steps.range.outputs.to }} --skip-probe
 
       - name: Verify repair merge tests
         run: node --test scripts/history-backfill-utils.test.mjs
@@ -77,7 +106,7 @@ jobs:
             echo "No archive changes were produced."
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            git commit -m "Backfill ESPN transactions ${{ inputs.from_season }}-${{ inputs.to_season }}"
+            git commit -m "Backfill ESPN transactions ${{ steps.range.outputs.from }}-${{ steps.range.outputs.to }}"
             git push origin HEAD:main
           fi
 
@@ -92,9 +121,11 @@ jobs:
           {
             echo "### Historical ESPN transaction repair"
             echo ""
-            echo "- Seasons: **${{ inputs.from_season }}-${{ inputs.to_season }}**"
+            echo "- Requested seasons: **${{ inputs.from_season }}-${{ inputs.to_season }}**"
+            echo "- ESPN archive seasons processed: **${{ steps.range.outputs.from || 'n/a' }}-${{ steps.range.outputs.to || 'n/a' }}**"
             echo "- Archive changed: **${{ steps.commit.outputs.changed || 'no' }}**"
             echo "- Result: **${{ job.status }}**"
             echo ""
+            echo "Pre-2018 league history is manual-history data, not ESPN archive data, so those seasons are intentionally skipped."
             echo "After a successful run, delete the temporary ESPN_SWID and ESPN_S2 repository secrets."
           } >> "$GITHUB_STEP_SUMMARY"
