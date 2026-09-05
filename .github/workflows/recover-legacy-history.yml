@@ -1,0 +1,93 @@
+name: Recover legacy ESPN history
+
+on:
+  # Runs automatically once when this recovery workflow lands on main. The data
+  # commit does not match these paths, so it cannot recursively trigger itself.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/recover-legacy-history.yml'
+      - 'scripts/backfill-legacy-history.mjs'
+      - 'scripts/import-history-drafts.ts'
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check temporary ESPN credentials
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: |
+          if [ -z "$ESPN_SWID" ] || [ -z "$ESPN_S2" ]; then
+            echo "::error::Temporary ESPN_SWID and ESPN_S2 repository secrets are required."
+            exit 1
+          fi
+
+      - name: Recover 2005-2017 ESPN archive
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: node scripts/backfill-legacy-history.mjs --from=2005 --to=2017
+
+      - name: Verify transaction merge logic
+        run: node --test scripts/history-backfill-utils.test.mjs
+
+      - name: Commit recovered raw archive
+        id: commit
+        run: |
+          git config user.name 'grudge-history[bot]'
+          git config user.email 'grudge-history[bot]@users.noreply.github.com'
+          git add data/history
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No archive changes were produced."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git commit -m "Recover ESPN league history 2005-2017"
+            git push origin HEAD:main
+          fi
+
+      - name: Load weekly scores and transactions into production
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run pipeline -- --history
+
+      - name: Load recovered draft boards into production
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx scripts/import-history-drafts.ts
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Legacy ESPN recovery"
+            echo ""
+            echo "- Requested era: **2005-2017**"
+            echo "- Raw archive committed: **${{ steps.commit.outputs.changed || 'no' }}**"
+            echo "- Result: **${{ job.status }}**"
+            echo ""
+            echo "Manual championship/final-standing history was not modified."
+          } >> "$GITHUB_STEP_SUMMARY"
