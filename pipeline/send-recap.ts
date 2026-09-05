@@ -6,7 +6,8 @@ import { createHash } from 'node:crypto';
 import { connect } from './db.ts';
 import { loadRecap, type Query } from './recap-query.ts';
 import { renderWeeklyRecap, type WeeklyRecap } from './recap.ts';
-import { addPickupHighlights, loadNotablePickups } from './pickup-recap.ts';
+import { addPickupReport, loadRecapPickups } from './pickup-recap.ts';
+import { makeMatchupsEmailSafe } from './email-layout.ts';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -137,8 +138,11 @@ async function main() {
     return;
   }
   const siteUrl = process.env.RECAP_SITE_URL?.trim() || 'https://grudge.planitnow.us';
-  const pickups = await loadNotablePickups(query, recap.season, recap.week);
-  const rendered = addPickupHighlights(renderWeeklyRecap(recap, siteUrl), pickups);
+  const pickups = await loadRecapPickups(query, recap.season, recap.week);
+  const rendered = addPickupReport(
+    makeMatchupsEmailSafe(renderWeeklyRecap(recap, siteUrl), recap),
+    pickups
+  );
 
   if (DRY_RUN) {
     console.log(rendered.subject);
