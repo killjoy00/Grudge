@@ -20,15 +20,49 @@ function byOffense(a: AllSeasonRecordRow, b: AllSeasonRecordRow) {
     - (pointsPerGame(a.points_for, a.wins, a.losses, a.ties) ?? 0);
 }
 
-function SeasonTable({ rows, value }: {
+/**
+ * Percentile rank on a 0-1 scale, with tied values sharing the midpoint of
+ * their occupied ranks. This lets win percentage and PF/G contribute equally
+ * to the blended quality index even though they use completely different units.
+ */
+function percentile(value: number, values: number[]) {
+  if (values.length <= 1) return 1;
+  let below = 0;
+  let equal = 0;
+  for (const candidate of values) {
+    if (candidate < value) below += 1;
+    else if (candidate === value) equal += 1;
+  }
+  return (below + Math.max(0, equal - 1) / 2) / (values.length - 1);
+}
+
+function seasonKey(row: AllSeasonRecordRow) {
+  return `${row.season}:${row.franchise_key}`;
+}
+
+function makeQualityScores(rows: AllSeasonRecordRow[]) {
+  const rates = rows.map((row) => winRate(row.wins, row.losses, row.ties));
+  const ppgs = rows.map((row) => pointsPerGame(row.points_for, row.wins, row.losses, row.ties) ?? 0);
+  return new Map(rows.map((row) => {
+    const recordPercentile = percentile(winRate(row.wins, row.losses, row.ties), rates);
+    const scoringPercentile = percentile(
+      pointsPerGame(row.points_for, row.wins, row.losses, row.ties) ?? 0,
+      ppgs
+    );
+    return [seasonKey(row), 50 * recordPercentile + 50 * scoringPercentile] as const;
+  }));
+}
+
+function SeasonTable({ rows, value, markLabel = 'Mark' }: {
   rows: AllSeasonRecordRow[];
   value: (row: AllSeasonRecordRow) => ReactNode;
+  markLabel?: string;
 }) {
   return (
     <div className="card">
       <div className="scroll">
         <table>
-          <thead><tr><th className="rank">#</th><th>Season</th><th>Franchise</th><th>Manager</th><th className="num">Record</th><th className="num">Mark</th></tr></thead>
+          <thead><tr><th className="rank">#</th><th>Season</th><th>Franchise</th><th>Manager</th><th className="num">Record</th><th className="num">{markLabel}</th></tr></thead>
           <tbody>
             {rows.map((row, index) => (
               <tr key={`${row.season}-${row.franchise_key}`} className={row.is_champion ? 'title-row' : undefined}>
@@ -78,10 +112,15 @@ function GameRecord({ label, row, detail }: {
 export default async function RecordsPage() {
   const [seasons, games] = await getCachedHistoryRecords();
   const eligible = seasons.filter((row) => row.points_for !== null);
+  const qualityScores = makeQualityScores(eligible);
+  const byBlendedQuality = (a: AllSeasonRecordRow, b: AllSeasonRecordRow) =>
+    (qualityScores.get(seasonKey(b)) ?? 0) - (qualityScores.get(seasonKey(a)) ?? 0)
+      || bySeasonQuality(a, b);
+
   const bestSeasons = [...eligible].sort(bySeasonQuality).slice(0, 10);
   const offenses = [...eligible].sort(byOffense).slice(0, 10);
-  const champions = seasons.filter((row) => row.is_champion).sort(bySeasonQuality).slice(0, 10);
-  const nonChampions = seasons.filter((row) => !row.is_champion).sort(bySeasonQuality).slice(0, 10);
+  const champions = eligible.filter((row) => row.is_champion).sort(byBlendedQuality).slice(0, 10);
+  const nonChampions = eligible.filter((row) => !row.is_champion).sort(byBlendedQuality).slice(0, 10);
   const missedPlayoffs = seasons.filter((row) => row.final_place !== null && row.final_place > 6).sort(bySeasonQuality).slice(0, 10);
 
   return (
@@ -96,22 +135,24 @@ export default async function RecordsPage() {
         <a className="btn btn-quiet" href="/history">← League history</a>
       </div>
 
-      <h2>Best regular seasons</h2>
-      <p className="sub">Ranked by win percentage, then points per game so 12-, 13- and 14-game schedules compare fairly.</p>
-      <SeasonTable rows={bestSeasons} value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
+      <h2>Highest win percentage</h2>
+      <p className="sub">Ranked by regular-season win percentage. Points per game breaks ties so 12-, 13- and 14-game schedules compare fairly.</p>
+      <SeasonTable rows={bestSeasons} markLabel="Win %" value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
 
       <h2>Best offenses</h2>
       <p className="sub">Points per regular-season game, not raw season totals.</p>
-      <SeasonTable rows={offenses} value={(row) => `${pointsPerGame(row.points_for, row.wins, row.losses, row.ties)?.toFixed(1) ?? '—'} PF/G`} />
+      <SeasonTable rows={offenses} markLabel="PF/G" value={(row) => `${pointsPerGame(row.points_for, row.wins, row.losses, row.ties)?.toFixed(1) ?? '—'}`} />
 
       <h2>Best champions</h2>
-      <SeasonTable rows={champions} value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
+      <p className="sub">Quality index: 50% regular-season win-percentage percentile and 50% points-per-game percentile across every recorded season.</p>
+      <SeasonTable rows={champions} markLabel="Quality" value={(row) => `${(qualityScores.get(seasonKey(row)) ?? 0).toFixed(1)}`} />
 
       <h2>Best teams that did not win it</h2>
-      <SeasonTable rows={nonChampions} value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
+      <p className="sub">The same 50/50 quality index, so elite scoring can offset a slightly worse record and vice versa.</p>
+      <SeasonTable rows={nonChampions} markLabel="Quality" value={(row) => `${(qualityScores.get(seasonKey(row)) ?? 0).toFixed(1)}`} />
 
       <h2>Best teams to miss the playoffs</h2>
-      <SeasonTable rows={missedPlayoffs} value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
+      <SeasonTable rows={missedPlayoffs} markLabel="Win %" value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
 
       <h2>Single-game records</h2>
       <p className="sub">ESPN era only. Playoff and consolation games count because they are real scored matchups.</p>
