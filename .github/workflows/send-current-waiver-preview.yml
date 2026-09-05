@@ -1,0 +1,24 @@
+name: Send current waiver preview once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/send-current-waiver-preview.yml'
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Send current waiver preview
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+        run: npx tsx scripts/send-current-waiver-preview.ts
