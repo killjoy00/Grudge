@@ -176,7 +176,7 @@ jobs:
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+          RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
           RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
         run: |
           if [ -n "${{ inputs.season }}" ]; then
@@ -203,13 +203,13 @@ jobs:
         if: failure()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+          RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
           ALERT_EMAIL: ${{ vars.PIPELINE_ALERT_EMAIL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TRIGGER: ${{ github.event_name }}
         run: |
           if [ -z "$RESEND_API_KEY" ] || [ -z "$RECAP_FROM_EMAIL" ] || [ -z "$ALERT_EMAIL" ]; then
-            echo "::warning::Pipeline failed and NO ALERT WAS SENT. Set the PIPELINE_ALERT_EMAIL repository variable (RECAP_FROM_EMAIL and RESEND_API_KEY must also be present)."
+            echo "::warning::Pipeline failed and NO ALERT WAS SENT. Set the PIPELINE_ALERT_EMAIL repository variable and make sure RESEND_API_KEY is present."
             exit 0
           fi
           body=$(jq -n \
