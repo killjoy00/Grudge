@@ -24,6 +24,7 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
   const managerByFranchise = new Map(managers.map((manager) => [manager.franchise_key, manager]));
   const champion = rows.find((row) => row.is_champion) ?? null;
   const runnerUp = rows.find((row) => row.is_runner_up) ?? null;
+  const finalRows = [...rows].sort((a, b) => (a.final_place ?? 999) - (b.final_place ?? 999));
   const bestRecord = [...rows].sort((a, b) => {
     const diff = winRate(b.wins, b.losses, b.ties) - winRate(a.wins, a.losses, a.ties);
     return diff || Number(b.points_for ?? 0) - Number(a.points_for ?? 0);
@@ -56,10 +57,7 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
       </div>
 
       <div className="stat-strip three">
-        <div>
-          <span>Champion</span>
-          <strong>{champion?.team_name ?? '—'}</strong>
-        </div>
+        <div><span>Champion</span><strong>{champion?.team_name ?? '—'}</strong></div>
         <div>
           <span>Best regular season</span>
           <strong>{record(bestRecord.wins, bestRecord.losses, bestRecord.ties)}</strong>
@@ -176,7 +174,7 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {finalRows.map((row) => {
                 const manager = managerByFranchise.get(row.franchise_key);
                 return (
                   <tr key={row.franchise_key} className={row.is_champion ? 'title-row' : undefined}>
