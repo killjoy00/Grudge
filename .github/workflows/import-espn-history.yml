@@ -1,0 +1,46 @@
+name: Import ESPN history
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: import-espn-history
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Import archived ESPN seasons
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run pipeline -- --history
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### ESPN history import"
+            echo ""
+            echo "- Result: **${{ job.status }}**"
+            echo "- Source: committed \`data/history/2018-2025\` archive"
+            echo "- Includes historical transactions when present in \`league.json.gz\`"
+          } >> "$GITHUB_STEP_SUMMARY"

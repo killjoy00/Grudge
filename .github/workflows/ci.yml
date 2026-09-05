@@ -35,7 +35,7 @@ jobs:
       # checks the normalizer and the feature models against actual ESPN
       # payloads rather than fixtures written to match my own assumptions.
       - name: Pipeline tests
-        run: npx tsx --test pipeline/*.test.ts lib/*.test.ts
+        run: npm test
 
       # Database reads are deferred until request time, so CI can always verify
       # the production build without holding a live application credential.
