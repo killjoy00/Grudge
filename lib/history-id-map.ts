@@ -1,19 +1,24 @@
 import type { FranchiseIdMapping } from './espn-archive.ts';
 
 /**
- * Resolve a durable franchise to the ESPN team id it used in one season.
- *
- * Most franchises kept one ESPN id for the life of the league. The mapping is
- * still season-bounded because one verified exception exists: the franchise
- * now known as CTE Deniers was team 7 in 2005 and team 10 from 2006 onward.
- * Keeping this in the checked-in identity ledger prevents page/query-specific
- * aliases from drifting apart.
+ * The durable/current ESPN id ledger has ten ids, one per permanent franchise.
+ * The recovered 2005 archive proved one historical exception: the franchise
+ * now known as CTE Deniers used raw ESPN team id 7 for its first season before
+ * moving to its durable team 10 slot in 2006.
  */
+export const LEGACY_ESPN_TEAM_ID_OVERRIDES = new Map<string, number>([
+  ['2005:cte-deniers', 7],
+]);
+
+/** Resolve a durable franchise to the raw ESPN team id it used in one season. */
 export function espnTeamIdForFranchise(
   mappings: FranchiseIdMapping[],
   franchiseKey: string,
   season: number
 ): number | null {
+  const override = LEGACY_ESPN_TEAM_ID_OVERRIDES.get(`${season}:${franchiseKey}`);
+  if (override !== undefined) return override;
+
   const matches = mappings.filter(
     (mapping) =>
       mapping.franchise_key === franchiseKey &&
