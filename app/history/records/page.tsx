@@ -4,7 +4,9 @@ import { getCachedHistoryRecords } from '../../../lib/history-cache.ts';
 import { franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
 import type { AllSeasonRecordRow, MatchupRecordRow } from '../../../lib/history-queries.ts';
 
-export const revalidate = 86400;
+// Database-backed public data should be read at request time. The cache below
+// keeps it cheap without coupling `next build` to a live APP_DATABASE_URL.
+export const dynamic = 'force-dynamic';
 
 function bySeasonQuality(a: AllSeasonRecordRow, b: AllSeasonRecordRow) {
   const rate = winRate(b.wins, b.losses, b.ties) - winRate(a.wins, a.losses, a.ties);
