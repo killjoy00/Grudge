@@ -15,6 +15,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync, gzipSync } from 'node:zlib';
 
+import { mergeDraftDetail, mergeDraftManifest } from './history-draft-backfill-utils.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HISTORY = join(ROOT, 'data', 'history');
 const LEAGUE_ID = 114052;
@@ -95,20 +97,14 @@ function mergeDraftIntoArchive(season, draftDetail) {
   const path = archivePath(season);
   if (!existsSync(path)) throw new Error(`${season}: existing archive missing (${path}).`);
   const league = JSON.parse(gunzipSync(readFileSync(path)).toString());
-  league.seasonId ??= season;
-  league.draftDetail = draftDetail;
-  writeFileSync(path, gzipSync(JSON.stringify(league), { level: 9 }));
+  const merged = mergeDraftDetail(league, draftDetail, season);
+  writeFileSync(path, gzipSync(JSON.stringify(merged), { level: 9 }));
 
   const manifestFile = manifestPath(season);
   if (existsSync(manifestFile)) {
     const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
-    manifest.availability = {
-      ...(manifest.availability ?? {}),
-      draftBoard: true,
-      draftPicks: draftDetail.picks?.length ?? 0,
-    };
-    manifest.draftBackfilledAt = new Date().toISOString();
-    writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + '\n');
+    const updated = mergeDraftManifest(manifest, draftDetail.picks.length, new Date().toISOString());
+    writeFileSync(manifestFile, JSON.stringify(updated, null, 2) + '\n');
   }
 }
 
