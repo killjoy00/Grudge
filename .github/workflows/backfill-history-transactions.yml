@@ -60,10 +60,10 @@ jobs:
           effective_from="$requested_from"
           if [ "$effective_from" -lt 2018 ]; then
             effective_from=2018
-            echo "::notice::Skipping ${requested_from}-2017. Those seasons are manual-history years and have no ESPN archive to repair."
+            echo "::notice::Skipping ${requested_from}-2017. Those seasons now have ESPN score/draft archives, but ESPN no longer returns their transaction ledger."
           fi
           if [ "$requested_to" -lt "$effective_from" ]; then
-            echo "::error::Requested range does not include any ESPN-archive seasons (2018+)."
+            echo "::error::Requested range does not include a season whose historical transaction ledger is recoverable (2018+)."
             exit 1
           fi
 
@@ -122,10 +122,10 @@ jobs:
             echo "### Historical ESPN transaction repair"
             echo ""
             echo "- Requested seasons: **${{ inputs.from_season }}-${{ inputs.to_season }}**"
-            echo "- ESPN archive seasons processed: **${{ steps.range.outputs.from || 'n/a' }}-${{ steps.range.outputs.to || 'n/a' }}**"
+            echo "- Transaction-recoverable seasons processed: **${{ steps.range.outputs.from || 'n/a' }}-${{ steps.range.outputs.to || 'n/a' }}**"
             echo "- Archive changed: **${{ steps.commit.outputs.changed || 'no' }}**"
             echo "- Result: **${{ job.status }}**"
             echo ""
-            echo "Pre-2018 league history is manual-history data, not ESPN archive data, so those seasons are intentionally skipped."
+            echo "ESPN's pre-2018 transaction ledger was exhaustively probed and is unavailable even though those seasons now have score/draft archives."
             echo "After a successful run, delete the temporary ESPN_SWID and ESPN_S2 repository secrets."
           } >> "$GITHUB_STEP_SUMMARY"
