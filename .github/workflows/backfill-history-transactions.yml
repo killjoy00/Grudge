@@ -1,0 +1,100 @@
+name: Backfill historical ESPN transactions
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_season:
+        description: 'First season to repair'
+        required: true
+        default: '2018'
+        type: string
+      to_season:
+        description: 'Last season to repair'
+        required: true
+        default: '2025'
+        type: string
+
+# Serialize with the weekly pipeline because both this repair and Tuesdays can
+# write data/history and the production database.
+concurrency:
+  group: weekly-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check temporary ESPN credentials
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: |
+          if [ -z "$ESPN_SWID" ] || [ -z "$ESPN_S2" ]; then
+            echo "::error::Add temporary repository secrets ESPN_SWID and ESPN_S2 before running this workflow."
+            exit 1
+          fi
+
+      - name: Probe ESPN history access
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: npm run history:transactions -- --probe
+
+      - name: Fetch historical transactions
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: npm run history:transactions -- --from=${{ inputs.from_season }} --to=${{ inputs.to_season }} --skip-probe
+
+      - name: Verify repair merge tests
+        run: node --test scripts/history-backfill-utils.test.mjs
+
+      - name: Commit repaired archive
+        id: commit
+        run: |
+          git config user.name 'grudge-history[bot]'
+          git config user.email 'grudge-history[bot]@users.noreply.github.com'
+          git add data/history
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No archive changes were produced."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git commit -m "Backfill ESPN transactions ${{ inputs.from_season }}-${{ inputs.to_season }}"
+            git push origin HEAD:main
+          fi
+
+      - name: Import repaired ESPN history into production
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run pipeline -- --history
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Historical ESPN transaction repair"
+            echo ""
+            echo "- Seasons: **${{ inputs.from_season }}-${{ inputs.to_season }}**"
+            echo "- Archive changed: **${{ steps.commit.outputs.changed || 'no' }}**"
+            echo "- Result: **${{ job.status }}**"
+            echo ""
+            echo "After a successful run, delete the temporary ESPN_SWID and ESPN_S2 repository secrets."
+          } >> "$GITHUB_STEP_SUMMARY"
