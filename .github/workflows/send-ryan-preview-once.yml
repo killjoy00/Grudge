@@ -1,0 +1,26 @@
+name: Send Ryan recap preview once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/send-ryan-preview-once.yml'
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Send production-path test recap
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+          RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+        run: npm run recap -- --season=2025 --week=14 --to=ryanmindell@gmail.com
