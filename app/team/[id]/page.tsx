@@ -187,6 +187,9 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
                     <a href={`/team/${r.opp_id}`} className="tname">{r.name}</a>
                     {r.opp_id === bestId && <span className="tag best">Most beaten</span>}
                     {r.opp_id === worstId && <span className="tag worst">Owns us</span>}
+                    <a href={`/rivalry/${teamId}/${r.opp_id}`} className="tsub block">
+                      Full series →
+                    </a>
                   </td>
                   <td className="num">
                     <span className={`pill ${r.wins > r.losses ? 'w' : r.wins < r.losses ? 'l' : ''}`}>
@@ -202,7 +205,7 @@ export default async function Team({ params }: { params: Promise<{ id: string }>
         </div>
         <p className="note">
           Head-to-head needs per-week scores, which only exist from 2018 on, so
-          these are ESPN-era meetings only.
+          these are ESPN-era meetings only. Each series link opens the full game-by-game ledger.
         </p>
       </div>
 
