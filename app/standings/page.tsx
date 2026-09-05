@@ -4,6 +4,7 @@ import {
 import { getCurrentSeason } from '../../lib/queries.ts';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
 import { SeasonPicker } from '../../components/SeasonPicker.tsx';
+import { RecapArchive } from '../../components/RecapArchive.tsx';
 
 // Render after deployment, then cache the underlying public data for an hour.
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,7 @@ export default async function Standings({
             than a table. Click below for previous seasons.
           </p>
         </div>
+        <RecapArchive season={season} />
         <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
                       basePath="/standings" />
       </>
@@ -171,6 +173,7 @@ export default async function Standings({
         </p>
       </div>
 
+      <RecapArchive season={season} />
       <SeasonPicker seasons={seasons.map((x) => x.season)} current={season}
                     basePath="/standings" />
     </>
