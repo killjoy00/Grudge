@@ -57,6 +57,6 @@ jobs:
             echo ''
             echo "- Result: **${{ job.status }}**"
             echo '- Durable ESPN franchise IDs refreshed for the full 2005+ league record.'
-            echo '- 2005–2017 team-week results, all-play luck and current-formula power rankings rebuilt from recovered weekly scoreboards.'
-            echo '- No player-lineup, bench, transaction or FAAB data is synthesized for the legacy era.'
+            echo '- 2005–2017 team-week results, all-play luck, current-formula power rankings, and score-only weekly awards rebuilt from recovered scoreboards.'
+            echo '- No player-lineup, worst-bench, transaction or FAAB data is synthesized for the legacy era.'
           } >> "$GITHUB_STEP_SUMMARY"

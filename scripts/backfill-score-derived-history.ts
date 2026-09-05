@@ -4,13 +4,15 @@
  *
  * The recovered legacy archive contains every team score and opponent but no
  * player-level weekly roster entries. That is enough to run the SAME modern
- * standings/luck/power model; it is not enough to reconstruct optimal lineups,
- * bench decisions, player-week records, waiver history or FAAB.
+ * standings/luck/power model and the score-only weekly awards; it is not enough
+ * to reconstruct optimal lineups, worst-bench awards, player-week records,
+ * waiver history or FAAB.
  *
  * This script therefore writes only:
  *   - team_week_results (score/record/all-play fields; lineup fields null)
  *   - luck_index
  *   - power_rankings (MODEL_VERSION / exact current 40/30/20/10 formula)
+ *   - weekly_awards: high scorer, low scorer, blowout, nailbiter only
  *
  * Usage:
  *   npm run history:scores
@@ -24,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { EspnLeague } from '../pipeline/espn.ts';
 import { matchupRows } from '../pipeline/normalize.ts';
-import { luckIndex, MODEL_VERSION, powerRankings, teamWeeks } from '../pipeline/features.ts';
+import { luckIndex, MODEL_VERSION, powerRankings, teamWeeks, weeklyAwards } from '../pipeline/features.ts';
 import { connect, runTransaction, upsertChunked, type Stmt } from '../pipeline/db.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,6 +53,7 @@ interface DerivedSeason {
     team_week_results: number;
     luck_index: number;
     power_rankings: number;
+    weekly_awards: number;
   };
 }
 
@@ -182,6 +185,33 @@ export function buildScoreDerivedSeason(season: number, league: EspnLeague): Der
     ['season', 'week', 'espn_team_id']
   ));
 
+  const awardRows: Record<string, unknown>[] = [];
+  for (const week of weeks) {
+    for (const award of weeklyAwards(season, week, tw, regularMatchups, [])) {
+      // With no lineup entries, weeklyAwards deliberately emits only the four
+      // score-supported awards. Guard this invariant so a future feature change
+      // cannot accidentally invent a legacy worst-bench award.
+      if (award.awardKey === 'worst_bench') {
+        throw new Error(`${season} week ${week}: score-only history produced a worst_bench award.`);
+      }
+      awardRows.push({
+        season: award.season,
+        week: award.week,
+        award_key: award.awardKey,
+        espn_team_id: award.teamId,
+        espn_player_id: null,
+        value: award.value,
+        detail: JSON.stringify(award.detail),
+      });
+    }
+  }
+  statements.push(...upsertChunked(
+    'public.weekly_awards',
+    ['season', 'week', 'award_key', 'espn_team_id', 'espn_player_id', 'value', 'detail'],
+    awardRows,
+    ['season', 'week', 'award_key']
+  ));
+
   return {
     statements,
     summary: {
@@ -190,6 +220,7 @@ export function buildScoreDerivedSeason(season: number, league: EspnLeague): Der
       team_week_results: twrRows.length,
       luck_index: luckRows.length,
       power_rankings: powerRows.length,
+      weekly_awards: awardRows.length,
     },
   };
 }
@@ -203,7 +234,7 @@ async function main() {
     const { statements, summary } = buildScoreDerivedSeason(season, league);
     console.log(
       `${season}: ${summary.teams} teams, ${summary.weeks} regular-season weeks, ` +
-      `${summary.power_rankings} power rows (${MODEL_VERSION})`
+      `${summary.power_rankings} power rows, ${summary.weekly_awards} score awards (${MODEL_VERSION})`
     );
     if (!DRY_RUN && sql) await runTransaction(sql, statements);
   }
