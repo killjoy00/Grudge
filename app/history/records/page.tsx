@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
+
 import { getCachedHistoryRecords } from '../../../lib/history-cache.ts';
-import { franchiseHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
+import { franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
 import type { AllSeasonRecordRow, MatchupRecordRow } from '../../../lib/history-queries.ts';
 
 export const revalidate = 86400;
@@ -18,7 +20,7 @@ function byOffense(a: AllSeasonRecordRow, b: AllSeasonRecordRow) {
 
 function SeasonTable({ rows, value }: {
   rows: AllSeasonRecordRow[];
-  value: (row: AllSeasonRecordRow) => React.ReactNode;
+  value: (row: AllSeasonRecordRow) => ReactNode;
 }) {
   return (
     <div className="card">
@@ -34,7 +36,11 @@ function SeasonTable({ rows, value }: {
                   <a href={franchiseHref(row.franchise_key)}>{row.team_name}</a>
                   {row.is_champion && <span className="tag best">Champion</span>}
                 </td>
-                <td>{row.manager ?? '—'}</td>
+                <td>
+                  {row.manager_key && row.manager
+                    ? <a href={managerHref(row.manager_key)}>{row.manager}</a>
+                    : '—'}
+                </td>
                 <td className="num">{record(row.wins, row.losses, row.ties)}</td>
                 <td className="num"><strong>{value(row)}</strong></td>
               </tr>
@@ -81,7 +87,7 @@ export default async function RecordsPage() {
       <div className="page-hero">
         <div className="eyebrow">The record book</div>
         <h1>League records</h1>
-        <p>Great seasons across every era, plus game and player-level marks where weekly ESPN data exists.</p>
+        <p>Great seasons across every era, plus single-game marks where weekly ESPN data exists.</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
