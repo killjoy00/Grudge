@@ -41,6 +41,7 @@ export default async function HistoryVaultPage() {
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '0 0 24px' }}>
         <a className="btn btn-quiet" href="/history">← League history</a>
+        <a className="btn btn-quiet" href="/history/rivalries">All-time rivalries</a>
         <a className="btn btn-quiet" href="/history/records">Record book</a>
       </div>
 
