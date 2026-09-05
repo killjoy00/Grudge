@@ -1,4 +1,3 @@
-import { HistoryNav } from '../../components/HistoryNav.tsx';
 import { getCachedRichChampions } from '../../lib/history-cache.ts';
 import { franchiseHref, managerHref, record, seasonHref, winRate } from '../../lib/history-format.ts';
 import { getCachedHistoryDirectory } from '../../lib/history-overview-cache.ts';
@@ -22,10 +21,8 @@ export default async function History() {
       <div className="page-hero">
         <div className="eyebrow">The permanent record</div>
         <h1>League history</h1>
-        <p>Seasons, franchises and managers are the directory. Records, rivalries and raw ESPN evidence each have their own book.</p>
+        <p>One home for every season, permanent franchise and manager — with deeper record-book and rivalry views when you want them.</p>
       </div>
-
-      <HistoryNav current="overview" />
 
       <div className="stat-strip">
         <div><strong>{first && last ? `${first}–${last}` : '—'}</strong><span>League span</span></div>
@@ -34,23 +31,18 @@ export default async function History() {
         <div><strong>{managers.length}</strong><span>Managers on record</span></div>
       </div>
 
-      <h2>Choose a history book</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+      <h2>Explore</h2>
+      <p className="sub">The main archive stays on this page. These two deeper views answer questions that need their own room.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
         <a className="card" href="/history/records" style={{ textDecoration: 'none' }}>
           <span className="eyebrow">Records</span><h3>Who owns the marks?</h3>
-          <p className="note">Best seasons, scoring records, power champions, luck extremes and individual-week records.</p>
+          <p className="note">Best seasons, scoring records, power champions, schedule luck and individual-week records.</p>
+          <strong>Open the record book →</strong>
         </a>
         <a className="card" href="/history/rivalries" style={{ textDecoration: 'none' }}>
           <span className="eyebrow">Rivalries</span><h3>Who owns whom?</h3>
           <p className="note">Every recovered head-to-head series, including the playoffs, back to 2005.</p>
-        </a>
-        <a className="card" href="/history/vault" style={{ textDecoration: 'none' }}>
-          <span className="eyebrow">The Vault</span><h3>Show the receipts.</h3>
-          <p className="note">Raw weekly scoreboards, draft boards, transaction coverage and the exact limits of the ESPN archive.</p>
-        </a>
-        <a className="card" href="/rankings" style={{ textDecoration: 'none' }}>
-          <span className="eyebrow">Power rankings</span><h3>Same model, every era.</h3>
-          <p className="note">The current 40/30/20/10 formula reconstructed from weekly scores back to 2005.</p>
+          <strong>Explore every grudge →</strong>
         </a>
       </div>
 
@@ -107,7 +99,7 @@ export default async function History() {
       </div>
 
       <h2>Season archive</h2>
-      <p className="sub">Commissioner standings remain authoritative for 2005–2017 finishes; recovered ESPN scoreboards now supply the week-by-week evidence behind them.</p>
+      <p className="sub">Commissioner standings remain authoritative for 2005–2017 finishes; recovered ESPN scoreboards supply the week-by-week evidence behind them.</p>
       <div className="card">
         <div className="scroll">
           <table>
@@ -131,6 +123,14 @@ export default async function History() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <h2>About the archive</h2>
+      <div className="callout">
+        <p style={{ marginTop: 0 }}>
+          Weekly team scoreboards and draft boards are now on file for every played season back to 2005. Player-level weekly lineups and transaction history are only available where ESPN still preserves them, and the site never fills those gaps with invented data.
+        </p>
+        <a href="/history/vault"><strong>See data coverage and source material →</strong></a>
       </div>
     </>
   );
