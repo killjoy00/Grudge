@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 
+import { HistoryNav } from '../../../../components/HistoryNav.tsx';
 import { POSITIONS } from '../../../../pipeline/trade.ts';
 import {
   getVaultSeasonDraft,
@@ -38,15 +39,17 @@ export default async function VaultSeasonPage({ params }: { params: Promise<{ se
   return (
     <>
       <div className="page-hero">
-        <div className="eyebrow">The Vault · season time machine</div>
+        <div className="eyebrow">The Vault · season evidence</div>
         <h1>{season}</h1>
         <p>{games.filter((game) => game.is_final).length} decided games · {draft.length} draft picks · {nonDraftTransactions} recovered non-draft transactions.</p>
       </div>
 
+      <HistoryNav current="vault" />
+
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '0 0 24px' }}>
         {older && <a className="btn btn-quiet" href={`/history/vault/${older}`}>← {older}</a>}
-        <a className="btn btn-quiet" href="/history/vault">The Vault</a>
         <a className="btn btn-quiet" href={`/history/${season}`}>Season file</a>
+        <a className="btn btn-quiet" href={`/rankings?season=${season}`}>Power rankings</a>
         {newer && <a className="btn btn-quiet" href={`/history/vault/${newer}`}>{newer} →</a>}
       </div>
 
@@ -57,7 +60,7 @@ export default async function VaultSeasonPage({ params }: { params: Promise<{ se
       </div>
 
       <h2>Week-by-week scoreboard</h2>
-      <p className="sub">ESPN's own matchup ledger. Winner is bolded; playoff labels are shown where the old payload still identifies them.</p>
+      <p className="sub">ESPN&rsquo;s own matchup ledger. Winner is bolded; playoff labels are shown where the old payload still identifies them.</p>
       {weeks.map((week) => {
         const weekGames = games.filter((game) => game.week === week);
         const isPlayoff = weekGames.some((game) => game.playoff_tier && game.playoff_tier !== 'NONE');
@@ -96,10 +99,14 @@ export default async function VaultSeasonPage({ params }: { params: Promise<{ se
 
       <h2>Draft Time Machine</h2>
       {draft.length === 0 ? (
-        <div className="callout">No draft board is available for this season.</div>
+        <div className="callout">
+          {season >= 2018 && season <= 2025
+            ? 'This board is a recoverable archive gap: the original historical capture did not request ESPN draft detail.'
+            : 'No draft board is available for this season.'}
+        </div>
       ) : (
         <>
-          <p className="sub">The complete ESPN draft recap, round by round. Unknown names are retained by ESPN player ID rather than discarded.</p>
+          <p className="sub">The ESPN draft recap, round by round. Unknown names are retained by ESPN player ID rather than discarded.</p>
           {rounds.map((round) => (
             <div key={round} style={{ marginBottom: 22 }}>
               <h3>Round {round}</h3>
@@ -131,7 +138,9 @@ export default async function VaultSeasonPage({ params }: { params: Promise<{ se
       <h2>Transaction archaeology</h2>
       {transactions.length === 0 ? (
         <div className="callout">
-          ESPN did not return a non-draft transaction ledger for this season. The scoreboard and draft recap are still preserved above.
+          {season < 2018
+            ? 'ESPN no longer returns a non-draft transaction ledger for this era. Every scoring period was checked; this is a source limitation, not a missing import.'
+            : 'No non-draft transactions are loaded for this season.'}
         </div>
       ) : (
         <div className="card">
