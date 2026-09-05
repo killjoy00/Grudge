@@ -64,7 +64,7 @@ jobs:
         run: npm run history:transactions -- --from=${{ inputs.from_season }} --to=${{ inputs.to_season }} --skip-probe
 
       - name: Verify repair merge tests
-        run: npm run test:history-backfill
+        run: node --test scripts/history-backfill-utils.test.mjs
 
       - name: Commit repaired archive
         id: commit
