@@ -1,0 +1,27 @@
+name: Check Resend delivery status
+
+on:
+  push:
+    paths:
+      - '.github/workflows/check-resend-delivery.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch message status
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          set -euo pipefail
+          id='8a583ffe-84af-4ca6-a1af-555cd5143856'
+          code=$(curl -sS -o /tmp/resend.json -w '%{http_code}' \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            "https://api.resend.com/emails/$id")
+          echo "http_status=$code"
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            jq '{name,message,statusCode}' /tmp/resend.json || cat /tmp/resend.json
+            exit 1
+          fi
+          jq '{id,created_at,last_event,from,to,subject}' /tmp/resend.json
