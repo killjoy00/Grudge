@@ -9,7 +9,6 @@ const TABS = [
   ['/predictions', 'Predictions'],
   ['/trades', 'Trades'],
   ['/history', 'History'],
-  ['/history/vault', 'The Vault'],
 ];
 
 export function Nav() {
@@ -20,7 +19,7 @@ export function Nav() {
         const active = href === '/'
           ? path === '/'
           : href === '/history'
-            ? path === '/history' || (path.startsWith('/history/') && !path.startsWith('/history/vault'))
+            ? path.startsWith('/history') || path.startsWith('/franchise/') || path.startsWith('/manager/') || path.startsWith('/rivalry/')
             : path === href || path.startsWith(`${href}/`);
         return (
           <a key={href} href={href} className={active ? 'on' : ''}
