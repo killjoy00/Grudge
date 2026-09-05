@@ -25,5 +25,40 @@
     "16": 81,
     "17": 81
   },
-  "warnings": []
+  "warnings": [],
+  "transactionBackfill": {
+    "capturedAt": "2026-09-05T22:11:54.672Z",
+    "urlShape": "seasons",
+    "scoringPeriods": 16,
+    "totalUniqueTransactions": 635,
+    "perPeriod": {
+      "1": 171,
+      "2": 68,
+      "3": 36,
+      "4": 45,
+      "5": 23,
+      "6": 26,
+      "7": 25,
+      "8": 47,
+      "9": 32,
+      "10": 34,
+      "11": 30,
+      "12": 19,
+      "13": 24,
+      "14": 18,
+      "15": 31,
+      "16": 6
+    },
+    "byType": {
+      "DRAFT": 170,
+      "WAIVER": 202,
+      "TRADE_PROPOSAL": 54,
+      "TRADE_DECLINE": 12,
+      "TRADE_ACCEPT": 4,
+      "ROSTER": 56,
+      "TRADE_UPHOLD": 2,
+      "FREEAGENT": 105,
+      "FUTURE_ROSTER": 30
+    }
+  }
 }
