@@ -1,0 +1,16 @@
+{
+  "season": 2005,
+  "leagueId": 114052,
+  "capturedAt": "2026-09-05T22:21:54.063Z",
+  "urlShape": "leagueHistory",
+  "source": "authenticated ESPN leagueHistory recovery",
+  "availability": {
+    "weeklyMatchupScores": true,
+    "draftBoard": true,
+    "draftPicks": 128,
+    "playerLevelWeeklyBoxscores": false,
+    "transactionScoringPeriodsScanned": 15,
+    "totalUniqueTransactions": 0,
+    "transactionTypes": {}
+  }
+}

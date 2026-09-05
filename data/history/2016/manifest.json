@@ -1,0 +1,16 @@
+{
+  "season": 2016,
+  "leagueId": 114052,
+  "capturedAt": "2026-09-05T22:23:02.682Z",
+  "urlShape": "leagueHistory",
+  "source": "authenticated ESPN leagueHistory recovery",
+  "availability": {
+    "weeklyMatchupScores": true,
+    "draftBoard": true,
+    "draftPicks": 170,
+    "playerLevelWeeklyBoxscores": false,
+    "transactionScoringPeriodsScanned": 16,
+    "totalUniqueTransactions": 0,
+    "transactionTypes": {}
+  }
+}
