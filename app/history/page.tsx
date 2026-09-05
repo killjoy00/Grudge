@@ -1,308 +1,79 @@
-import SortableTable from '../../components/SortableTable.tsx';
-import type { SortColumn, SortRow } from '../../components/SortableTable.tsx';
-import { getCachedHistory } from '../../lib/cached-queries.ts';
+import { HistoryNav } from '../../components/HistoryNav.tsx';
 import { getCachedRichChampions } from '../../lib/history-cache.ts';
 import { franchiseHref, managerHref, record, seasonHref, winRate } from '../../lib/history-format.ts';
+import { getCachedHistoryDirectory } from '../../lib/history-overview-cache.ts';
 import { getCachedRegularSeasonChampions } from '../../lib/regular-season-history.ts';
-import { POSITIONS } from '../../pipeline/trade.ts';
 
 export const dynamic = 'force-dynamic';
 
-function roundName(tier: string) {
-  return tier === 'WINNERS_BRACKET' ? 'Playoffs' : 'Consolation';
-}
-
-const RECORD_COLUMNS: SortColumn[] = [
-  { key: 'seasons', label: 'Seasons', numeric: true },
-  { key: 'regular', label: 'Regular', numeric: true, title: 'Sort by regular-season win %' },
-  { key: 'playoffs', label: 'Playoffs', numeric: true, title: 'Sort by playoff win %' },
-  { key: 'berths', label: 'Berths', numeric: true, title: 'Playoff appearances' },
-  { key: 'top4', label: 'Top 4', numeric: true, title: 'Semifinal or better' },
-  { key: 'finals', label: 'Finals', numeric: true, title: 'Championship games reached' },
-  { key: 'titles', label: 'Titles', numeric: true },
-];
-
-interface TotalsRow {
-  seasons: number;
-  regular_wins: number; regular_losses: number; regular_ties: number;
-  playoff_wins: number; playoff_losses: number;
-  playoff_appearances: number; top_four: number;
-  championships: number; runner_ups: number;
-  title_seasons: string | null;
-  first_season: number; last_season: number;
-}
-
-function totalsCells(row: TotalsRow): SortRow['cells'] {
-  return {
-    seasons: { v: row.seasons },
-    regular: {
-      v: winRate(row.regular_wins, row.regular_losses, row.regular_ties),
-      d: record(row.regular_wins, row.regular_losses, row.regular_ties),
-      note: `${(winRate(row.regular_wins, row.regular_losses, row.regular_ties) * 100).toFixed(1)}%`,
-    },
-    playoffs: {
-      v: winRate(row.playoff_wins, row.playoff_losses),
-      d: `${row.playoff_wins}-${row.playoff_losses}`,
-    },
-    berths: { v: row.playoff_appearances },
-    top4: { v: row.top_four },
-    finals: { v: row.championships + row.runner_ups },
-    titles: { v: row.championships },
-  };
-}
-
 export default async function History() {
-  const [
-    [espnEra, playedSeasons, franchises, managers, _oldChampions, topWeeks, topPlayers],
-    champions,
-    regularSeasonChampions,
-  ] = await Promise.all([
-    getCachedHistory(),
+  const [[franchises, managers], champions, regularSeasonChampions] = await Promise.all([
+    getCachedHistoryDirectory(),
     getCachedRichChampions(),
     getCachedRegularSeasonChampions(),
   ]);
-  const played = champions.length;
-  const first = champions.length ? champions[champions.length - 1]!.season : null;
-  const last = champions.length ? champions[0]!.season : null;
-  const currentManagers = managers.filter((row) => row.last_season === last);
-  const formerManagers = managers.filter((row) => row.last_season !== last);
-
-  const regularTitlesByFranchise = new Map<string, number[]>();
-  for (const row of [...regularSeasonChampions].reverse()) {
-    const seasons = regularTitlesByFranchise.get(row.franchise_key) ?? [];
-    seasons.push(row.season);
-    regularTitlesByFranchise.set(row.franchise_key, seasons);
-  }
-
-  const franchiseRows: SortRow[] = franchises.map((row) => {
-    const regularTitles = regularTitlesByFranchise.get(row.franchise_key) ?? [];
-    return {
-      key: row.franchise_key,
-      cells: {
-        name: {
-          v: row.current_name,
-          href: franchiseHref(row.franchise_key),
-          sub: `${row.first_season}–${row.last_season}`,
-          note: row.title_seasons ? `🏆 ${row.title_seasons.split(' ').join(', ')}` : undefined,
-        },
-        ...totalsCells(row),
-        regTitles: {
-          v: regularTitles.length,
-          note: regularTitles.length ? `Won: ${regularTitles.join(', ')}` : undefined,
-        },
-        points: {
-          v: row.regular_points_for ? Number(row.regular_points_for) : 0,
-          d: row.regular_points_for ? Number(row.regular_points_for).toLocaleString() : '—',
-        },
-      },
-    };
-  });
-
-  const managerRows = (rows: typeof managers): SortRow[] => rows.map((row) => ({
-    key: row.manager_key,
-    cells: {
-      name: {
-        v: row.display_name,
-        href: managerHref(row.manager_key),
-        sub: `${row.first_season}–${row.last_season}`,
-        note: row.title_seasons ? `🏆 ${row.title_seasons.split(' ').join(', ')}` : undefined,
-      },
-      ...totalsCells(row),
-    },
-  }));
-
-  const franchiseTitleCounts = new Map<string, number>();
-  const managerTitleCounts = new Map<string, number>();
-  const titleNumbers = new Map<number, { franchise: number; manager: number | null }>();
-  for (const row of [...champions].reverse()) {
-    const franchise = (franchiseTitleCounts.get(row.champion_key) ?? 0) + 1;
-    franchiseTitleCounts.set(row.champion_key, franchise);
-    let manager: number | null = null;
-    if (row.champion_manager_key) {
-      manager = (managerTitleCounts.get(row.champion_manager_key) ?? 0) + 1;
-      managerTitleCounts.set(row.champion_manager_key, manager);
-    }
-    titleNumbers.set(row.season, { franchise, manager });
-  }
+  const first = champions.at(-1)?.season ?? null;
+  const last = champions[0]?.season ?? null;
+  const currentManagers = new Set(managers.filter((row) => row.last_season === last).map((row) => row.manager_key));
+  const regularBySeason = new Map(regularSeasonChampions.map((row) => [row.season, row]));
 
   return (
     <>
       <div className="page-hero">
         <div className="eyebrow">The permanent record</div>
         <h1>League history</h1>
-        <p>Franchises endure. Team names change. Managers leave receipts.</p>
+        <p>Seasons, franchises and managers are the directory. Records, rivalries and raw ESPN evidence each have their own book.</p>
       </div>
 
-      {franchises.length === 0 ? (
-        <div className="callout">
-          The archive is checked in but has not been imported into this database yet.
-        </div>
-      ) : (
-        <>
-          <div className="stat-strip three">
-            <div><strong>{first && last ? `${first}–${last}` : '—'}</strong><span>Seasons on record</span></div>
-            <div><strong>{played}</strong><span>Seasons played</span></div>
-            <div><strong>{franchises.length}</strong><span>Franchises</span></div>
-          </div>
+      <HistoryNav current="overview" />
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '18px 0 28px' }}>
-            <a className="btn" href="/history/records">Open the record book</a>
-            {last && <a className="btn btn-quiet" href={seasonHref(last)}>Latest completed season</a>}
-          </div>
+      <div className="stat-strip">
+        <div><strong>{first && last ? `${first}–${last}` : '—'}</strong><span>League span</span></div>
+        <div><strong>{champions.length}</strong><span>Seasons played</span></div>
+        <div><strong>{franchises.length}</strong><span>Permanent franchises</span></div>
+        <div><strong>{managers.length}</strong><span>Managers on record</span></div>
+      </div>
 
-          <h2>By franchise</h2>
-          <p className="sub">The permanent league slots. Regular-season titles use the same standings rule as the season pages: win percentage, then points scored.</p>
-          <div className="card">
-            <SortableTable
-              columns={[
-                { key: 'name', label: 'Franchise' },
-                { key: 'seasons', label: 'Seasons', numeric: true },
-                { key: 'regular', label: 'Regular', numeric: true, title: 'Sort by regular-season win %' },
-                { key: 'regTitles', label: 'Reg. titles', numeric: true, title: 'Regular-season championships' },
-                { key: 'playoffs', label: 'Playoffs', numeric: true, title: 'Sort by playoff win %' },
-                { key: 'berths', label: 'Berths', numeric: true, title: 'Playoff appearances' },
-                { key: 'top4', label: 'Top 4', numeric: true, title: 'Semifinal or better' },
-                { key: 'finals', label: 'Finals', numeric: true, title: 'Championship games reached' },
-                { key: 'titles', label: 'Titles', numeric: true },
-                { key: 'points', label: 'Points', numeric: true },
-              ]}
-              rows={franchiseRows}
-            />
-            <p className="note">Raw regular-season points are shown here; cross-era scoring comparisons live in the record book as points per game.</p>
-          </div>
+      <h2>Choose a history book</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }}>
+        <a className="card" href="/history/records" style={{ textDecoration: 'none' }}>
+          <span className="eyebrow">Records</span><h3>Who owns the marks?</h3>
+          <p className="note">Best seasons, scoring records, power champions, luck extremes and individual-week records.</p>
+        </a>
+        <a className="card" href="/history/rivalries" style={{ textDecoration: 'none' }}>
+          <span className="eyebrow">Rivalries</span><h3>Who owns whom?</h3>
+          <p className="note">Every recovered head-to-head series, including the playoffs, back to 2005.</p>
+        </a>
+        <a className="card" href="/history/vault" style={{ textDecoration: 'none' }}>
+          <span className="eyebrow">The Vault</span><h3>Show the receipts.</h3>
+          <p className="note">Raw weekly scoreboards, draft boards, transaction coverage and the exact limits of the ESPN archive.</p>
+        </a>
+        <a className="card" href="/rankings" style={{ textDecoration: 'none' }}>
+          <span className="eyebrow">Power rankings</span><h3>Same model, every era.</h3>
+          <p className="note">The current 40/30/20/10 formula reconstructed from weekly scores back to 2005.</p>
+        </a>
+      </div>
 
-          <h2>By manager</h2>
-          <p className="sub">Every manager is its own career now. Open a name for the year-by-year file.</p>
-          <div className="card">
-            <SortableTable columns={[{ key: 'name', label: 'Manager' }, ...RECORD_COLUMNS]} rows={managerRows(currentManagers)} />
-          </div>
-
-          <h2>Championship roll</h2>
-          <p className="sub">The title history with the team name, manager, regular-season record and championship result where ESPN has the score.</p>
-          <div className="card">
-            <div className="scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Season</th><th>Champion</th><th>Manager</th><th className="num">Regular</th><th>Runner-up</th><th className="num">Final</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {champions.map((row) => {
-                    const numbers = titleNumbers.get(row.season)!;
-                    return (
-                      <tr key={row.season}>
-                        <td><a className="tname" href={seasonHref(row.season)}>{row.season}</a></td>
-                        <td>
-                          <a className="tname" href={franchiseHref(row.champion_key)}>{row.champion_name}</a>
-                          {row.champion_team_name !== row.champion_name && <span className="tsub block">as {row.champion_team_name}</span>}
-                          <span className="tsub block">
-                            {numbers.franchise === 1 ? 'First franchise title' : `Franchise title #${numbers.franchise}`}
-                          </span>
-                        </td>
-                        <td>
-                          {row.champion_manager_key && row.champion_manager ? (
-                            <>
-                              <a href={managerHref(row.champion_manager_key)}>{row.champion_manager}</a>
-                              {numbers.manager && <span className="tsub block">Manager title #{numbers.manager}</span>}
-                            </>
-                          ) : '—'}
-                        </td>
-                        <td className="num">{record(row.champion_wins, row.champion_losses, row.champion_ties)}</td>
-                        <td>
-                          {row.runner_up_key && row.runner_up_name ? <a href={franchiseHref(row.runner_up_key)}>{row.runner_up_name}</a> : '—'}
-                          {row.runner_up_manager_key && row.runner_up_manager && (
-                            <span className="tsub block"><a href={managerHref(row.runner_up_manager_key)}>{row.runner_up_manager}</a></span>
-                          )}
-                        </td>
-                        <td className="num">
-                          {row.champion_score && row.runner_up_score ? <strong>{row.champion_score}–{row.runner_up_score}</strong> : <span className="tag era">{row.source === 'espn' ? 'ESPN' : 'archive'}</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="note">The league did not play in 2020. Pre-2018 championship scores are unavailable because the commissioner archive records season totals and finish order rather than weekly games.</p>
-          </div>
-        </>
-      )}
-
-      {topWeeks.length > 0 && (
-        <>
-          <h2>Biggest weeks</h2>
-          <p className="sub">The ten highest team scores on file, playoffs included. ESPN era only.</p>
-          <div className="card">
-            <div className="scroll">
-              <table>
-                <thead><tr><th className="rank">#</th><th>Team</th><th className="num">Points</th><th>Week</th><th>Opponent</th></tr></thead>
-                <tbody>
-                  {topWeeks.map((row, index) => (
-                    <tr key={`${row.season}-${row.week}-${row.espn_team_id}`} className={index === 0 ? 'title-row' : undefined}>
-                      <td className="rank">{index + 1}</td>
-                      <td><a href={`/team/${row.espn_team_id}`} className="tname">{row.name}</a></td>
-                      <td className="num"><strong>{row.points}</strong></td>
-                      <td>
-                        <a href={seasonHref(row.season)}>{row.season} wk {row.week}</a>
-                        {row.playoff_tier && <span className="tsub block">{roundName(row.playoff_tier)}</span>}
-                      </td>
-                      <td>{row.opponent ?? '—'}<span className="tsub block">{row.points_against}{row.result === 'L' && ' — and lost'}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      {topPlayers.length > 0 && (
-        <>
-          <h2>Biggest individual weeks</h2>
-          <p className="sub">The ten best player performances on file, playoffs included. ESPN era only.</p>
-          <div className="card">
-            <div className="scroll">
-              <table>
-                <thead><tr><th className="rank">#</th><th>Player</th><th className="num">Points</th><th>Week</th><th>Rostered by</th></tr></thead>
-                <tbody>
-                  {topPlayers.map((row, index) => (
-                    <tr key={`${row.season}-${row.week}-${row.espn_player_id}`} className={index === 0 ? 'title-row' : undefined}>
-                      <td className="rank">{index + 1}</td>
-                      <td><span className="tname">{row.full_name ?? 'Unknown player'}</span><span className="tsub block">{POSITIONS[row.default_position_id ?? 0] ?? '—'}</span></td>
-                      <td className="num"><strong>{row.points}</strong></td>
-                      <td>
-                        <a href={seasonHref(row.season)}>{row.season} wk {row.week}</a>
-                        {row.playoff_tier && <span className="tsub block">{roundName(row.playoff_tier)}</span>}
-                      </td>
-                      <td>
-                        <a href={`/team/${row.espn_team_id}`} className="tname">{row.team}</a>
-                        {!row.is_starter && <span className="tag era">benched</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      <h2>ESPN-era raw record</h2>
-      <p className="sub">{playedSeasons.length} seasons of week-by-week data, grouped by modern ESPN team ID. This powers rivalry and weekly detail.</p>
+      <h2>Franchises</h2>
+      <p className="sub">A franchise is the permanent league slot. Names and managers can change without resetting the record.</p>
       <div className="card">
         <div className="scroll">
           <table>
-            <thead><tr><th className="rank">#</th><th>Team</th><th className="num">Seasons</th><th className="num">Record</th><th className="num">Win %</th><th className="num">Points</th></tr></thead>
+            <thead>
+              <tr><th>Franchise</th><th className="num">Seasons</th><th className="num">Regular</th><th className="num">Win %</th><th className="num">Playoffs</th><th className="num">Titles</th></tr>
+            </thead>
             <tbody>
-              {espnEra.map((row, index) => (
-                <tr key={row.espn_team_id}>
-                  <td className="rank">{index + 1}</td>
-                  <td><a href={`/team/${row.espn_team_id}`} className="tname">{row.name}</a></td>
+              {franchises.map((row) => (
+                <tr key={row.franchise_key}>
+                  <td>
+                    <a className="tname" href={franchiseHref(row.franchise_key)}>{row.current_name}</a>
+                    <span className="tsub block">{row.first_season}–{row.last_season}</span>
+                  </td>
                   <td className="num">{row.seasons}</td>
-                  <td className="num">{record(row.wins, row.losses, row.ties)}</td>
-                  <td className="num">{(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}</td>
-                  <td className="num">{Number(row.points_for).toLocaleString()}</td>
+                  <td className="num">{record(row.regular_wins, row.regular_losses, row.regular_ties)}</td>
+                  <td className="num">{(winRate(row.regular_wins, row.regular_losses, row.regular_ties) * 100).toFixed(1)}</td>
+                  <td className="num">{row.playoff_wins}-{row.playoff_losses}<span className="tsub block">{row.playoff_appearances} berths</span></td>
+                  <td className="num"><strong>{row.championships}</strong>{row.title_seasons && <span className="tsub block">{row.title_seasons}</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -310,15 +81,57 @@ export default async function History() {
         </div>
       </div>
 
-      {formerManagers.length > 0 && (
-        <>
-          <h2>Former managers</h2>
-          <p className="sub">Everyone who has held a franchise and moved on.</p>
-          <div className="card">
-            <SortableTable columns={[{ key: 'name', label: 'Manager' }, ...RECORD_COLUMNS]} rows={managerRows(formerManagers)} />
-          </div>
-        </>
-      )}
+      <h2>Managers</h2>
+      <p className="sub">Career records follow the person across franchise changes; current and former managers stay in one directory.</p>
+      <div className="card">
+        <div className="scroll">
+          <table>
+            <thead>
+              <tr><th>Manager</th><th>Status</th><th className="num">Seasons</th><th className="num">Regular</th><th className="num">Win %</th><th className="num">Playoffs</th><th className="num">Titles</th></tr>
+            </thead>
+            <tbody>
+              {managers.map((row) => (
+                <tr key={row.manager_key}>
+                  <td><a className="tname" href={managerHref(row.manager_key)}>{row.display_name}</a><span className="tsub block">{row.first_season}–{row.last_season}</span></td>
+                  <td>{currentManagers.has(row.manager_key) ? <span className="tag best">Current</span> : <span className="tsub">Former</span>}</td>
+                  <td className="num">{row.seasons}</td>
+                  <td className="num">{record(row.regular_wins, row.regular_losses, row.regular_ties)}</td>
+                  <td className="num">{(winRate(row.regular_wins, row.regular_losses, row.regular_ties) * 100).toFixed(1)}</td>
+                  <td className="num">{row.playoff_wins}-{row.playoff_losses}<span className="tsub block">{row.playoff_appearances} berths</span></td>
+                  <td className="num"><strong>{row.championships}</strong>{row.title_seasons && <span className="tsub block">{row.title_seasons}</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2>Season archive</h2>
+      <p className="sub">Commissioner standings remain authoritative for 2005–2017 finishes; recovered ESPN scoreboards now supply the week-by-week evidence behind them.</p>
+      <div className="card">
+        <div className="scroll">
+          <table>
+            <thead><tr><th>Season</th><th>League champion</th><th>Regular-season champion</th><th>Runner-up</th><th>Source</th></tr></thead>
+            <tbody>
+              {champions.map((row) => {
+                const regular = regularBySeason.get(row.season);
+                return (
+                  <tr key={row.season}>
+                    <td><a className="tname" href={seasonHref(row.season)}>{row.season}</a></td>
+                    <td>
+                      <a href={franchiseHref(row.champion_key)}>{row.champion_team_name}</a>
+                      {row.champion_manager_key && row.champion_manager && <span className="tsub block"><a href={managerHref(row.champion_manager_key)}>{row.champion_manager}</a></span>}
+                    </td>
+                    <td>{regular ? <a href={franchiseHref(regular.franchise_key)}>{regular.team_name}</a> : '—'}</td>
+                    <td>{row.runner_up_key && row.runner_up_team_name ? <a href={franchiseHref(row.runner_up_key)}>{row.runner_up_team_name}</a> : '—'}</td>
+                    <td><span className="tsub">{row.source === 'manual' ? 'Commissioner finish + ESPN weekly evidence' : 'ESPN archive'}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </>
   );
 }

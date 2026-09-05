@@ -1,0 +1,62 @@
+name: Refresh legacy history model
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/manual-history/espn-franchises.csv'
+      - 'scripts/import-manual-history.ts'
+      - 'scripts/backfill-score-derived-history.ts'
+      - 'lib/history-id-map.ts'
+      - '.github/workflows/refresh-legacy-history-model.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-legacy-history-model
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test before database writes
+        run: npm test
+
+      - name: Validate legacy score derivation
+        run: npm run history:scores -- --from=2005 --to=2017 --dry-run
+
+      - name: Refresh durable franchise history
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run history:refresh
+
+      - name: Backfill current-formula score features
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run history:scores -- --from=2005 --to=2017
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo '### Legacy history model refresh'
+            echo ''
+            echo "- Result: **${{ job.status }}**"
+            echo '- Durable ESPN franchise IDs refreshed for the full 2005+ league record.'
+            echo '- 2005–2017 team-week results, all-play luck and current-formula power rankings rebuilt from recovered weekly scoreboards.'
+            echo '- No player-lineup, bench, transaction or FAAB data is synthesized for the legacy era.'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,179 +1,171 @@
 # The league record, 2005 to now
 
-Twenty played seasons in one table, from two sources that agree on nothing but
-the franchises:
+The site now keeps one continuous league history while preserving the difference
+between **authoritative season results** and **recovered ESPN evidence**.
 
-| era | source | what it gives |
+## Source authority by era
+
+| era | authoritative season result | recovered supporting evidence |
 |---|---|---|
-| 2005-2017 | the commissioner's spreadsheet, transcribed | final standings and a playoff finish order |
-| 2018- | `data/history/<year>/league.json.gz` | ESPN's own records, brackets, placements, and owner accounts |
+| 2005–2017 | commissioner spreadsheet transcription: final standings and playoff finish order | ESPN weekly team scoreboards and draft recaps |
+| 2018–2025 | ESPN archive | weekly player lineups, transactions, matchups, standings; draft boards still need a targeted recapture |
+| 2026 onward | live ESPN pipeline | full current capture: scores, lineups, draft, transactions, projections and derived features |
 
-ESPN's API returns 404 for this league before 2018 even with owner cookies, so
-the early years can only come from human records. The league did not play in
-2020; ESPN created the season and it sits in the archive with every team 0-0,
-so the derivation skips it by name.
+The league did not play in 2020. ESPN created a shell season, but it contains no
+real games and is excluded from played-season history.
 
-## Files
+The key rule is deliberate: **recovering an old ESPN scoreboard does not let ESPN
+silently rewrite a commissioner-recorded champion or final finish.** For
+2005–2017, the spreadsheet still decides the season result; ESPN supplies the
+week-by-week receipts behind it.
 
-| file | what it is |
-|---|---|
-| `data/manual-history/standings-2005-2017.csv` | Transcription of the spreadsheet, in finish order. **Edit this** if a number is wrong. |
-| `data/manual-history/manager-tenures.csv` | The 2005-2017 ownership ledger, as joined/left ranges. |
-| `data/manual-history/franchises.csv`, `managers.csv` | The ten franchises and everyone who has run one. |
-| `data/manual-history/espn-franchises.csv` | ESPN team id → franchise. |
-| `data/manual-history/espn-managers.csv` | ESPN account (SWID) → person. |
-| `data/manual-history/season-results.csv` | **Generated.** Every team-season, both eras. |
-| `data/manual-history/manager-seasons.csv` | **Generated.** Who ran what, every season. |
+## What was recovered before 2018
 
-Never hand-edit the two generated files; `npm run history:derive` rebuilds them
-and the test suite fails if they drift.
+Authenticated ESPN `leagueHistory` responses expose much more than the original
+history implementation assumed:
 
-```bash
-npm run history:derive          # rebuild the generated pair from both sources
-npm run history:import -- \
-  --franchises=data/manual-history/franchises.csv \
-  --seasons=data/manual-history/season-results.csv \
-  --managers=data/manual-history/managers.csv \
-  --manager-seasons=data/manual-history/manager-seasons.csv \
-  --dry-run                     # drop --dry-run to write
-```
+- every team-vs-team weekly score back to 2005;
+- the postseason matchup ledger;
+- historical team names and stable ESPN team slots;
+- draft recap boards back to 2005.
 
-198 season results and 198 manager assignments across 20 seasons.
+The recovery also established the limits:
 
-The manager tables are replaced rather than merged on each import: the derive
-step emits every assignment the archive knows about, so a manager the league
-stops crediting disappears instead of lingering from an earlier run. Supplying
-no manager files, or empty ones, prunes nothing.
+- **transactions:** every scoring period in 2005–2017 was queried and ESPN
+  returned zero transaction rows;
+- **player-level weekly lineups:** legacy `mBoxscore` responses return matchup
+  shells but no roster entries, so individual player weeks, optimal lineups and
+  points-left-on-bench cannot be reconstructed before 2018.
 
-`npm run history:refresh` is those two commands in order, with the arguments
-already filled in. **The weekly pipeline runs it every Tuesday**, so a season
-joins the record books by itself the week it finishes — nobody has to notice
-that it ended.
+Those limits are shown directly in `/history/vault` rather than hidden in code.
 
-That works because the archive reads BOTH `data/history/` (the one-off
-2018-2025 backfill) and `data/seasons/` (where the weekly pipeline writes, so
-every season from 2026 on), and because `seasonIsComplete()` skips a season
-whose record, placements or bracket ESPN has not settled yet. Mid-season the
-rebuild is a no-op that regenerates the files byte for byte; the week the final
-is decided, the season appears.
+## Score-derived history
 
-Adding an *older* ESPN season is still `node scripts/backfill-history.mjs`,
-then `npm run history:refresh` — no mapping changes unless someone new joins
-the league, in which case add their SWID to `espn-managers.csv` (the derivation
-fails loudly on an unmapped account rather than dropping the team).
+The recovered weekly team scores are enough to run the same score-only analytics
+used today. `npm run history:scores` rebuilds, for 2005–2017:
 
-## What had to be reconstructed, and what did not
+- `team_week_results` (record, PF/PA, median and all-play fields; lineup fields
+  remain null);
+- `luck_index`;
+- `power_rankings`.
 
-**Nothing in the ESPN era.** `rankCalculatedFinal` gives the final placement,
-the `WINNERS_BRACKET` matchups give the real playoff record (a bye is stored as
-a matchup with no opponent and is not counted as a win), and `record.overall` is
-regular-season only. The derivation cross-checks all three against each other:
-the bracket winner must be the team ESPN ranks first, placements must be a
-complete 1..10, and every team must have played the scheduled number of
-regular-season games. Consolation-ladder games decide placement but are never
-counted as playoff wins.
+Power rankings use **the exact current formula in every season**:
 
-**The 2005-2017 playoff records.** The spreadsheet records a finish order, not a
-bracket, and "lost in the semifinals" is `1-1` or `0-1` depending on a
-first-round bye it never mentions. `lib/playoff-bracket.ts` commits to one
-shape — six qualifiers, byes for seeds 1-2, first round 3v6 and 4v5, semifinals
-1 vs the 4/5 winner — walks it forward, and throws when the recorded finish
-order is unreachable rather than inventing a record. Twelve of thirteen seasons
-fit directly under win-percentage-then-points-for seeding, and in every one the
-six qualifiers are exactly the six best records.
+- 40% all-play win percentage;
+- 30% points per game, scaled to that season's best offense;
+- 20% actual win percentage;
+- 10% strength of schedule, measured from opponents' all-play strength.
 
-That the ESPN seasons independently produce the same shape — six qualifiers,
-five games, byes for the top two seeds, every year — is the strongest available
-evidence that the assumed bracket is the bracket this league actually plays.
-
-**2006 is the exception.** Boston Baked Beans went 9-4, tied for the best record
-in the league, and lost in the first round, which cannot happen if the two best
-records take the byes. A two-division season explains it and has exactly one
-consistent solution: The Penguins (9-4) and Your Worst Nightmares (8-5) win the
-divisions and take the byes, leaving Boston as the 3 seed behind a division
-rival. That override lives in `SEASON_BYES` in `lib/history-archive.ts` and is
-the only assumption in the whole import beyond the bracket shape.
+The retired 70/30 archive-only fallback is no longer used by the site. Weekly
+team scores and opponents make all four current inputs available back to 2005.
 
 ## Franchise identity
 
-A franchise is the durable slot, not the team name and not the person. Names
-change constantly — Gary Camero alone used five in seven years — and slots
-change hands.
+A franchise is the durable slot, not a team name and not a manager. Historical
+names and manager tenures attach to that permanent franchise record.
 
-| # | key | ESPN id | lineage |
-|---|---|---|---|
-| 1 | `bubbs` | 1 | Ryan throughout: Durham → New York → Austin Bubbs |
-| 2 | `brightleaf-yuppies` | 8 | Jonathan Crisp throughout; Death by Glass Ingestion in 2005 |
-| 3 | `penthouse-panda-bear` | 5 | Ben Wildfire throughout; co-owned, credited to ESPN’s primary owner |
-| 4 | `p-rivers-nas-nas` | 6 | Samuel Nye throughout |
-| 5 | `the-penguins` | 4 | Michael Chepul throughout |
-| 6 | `your-worst-nightmares` | 3 | Joe Presley throughout |
-| 7 | `run-and-hide` | 2 | Chris Phillips (Team 2) 2005-07 → Nathan Hanna 2008- |
-| 8 | `cte-deniers` | 10 | Jimmy Hildebrand 2005 → Seamus McNeill 2006-08 → Trafton Drew 2009-17 → Jordan Chin 2018- |
-| 9 | `raleigh-silly-nannies` | 9 | joined 2006: Eric King → John Mapp 2007-08 → Alan Marks 2009- |
-| 10 | `taco-macarthur` | 11 | joined 2006: Blake Hudson → Justin McNally 2007 → Tommy Lawrence 2008 → Jonathan Ziebell 2009-10 → Gary Camero 2011- |
+`data/manual-history/espn-franchises.csv` is the canonical season-aware ESPN
+team-id ledger. Most ids are stable for the league's entire history. One verified
+exception is encoded explicitly:
 
-Six of these are the original 2005 owners. Franchises 9 and 10 were added in
-2006 when Jimmy left and Seamus took over slot 8. The ESPN team ids have been
-stable since 2018 and are confirmed by the owner accounts, not by team name.
+- the franchise now known as CTE Deniers was ESPN team **7 in 2005**;
+- the same durable franchise is ESPN team **10 from 2006 onward**.
 
-## Where the two sources disagree about people
+The normal history importer now reapplies this mapping on every refresh. That is
+important because the commissioner season-result CSV intentionally remains about
+standings/finish; identity enrichment happens during import and can no longer be
+lost on the next Tuesday rebuild.
 
-Both were settled by the commissioner, and both merge into one continuous
-manager record:
+Current durable mappings:
 
-- **Ryan.** The spreadsheets say *Ryan Soots*; the ESPN account that has held
-  franchise 1 since 2018 is *Ryan Mindell*. Same person — the ledger records no
-  handover on that franchise, ever. Shown as Ryan Mindell.
-- **Marks.** The owner label reads *john marks* (2009), *Alan Marks*
-  (2010-2017), and *John Marks* on the ESPN account from 2018 — one account
-  renamed twice. One person, one record from the 2009 handover on. Shown as Alan
-  Marks.
+| franchise | ESPN id / span |
+|---|---|
+| Bubbs | 1, 2005– |
+| Run and Hide | 2, 2005– |
+| Your Worst Nightmares | 3, 2005– |
+| The Penguins | 4, 2005– |
+| The Penthouse Panda Bear | 5, 2005– |
+| P RIVERS NAS NAS | 6, 2005– |
+| Brightleaf Yuppies | 8, 2005– |
+| Raleigh Silly Nannies | 9, 2006– |
+| CTE Deniers lineage | 7 in 2005; 10 from 2006– |
+| Taco MacArthur lineage | 11, 2006– |
 
-`managers.csv` carries an `archive_labels` column for exactly this: every name a
-manager appeared under, so a rename does not read as a different person. A test
-checks every transcribed owner label against it, which is the only check the
-ledger's tenure ranges have.
+## Files and refresh flow
 
-Co-owned teams are credited to one manager, the one the league counts. The
-Penthouse Panda Bear has always been co-owned and goes to Ben Wildfire, ESPN's
-primary owner of record; CTE Deniers goes to Jordan Chin. The other account on
-each team sits in `espn-managers.csv` with a **blank** `manager_key`, meaning
-"known, deliberately not credited" — the derivation skips it, while an account
-missing from the file entirely still fails loudly, so a new owner can never slip
-in unnoticed.
+| file | purpose |
+|---|---|
+| `data/manual-history/standings-2005-2017.csv` | commissioner standings transcription; edit this if an early season result is wrong |
+| `data/manual-history/manager-tenures.csv` | pre-2018 manager tenure ledger |
+| `data/manual-history/franchises.csv`, `managers.csv` | durable franchise/person directories |
+| `data/manual-history/espn-franchises.csv` | season-aware ESPN team id → durable franchise mapping |
+| `data/manual-history/espn-managers.csv` | ESPN account (SWID) → credited manager |
+| `data/manual-history/season-results.csv` | generated season result ledger |
+| `data/manual-history/manager-seasons.csv` | generated manager assignments |
+| `data/history/<season>/` | checked-in raw historical ESPN evidence |
+| `data/seasons/<season>/` | current/live season captures |
 
-Each season therefore has exactly one manager and exactly one primary: ESPN's
-`primaryOwner` decides it from 2018, the ledger before that.
+`npm run history:refresh` derives the generated history files and imports them.
+The importer also applies `espn-franchises.csv`, so historical franchise ids are
+present in the database even though the commissioner standings source itself does
+not need to know ESPN ids.
 
-## What the tables show
+The weekly pipeline runs `history:refresh` every Tuesday. Once a season finishes,
+it joins the permanent record automatically.
 
-`/history` renders franchise records and manager records over everything above,
-plus the championship roll. Both record tables sort on any column, and managers
-are split into those holding a team in the latest season and those who have
-moved on. `/standings` renders any season from 2005 on out of the same table --
-archive seasons simply have no luck index, because that needs weekly scores.
-Each franchise page carries its full season-by-season history, its rivalries
-with the most-beaten and most-beaten-by opponents flagged, and the same seasons
-split by manager underneath.
+## What each history surface owns
 
-The views behind them are in `scripts/migrations/2026-09-01-unified-history.sql`
-and `scripts/migrations/2026-09-02-history-detail.sql`.
+The archive is intentionally split by question instead of repeating the same
+lists on multiple pages:
 
-The ESPN team-ID table is still there, and still separate on purpose: it is
-counted from the loaded week-by-week results with playoff weeks included, so it
-is the raw feed rather than a franchise record. The rivalry and weekly features
-hang off those ids.
+- **`/history` — directory and timeline.** Seasons, permanent franchises,
+  managers, champions and links into the specialized books.
+- **`/history/records` — record book.** Best seasons, offenses, team-game marks,
+  individual player weeks where available, final power champions and schedule
+  luck extremes.
+- **`/history/rivalries` — head-to-head book.** Every durable franchise pairing,
+  playoff series, superlatives and full game ledgers back to 2005.
+- **`/history/vault` — evidence room.** Coverage matrix and raw season files:
+  scoreboards, drafts and transactions, including explicit missing-source gaps.
+- **`/history/<season>` — season file.** The bridge between the commissioner
+  result, recovered weekly evidence, standings, power ranking and Vault data.
+- **franchise pages — permanent slot record.** Manager eras, renames, titles,
+  season metrics, weekly receipts and rivalries.
+- **manager pages — person record.** Career totals across franchise changes,
+  regular-season crowns, season metrics and weekly receipts.
 
-## Limits
+## Draft-board gap, 2018–2025
 
-- **No head-to-head before 2018.** The spreadsheet has season totals, not
-  matchups, so rivalry records cannot reach back. That would need ~13 screenshots
-  a season.
-- **Roster moves are transcribed but not loaded.** No column models them.
-- **Regular-season points only** in the points column, so 12- and 13-game
-  seasons sit below the modern 14-game years.
-- **Final place means something slightly different per era.** Before 2018 places
-  3-6 come from how far a team got in the bracket and 7+ from the regular-season
-  order; from 2018 ESPN's consolation ladder decides the lower places. Champion,
-  runner-up, and playoff records are exact in both.
+The historical 2018–2025 archive was originally captured without
+`mDraftDetail`, so production currently has no draft picks for those seasons.
+This is **not an ESPN limitation**. A targeted authenticated recapture can fill
+that hole without touching the already-complete matchup/transaction history.
+The Vault labels it a recoverable gap until that recapture is performed.
+
+## Playoff reconstruction before 2018
+
+The commissioner spreadsheet records final finish but not an explicit bracket.
+`lib/playoff-bracket.ts` derives playoff W-L from the league's six-team bracket:
+seeds 1–2 receive byes; 3v6 and 4v5 play the first round; then semifinals and the
+championship. The derivation throws if the recorded finish order cannot fit the
+bracket rather than inventing a result.
+
+2006 is the one documented seeding exception: Boston Baked Beans went 9–4 but
+lost in the first round, which is only consistent with divisional byes. The
+Penguins and Your Worst Nightmares are therefore the recorded bye teams for that
+season. This exception remains isolated in `SEASON_BYES`.
+
+Recovered ESPN postseason scoreboards now provide a second evidence layer for
+those old seasons, while the commissioner finish remains authoritative.
+
+## Manager identity
+
+Manager records follow people rather than ESPN account labels. Historical aliases
+are normalized in `managers.csv`; co-owned teams are credited only to the manager
+the league recognizes. ESPN accounts intentionally not credited remain listed in
+`espn-managers.csv` with a blank `manager_key`, so they are known rather than
+mistaken for missing data.
+
+Every franchise-season has one primary credited manager. Manager career pages can
+therefore follow a person across franchise changes without rewriting the franchise
+record itself.

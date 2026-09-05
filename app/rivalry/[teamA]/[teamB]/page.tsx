@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 
+import { HistoryNav } from '../../../../components/HistoryNav.tsx';
 import { getRivalrySeries, type RivalryGame } from '../../../../lib/game-context.ts';
 
 export const dynamic = 'force-dynamic';
@@ -23,17 +24,11 @@ function roundLabel(tier: string | null) {
   return tier === 'WINNERS_BRACKET' ? 'Playoffs' : 'Consolation';
 }
 
-export default async function RivalryPage({
-  params,
-}: {
-  params: Promise<{ teamA: string; teamB: string }>;
-}) {
+export default async function RivalryPage({ params }: { params: Promise<{ teamA: string; teamB: string }> }) {
   const raw = await params;
   const teamA = Number(raw.teamA);
   const teamB = Number(raw.teamB);
-  if (!Number.isInteger(teamA) || !Number.isInteger(teamB) || teamA < 1 || teamB < 1 || teamA === teamB) {
-    notFound();
-  }
+  if (!Number.isInteger(teamA) || !Number.isInteger(teamB) || teamA < 1 || teamB < 1 || teamA === teamB) notFound();
 
   const { teams, games } = await getRivalrySeries(teamA, teamB);
   const a = teams.find((team) => team.espn_team_id === teamA);
@@ -46,19 +41,17 @@ export default async function RivalryPage({
   let pointsFor = 0;
   let pointsAgainst = 0;
   for (const game of games) {
-    const v = viewFrom(game, teamA);
-    pointsFor += v.pointsFor;
-    pointsAgainst += v.pointsAgainst;
-    if (v.result === 'W') wins += 1;
-    else if (v.result === 'L') losses += 1;
+    const view = viewFrom(game, teamA);
+    pointsFor += view.pointsFor;
+    pointsAgainst += view.pointsAgainst;
+    if (view.result === 'W') wins += 1;
+    else if (view.result === 'L') losses += 1;
     else ties += 1;
   }
 
   const closest = games.reduce<RivalryGame | null>((best, game) => {
     if (!best) return game;
-    const margin = Math.abs(viewFrom(game, teamA).margin);
-    const bestMargin = Math.abs(viewFrom(best, teamA).margin);
-    return margin < bestMargin ? game : best;
+    return Math.abs(viewFrom(game, teamA).margin) < Math.abs(viewFrom(best, teamA).margin) ? game : best;
   }, null);
   const biggestWin = games.reduce<RivalryGame | null>((best, game) => {
     const margin = viewFrom(game, teamA).margin;
@@ -71,11 +64,11 @@ export default async function RivalryPage({
 
   const moment = (label: string, game: RivalryGame | null) => {
     if (!game) return null;
-    const v = viewFrom(game, teamA);
+    const view = viewFrom(game, teamA);
     return (
       <div>
         <span>{label}</span>
-        <strong>{v.result} {v.pointsFor.toFixed(1)}-{v.pointsAgainst.toFixed(1)}</strong>
+        <strong>{view.result} {view.pointsFor.toFixed(1)}-{view.pointsAgainst.toFixed(1)}</strong>
         <small className="block note">{game.season} week {game.week} · {roundLabel(game.playoff_tier)}</small>
       </div>
     );
@@ -86,24 +79,15 @@ export default async function RivalryPage({
       <div className="page-hero">
         <div className="eyebrow">Rivalry file · complete recovered ledger</div>
         <h1>{a.name} vs. {b.name}</h1>
-        <p>
-          Every meeting on file since {firstSeason ?? 2005}, including the playoffs.
-        </p>
+        <p>Every meeting on file since {firstSeason ?? 2005}, including the playoffs.</p>
       </div>
 
+      <HistoryNav current="rivalries" />
+
       <div className="stat-strip three">
-        <div>
-          <span>{a.name} record</span>
-          <strong>{record(wins, losses, ties)}</strong>
-        </div>
-        <div>
-          <span>Points differential</span>
-          <strong>{pointsFor - pointsAgainst > 0 ? '+' : ''}{(pointsFor - pointsAgainst).toFixed(1)}</strong>
-        </div>
-        <div>
-          <span>Playoff meetings</span>
-          <strong>{playoffGames}</strong>
-        </div>
+        <div><span>{a.name} record</span><strong>{record(wins, losses, ties)}</strong></div>
+        <div><span>Points differential</span><strong>{pointsFor - pointsAgainst > 0 ? '+' : ''}{(pointsFor - pointsAgainst).toFixed(1)}</strong></div>
+        <div><span>Playoff meetings</span><strong>{playoffGames}</strong></div>
       </div>
 
       {games.length > 0 ? (
@@ -115,57 +99,33 @@ export default async function RivalryPage({
           </div>
 
           <h2>The ledger</h2>
-          <div className="card">
-            <div className="scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Week</th><th>Opponent</th><th className="num">Result</th>
-                    <th className="num">Score</th><th className="num">Margin</th><th>Round</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {games.map((game) => {
-                    const v = viewFrom(game, teamA);
-                    return (
-                      <tr key={`${game.season}-${game.espn_matchup_id}`}>
-                        <td>
-                          <a href={`/history/vault/${game.season}`} className="tname">
-                            {game.season} wk {game.week}
-                          </a>
-                        </td>
-                        <td><a href={`/team/${v.opponentId}`}>{v.opponent}</a></td>
-                        <td className="num">
-                          <span className={`pill ${v.result === 'W' ? 'w' : v.result === 'L' ? 'l' : ''}`}>
-                            {v.result}
-                          </span>
-                        </td>
-                        <td className="num">{v.pointsFor.toFixed(1)}-{v.pointsAgainst.toFixed(1)}</td>
-                        <td className="num">
-                          {v.margin > 0 ? '+' : ''}{v.margin.toFixed(1)}
-                        </td>
-                        <td>{game.playoff_tier ? <span className="tag era">{roundLabel(game.playoff_tier)}</span> : 'Regular'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <div className="card"><div className="scroll"><table>
+            <thead><tr><th>Week</th><th>Opponent</th><th className="num">Result</th><th className="num">Score</th><th className="num">Margin</th><th>Round</th></tr></thead>
+            <tbody>{games.map((game) => {
+              const view = viewFrom(game, teamA);
+              return (
+                <tr key={`${game.season}-${game.espn_matchup_id}`}>
+                  <td><a href={`/history/vault/${game.season}`} className="tname">{game.season} wk {game.week}</a></td>
+                  <td><a href={`/team/${view.opponentId}`}>{view.opponent}</a></td>
+                  <td className="num"><span className={`pill ${view.result === 'W' ? 'w' : view.result === 'L' ? 'l' : ''}`}>{view.result}</span></td>
+                  <td className="num">{view.pointsFor.toFixed(1)}-{view.pointsAgainst.toFixed(1)}</td>
+                  <td className="num">{view.margin > 0 ? '+' : ''}{view.margin.toFixed(1)}</td>
+                  <td>{game.playoff_tier ? <span className="tag era">{roundLabel(game.playoff_tier)}</span> : 'Regular'}</td>
+                </tr>
+              );
+            })}</tbody>
+          </table></div></div>
         </>
-      ) : (
-        <div className="callout">These franchises have not met in the recovered league record yet.</div>
-      )}
+      ) : <div className="callout">These franchises have not met in the recovered league record yet.</div>}
 
       <div className="card">
         <p className="note" style={{ margin: 0 }}>
-          Week-by-week ESPN scoreboards are recovered through 2005. The ledger keeps each historical team name,
-          while the series record follows the permanent franchise identity; ESPN team 7 in 2005 is therefore
-          counted with the current CTE franchise, team 10.
+          Week-by-week ESPN scoreboards are recovered through 2005. Historical team names remain attached to each game while the lifetime series follows permanent franchise identity.
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           <a className="btn btn-quiet" href={`/team/${teamA}`}>{a.name} franchise file</a>
           <a className="btn btn-quiet" href={`/team/${teamB}`}>{b.name} franchise file</a>
+          <a className="btn btn-quiet" href="/history/rivalries">All rivalries</a>
         </div>
       </div>
     </>
