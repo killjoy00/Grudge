@@ -10,6 +10,8 @@ import {
   parseManagerTenures,
   parseSeasonResults,
 } from '../lib/manual-history.ts';
+import { parseFranchiseIdMap } from '../lib/history-archive.ts';
+import { attachEspnTeamIds } from '../lib/history-id-map.ts';
 import { connect, runTransaction, stmt, upsert } from '../pipeline/db.ts';
 
 const args = process.argv.slice(2);
@@ -21,10 +23,12 @@ const seasonFile = value('seasons');
 const managerFile = value('managers');
 const tenureFile = value('tenures');
 const managerSeasonFile = value('manager-seasons');
+const espnFranchiseFile = value('espn-franchises');
 
 if (!franchiseFile || !seasonFile) {
   throw new Error(
     'Usage: npm run history:import -- --franchises=franchises.csv --seasons=season-results.csv ' +
+    '[--espn-franchises=espn-franchises.csv] ' +
     '[--managers=managers.csv (--manager-seasons=manager-seasons.csv | --tenures=manager-tenures.csv)] ' +
     '[--dry-run]'
   );
@@ -38,7 +42,11 @@ if (Boolean(managerFile) !== Boolean(assignmentFile)) {
 }
 
 const franchises = parseFranchises(readFileSync(franchiseFile, 'utf8'));
-const seasons = parseSeasonResults(readFileSync(seasonFile, 'utf8'));
+let seasons = parseSeasonResults(readFileSync(seasonFile, 'utf8'));
+if (espnFranchiseFile) {
+  const mappings = parseFranchiseIdMap(readFileSync(espnFranchiseFile, 'utf8'));
+  seasons = attachEspnTeamIds(seasons, mappings);
+}
 const managers = managerFile ? parseManagers(readFileSync(managerFile, 'utf8')) : [];
 const managerSeasons = managerSeasonFile
   ? parseManagerSeasons(readFileSync(managerSeasonFile, 'utf8'))
@@ -64,9 +72,10 @@ for (const row of managerSeasons) {
 }
 
 const years = seasons.map((row) => row.season);
+const mappedIds = seasons.filter((row) => row.espn_team_id !== null).length;
 console.log(
   `Validated ${franchises.length} franchises, ${seasons.length} season results ` +
-  `(${Math.min(...years)}-${Math.max(...years)}), ${managers.length} managers, ` +
+  `(${Math.min(...years)}-${Math.max(...years)}; ${mappedIds} with ESPN ids), ${managers.length} managers, ` +
   `and ${managerSeasons.length} manager assignments.`
 );
 if (dryRun) {
