@@ -97,13 +97,9 @@ export default async function VaultSeasonPage({ params }: { params: Promise<{ se
         );
       })}
 
-      <h2>Draft Time Machine</h2>
+      <h2 id="draft">Draft Time Machine</h2>
       {draft.length === 0 ? (
-        <div className="callout">
-          {season >= 2018 && season <= 2025
-            ? 'This board is a recoverable archive gap: the original historical capture did not request ESPN draft detail.'
-            : 'No draft board is available for this season.'}
-        </div>
+        <div className="callout">No draft board is available for this season.</div>
       ) : (
         <>
           <p className="sub">The ESPN draft recap, round by round. Unknown names are retained by ESPN player ID rather than discarded.</p>
