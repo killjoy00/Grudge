@@ -61,5 +61,10 @@
       "FUTURE_ROSTER": 63,
       "TRADE_UPHOLD": 6
     }
-  }
+  },
+  "availability": {
+    "draftBoard": true,
+    "draftPicks": 160
+  },
+  "draftBackfilledAt": "2026-09-05T23:42:26.837Z"
 }

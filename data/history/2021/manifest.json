@@ -61,5 +61,10 @@
       "TRADE_ACCEPT": 10,
       "TRADE_UPHOLD": 2
     }
-  }
+  },
+  "availability": {
+    "draftBoard": true,
+    "draftPicks": 170
+  },
+  "draftBackfilledAt": "2026-09-05T23:42:25.316Z"
 }
