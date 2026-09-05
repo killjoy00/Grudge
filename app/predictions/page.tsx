@@ -1,8 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import {
-  getCurrentSeason, getOpenWeek, getWeekMatchups, getMyPicks, getLeaderboard,
+  getCurrentSeason, getWeekMatchups, getMyPicks, getLeaderboard,
   getAllTimeLeaderboard, getWeekProjections, getEspnRecord, getTeamStars,
 } from '../../lib/queries.ts';
+import { getCurrentIncompleteWeek } from '../../lib/game-context.ts';
 import { PickForm } from '../../components/PickForm.tsx';
 import type { Projection, Star } from '../../components/PickForm.tsx';
 import { POSITIONS } from '../../pipeline/trade.ts';
@@ -49,7 +50,11 @@ function record(r: PickRecord | undefined) {
 export default async function Predictions() {
   const { userId } = await auth.protect();
   const season = await getCurrentSeason();
-  const open = await getOpenWeek(season);
+  // The board follows the first week whose results are not complete. A locked
+  // week is still the current week until Tuesday's pipeline settles it, so the
+  // page stays on the games people are actually watching instead of jumping
+  // ahead to next week's unlocked slate.
+  const open = await getCurrentIncompleteWeek(season);
 
   const [matchups, picks, board, allTime, projRows, starRows, espn] = await Promise.all([
     open ? getWeekMatchups(season, open.week) : Promise.resolve([]),
@@ -120,7 +125,7 @@ export default async function Predictions() {
             {lockAt && <><br />Closes {easternDateTime(lockAt)}.</>}
           </p>
         ) : (
-          <p>No week is open for picks right now. {LOCK_RULE}</p>
+          <p>No prediction week remains this season. {LOCK_RULE}</p>
         )}
       </div>
 
@@ -155,7 +160,7 @@ export default async function Predictions() {
                     <>
                       Week {open.week} is locked — picks closed Saturday at midnight
                       ET, and the database rejects late changes. Your picks are shown
-                      below; the ESPN link on each matchup follows it live.
+                      below; each matchup now has a preview and an ESPN link for following it live.
                     </>
                   ) : (
                     <>

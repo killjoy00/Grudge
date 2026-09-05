@@ -142,6 +142,12 @@ export function PickForm({
               {chosen === undefined && <span className="matchup-todo">No pick yet</span>}
               {/* Not inside the pick buttons: those are the control, and a link
                   within one would both fight the click and be invalid HTML. */}
+              <a
+                href={`/matchup/${season}/${week}/${m.espn_matchup_id}`}
+                className="espn-link"
+              >
+                Preview
+              </a>
               <EspnMatchupLink season={season} week={week} teamId={m.away_team_id} />
             </div>
             <div className="matchup-body">

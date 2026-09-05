@@ -1,8 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
 import {
   getCurrentSeason, getPlayedSeasons, getWeekResults, getWeekAwards,
-  getBenchWatch, getComments, getStandings, getPlayoffWeek,
+  getBenchWatch, getComments, getStandings, getPlayoffWeek, getWeekMatchups,
 } from '../lib/queries.ts';
+import { getCurrentIncompleteWeek } from '../lib/game-context.ts';
 import { Comments } from '../components/Comments.tsx';
 import { EspnMatchupLink, EspnTeamLink } from '../components/EspnLink.tsx';
 import { asPublic } from '../lib/db.ts';
@@ -48,20 +49,95 @@ async function preseason() {
 export default async function Home() {
   const { userId } = await auth();
   const currentSeason = await getCurrentSeason();
-  const week = await latestPlayedWeek(currentSeason);
+  const [week, activeWeek] = await Promise.all([
+    latestPlayedWeek(currentSeason),
+    getCurrentIncompleteWeek(currentSeason),
+  ]);
+  const now = Date.now();
+  const activeStarted = Boolean(
+    activeWeek?.first_kickoff_at && new Date(activeWeek.first_kickoff_at).getTime() <= now
+  );
+
+  // Once the first game of an incomplete week has kicked off, the previous
+  // recap (or preseason countdown) is no longer the headline. The database is
+  // intentionally frozen until Tuesday, so do NOT pretend these are live
+  // scores; show the slate and hand off to ESPN until the pipeline settles it.
+  if (activeWeek && activeStarted) {
+    const games = await getWeekMatchups(currentSeason, activeWeek.week);
+    const lockAt = activeWeek.locks_at ?? activeWeek.first_kickoff_at;
+    const locked = lockAt ? new Date(lockAt).getTime() <= now : true;
+    return (
+      <>
+        <div className="page-hero">
+          <div className="eyebrow">{currentSeason} scoreboard</div>
+          <h1>Week {activeWeek.week} is underway.</h1>
+          <p>
+            Grudge freezes the official week after Monday night. Until then, follow
+            the games on ESPN and use the matchup files for the pregame receipts.
+          </p>
+        </div>
+
+        <div className="card">
+          {games.map((game) => (
+            <div className="match" key={game.espn_matchup_id}>
+              <div className="side">
+                <span>
+                  {game.away_name}
+                  <EspnTeamLink teamId={game.away_team_id} season={currentSeason} />
+                </span>
+              </div>
+              <span className="vs">
+                at
+                <EspnMatchupLink season={currentSeason} week={activeWeek.week}
+                                 teamId={game.away_team_id} label="ESPN" />
+              </span>
+              <div className="side">
+                <span>
+                  {game.home_name}
+                  <EspnTeamLink teamId={game.home_team_id} season={currentSeason} />
+                </span>
+              </div>
+              <a
+                href={`/matchup/${currentSeason}/${activeWeek.week}/${game.espn_matchup_id}`}
+                className="espn-link"
+                style={{ marginLeft: 8 }}
+              >
+                Preview
+              </a>
+            </div>
+          ))}
+        </div>
+
+        <div className="card">
+          <p className="note" style={{ margin: 0 }}>
+            {locked
+              ? <>Week {activeWeek.week} picks are locked. Your board stays visible while the games play.</>
+              : <>Week {activeWeek.week} picks are still open until Saturday at midnight ET.</>}
+          </p>
+          <div style={{ marginTop: 12 }}>
+            <a href="/predictions" className="btn">
+              {locked ? 'Review your picks' : 'Make your picks'}
+            </a>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (week === null) {
     const [seasons, last] = await Promise.all([getPlayedSeasons(), preseason()]);
-    const kickoff = last?.kickoff ? new Date(last.kickoff) : null;
-    const days = kickoff
-      ? Math.max(0, Math.ceil((kickoff.getTime() - Date.now()) / 86_400_000))
-      : null;
+    const kickoffValue = activeWeek?.first_kickoff_at ?? last?.kickoff ?? null;
+    const kickoff = kickoffValue ? new Date(kickoffValue) : null;
+    const days = kickoff ? Math.ceil((kickoff.getTime() - now) / 86_400_000) : null;
+    const lockAt = activeWeek?.locks_at ?? activeWeek?.first_kickoff_at ?? null;
+    const picksLocked = lockAt ? new Date(lockAt).getTime() <= now : false;
+    const pickWeek = activeWeek?.week ?? 1;
     return (
       <>
         <div className="page-hero">
           <div className="eyebrow">{currentSeason} season</div>
           <h1>{days === null ? 'Season on the clock.'
-            : days === 0 ? 'Kickoff is today.'
+            : days <= 0 ? 'Kickoff is today.'
               : `${days} day${days === 1 ? '' : 's'} until kickoff.`}</h1>
           <p>
             Nobody has lost yet. Ten teams, five matchups a week, and one trophy
@@ -86,13 +162,20 @@ export default async function Home() {
 
         <div className="card">
           <p className="note">
-            Week 1 picks are open now — <strong>they lock Saturday at midnight ET</strong>,
-            the midnight between Saturday and Sunday. After week 1 this page turns
-            into the weekly recap: scores, awards, who left the most points on their
-            bench, and the argument thread.
+            {picksLocked ? (
+              <>Week {pickWeek} picks are locked — the deadline was Saturday at midnight ET.
+                The prediction board stays available so you can review what you picked.</>
+            ) : (
+              <>Week {pickWeek} picks are open now — <strong>they lock Saturday at midnight ET</strong>,
+                the midnight between Saturday and Sunday.</>
+            )}{' '}
+            After the games settle this page becomes the weekly recap: scores, awards,
+            who left the most points on their bench, and the argument thread.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-            <a href="/predictions" className="btn">Make your week 1 picks</a>
+            <a href="/predictions" className="btn">
+              {picksLocked ? `Review week ${pickWeek} picks` : `Make your week ${pickWeek} picks`}
+            </a>
             <a href="/history" className="btn btn-quiet">All-time records</a>
             <a href="/standings" className="btn btn-quiet">Season books</a>
           </div>
