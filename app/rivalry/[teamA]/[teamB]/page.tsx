@@ -84,10 +84,10 @@ export default async function RivalryPage({
   return (
     <>
       <div className="page-hero">
-        <div className="eyebrow">Rivalry file · ESPN era</div>
+        <div className="eyebrow">Rivalry file · complete recovered ledger</div>
         <h1>{a.name} vs. {b.name}</h1>
         <p>
-          Every meeting on file since {firstSeason ?? 2018}, including the playoffs.
+          Every meeting on file since {firstSeason ?? 2005}, including the playoffs.
         </p>
       </div>
 
@@ -130,7 +130,7 @@ export default async function RivalryPage({
                     return (
                       <tr key={`${game.season}-${game.espn_matchup_id}`}>
                         <td>
-                          <a href={`/standings?season=${game.season}`} className="tname">
+                          <a href={`/history/vault/${game.season}`} className="tname">
                             {game.season} wk {game.week}
                           </a>
                         </td>
@@ -154,13 +154,14 @@ export default async function RivalryPage({
           </div>
         </>
       ) : (
-        <div className="callout">These franchises have not met in the ESPN-era record yet.</div>
+        <div className="callout">These franchises have not met in the recovered league record yet.</div>
       )}
 
       <div className="card">
         <p className="note" style={{ margin: 0 }}>
-          This page begins in 2018 because the commissioner archive before then keeps
-          season totals and playoff finishes, not a week-by-week opponent ledger.
+          Week-by-week ESPN scoreboards are recovered through 2005. The ledger keeps each historical team name,
+          while the series record follows the permanent franchise identity; ESPN team 7 in 2005 is therefore
+          counted with the current CTE franchise, team 10.
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           <a className="btn btn-quiet" href={`/team/${teamA}`}>{a.name} franchise file</a>

@@ -4,8 +4,9 @@ import { EspnTeamLink } from '../../../components/EspnLink.tsx';
 import { espnTeamUrl } from '../../../lib/espn-links.ts';
 import { getCachedFranchiseByKey } from '../../../lib/history-cache.ts';
 import { finish, managerHref, record, seasonHref, winRate } from '../../../lib/history-format.ts';
-import { getCurrentSeason, getRivalries } from '../../../lib/queries.ts';
+import { getCurrentSeason } from '../../../lib/queries.ts';
 import { getCachedRegularSeasonChampions } from '../../../lib/regular-season-history.ts';
+import { getFranchiseRivalries } from '../../../lib/rivalry-queries.ts';
 
 export const revalidate = 3600;
 
@@ -21,7 +22,7 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
   ]);
   if (!identity || bySeason.length === 0) notFound();
 
-  const rivals = identity.espn_team_id ? await getRivalries(identity.espn_team_id) : [];
+  const rivals = identity.espn_team_id ? await getFranchiseRivalries(identity.espn_team_id) : [];
   const currentSeason = await getCurrentSeason();
   const regularSeasonTitleSeasons = new Set(
     regularSeasonChampions
@@ -218,7 +219,8 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
 
       {rivals.length > 0 && identity.espn_team_id && (
         <>
-          <h2>Rivalries</h2>
+          <h2>All-time rivalries</h2>
+          <p className="sub">Every recovered weekly meeting back to 2005, playoffs included, rolled up by permanent franchise rather than historical team name.</p>
           <div className="card">
             <div className="scroll">
               <table>
@@ -242,7 +244,7 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
                 </tbody>
               </table>
             </div>
-            <p className="note">Head-to-head detail begins in 2018 because the older commissioner archive has season totals, not weekly opponents.</p>
+            <p className="note">The recovered ESPN scoreboards now extend head-to-head history through 2005. Historical team names stay in each game ledger; the one verified ID handoff, team 7 in 2005 to the current CTE franchise, is canonicalized automatically.</p>
           </div>
         </>
       )}

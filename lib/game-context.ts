@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { asPublic } from './db.ts';
+import { canonicalEspnTeamIdSql } from './franchise-identity.ts';
 
 export interface IncompleteWeek {
   week: number;
@@ -101,11 +102,16 @@ export interface RivalryTeam {
 }
 
 /**
- * Every finalized ESPN-era meeting between two team IDs, newest first.
- * Dedicated rivalry pages intentionally stop at 2018 because the earlier
- * archive has season totals but no week-by-week opponent ledger.
+ * Every finalized meeting between two durable franchises, newest first.
+ *
+ * Raw ESPN team IDs are stable across the archive except for one verified
+ * handoff: the current CTE franchise was team 7 in 2005 and team 10 from 2006
+ * onward. Canonicalizing here makes the rivalry URL permanent while keeping
+ * the historical team names beside each old game.
  */
 export async function getRivalrySeries(teamA: number, teamB: number) {
+  const homeFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.home_team_id');
+  const awayFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.away_team_id');
   const [teams, games] = await Promise.all([
     asPublic<RivalryTeam>(
       `select t.espn_team_id, t.name
@@ -117,8 +123,8 @@ export async function getRivalrySeries(teamA: number, teamB: number) {
     ),
     asPublic<RivalryGame>(
       `select m.season, m.week, m.espn_matchup_id,
-              m.home_team_id, ht.name as home_name,
-              m.away_team_id, at.name as away_name,
+              ${homeFranchiseId}::int as home_team_id, ht.name as home_name,
+              ${awayFranchiseId}::int as away_team_id, at.name as away_name,
               round(m.home_points, 2)::text as home_points,
               round(m.away_points, 2)::text as away_points,
               m.winner,
@@ -129,8 +135,8 @@ export async function getRivalrySeries(teamA: number, teamB: number) {
          join public.teams at
            on at.season = m.season and at.espn_team_id = m.away_team_id
         where m.is_final
-          and ((m.home_team_id = $1 and m.away_team_id = $2)
-            or (m.home_team_id = $2 and m.away_team_id = $1))
+          and ((${homeFranchiseId} = $1 and ${awayFranchiseId} = $2)
+            or (${homeFranchiseId} = $2 and ${awayFranchiseId} = $1))
         order by m.season desc, m.week desc, m.espn_matchup_id desc`,
       [teamA, teamB]
     ),
