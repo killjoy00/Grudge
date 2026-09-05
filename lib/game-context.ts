@@ -1,0 +1,139 @@
+import 'server-only';
+
+import { asPublic } from './db.ts';
+
+export interface IncompleteWeek {
+  week: number;
+  first_kickoff_at: string | null;
+  locks_at: string | null;
+  results_complete: boolean;
+}
+
+/**
+ * The week the league is currently living in.
+ *
+ * This is deliberately the FIRST INCOMPLETE week, not the first week whose
+ * pick deadline is still in the future. Once Saturday's deadline passes the
+ * league is still in that week until ESPN settles it and the Tuesday pipeline
+ * marks results_complete. Choosing by lock time was what made /predictions
+ * jump to next week's slate as soon as the current board locked.
+ */
+export async function getCurrentIncompleteWeek(season: number) {
+  const rows = await asPublic<IncompleteWeek>(
+    `select week, first_kickoff_at, locks_at, results_complete
+       from public.weeks
+      where season = $1 and not results_complete
+      order by week
+      limit 1`,
+    [season]
+  );
+  return rows[0] ?? null;
+}
+
+export interface MatchupTeamContext {
+  espn_team_id: number;
+  name: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  points_for: string;
+  power_rank: number | null;
+  power_score: string | null;
+}
+
+/** Standings and power-rank context as it existed BEFORE the matchup week. */
+export async function getMatchupTeamContext(
+  season: number,
+  week: number,
+  teamA: number,
+  teamB: number
+) {
+  return asPublic<MatchupTeamContext>(
+    `select t.espn_team_id, t.name,
+            coalesce(r.cum_wins, 0)::int as wins,
+            coalesce(r.cum_losses, 0)::int as losses,
+            coalesce(r.cum_ties, 0)::int as ties,
+            round(coalesce(r.cum_points_for, 0), 1)::text as points_for,
+            p.rank::int as power_rank,
+            case when p.score is null then null else round(p.score, 4)::text end as power_score
+       from public.teams t
+       left join lateral (
+         select x.cum_wins, x.cum_losses, x.cum_ties, x.cum_points_for
+           from public.team_week_results x
+          where x.season = t.season
+            and x.espn_team_id = t.espn_team_id
+            and x.week < $2
+          order by x.week desc
+          limit 1
+       ) r on true
+       left join lateral (
+         select x.rank, x.score
+           from public.power_rankings x
+          where x.season = t.season
+            and x.espn_team_id = t.espn_team_id
+            and x.week < $2
+          order by x.week desc
+          limit 1
+       ) p on true
+      where t.season = $1 and t.espn_team_id in ($3, $4)
+      order by t.espn_team_id`,
+    [season, week, teamA, teamB]
+  );
+}
+
+export interface RivalryGame {
+  season: number;
+  week: number;
+  espn_matchup_id: number;
+  home_team_id: number;
+  home_name: string;
+  away_team_id: number;
+  away_name: string;
+  home_points: string | null;
+  away_points: string | null;
+  winner: string;
+  playoff_tier: string | null;
+}
+
+export interface RivalryTeam {
+  espn_team_id: number;
+  name: string;
+}
+
+/**
+ * Every finalized ESPN-era meeting between two team IDs, newest first.
+ * Dedicated rivalry pages intentionally stop at 2018 because the earlier
+ * archive has season totals but no week-by-week opponent ledger.
+ */
+export async function getRivalrySeries(teamA: number, teamB: number) {
+  const [teams, games] = await Promise.all([
+    asPublic<RivalryTeam>(
+      `select t.espn_team_id, t.name
+         from public.teams t
+        where t.season = (select max(season) from public.teams)
+          and t.espn_team_id in ($1, $2)
+        order by t.espn_team_id`,
+      [teamA, teamB]
+    ),
+    asPublic<RivalryGame>(
+      `select m.season, m.week, m.espn_matchup_id,
+              m.home_team_id, ht.name as home_name,
+              m.away_team_id, at.name as away_name,
+              round(m.home_points, 2)::text as home_points,
+              round(m.away_points, 2)::text as away_points,
+              m.winner,
+              nullif(m.playoff_tier, 'NONE') as playoff_tier
+         from public.matchups m
+         join public.teams ht
+           on ht.season = m.season and ht.espn_team_id = m.home_team_id
+         join public.teams at
+           on at.season = m.season and at.espn_team_id = m.away_team_id
+        where m.is_final
+          and ((m.home_team_id = $1 and m.away_team_id = $2)
+            or (m.home_team_id = $2 and m.away_team_id = $1))
+        order by m.season desc, m.week desc, m.espn_matchup_id desc`,
+      [teamA, teamB]
+    ),
+  ]);
+  return { teams, games };
+}
