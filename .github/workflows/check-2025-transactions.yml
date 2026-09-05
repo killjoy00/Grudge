@@ -1,0 +1,35 @@
+name: Inspect archived 2025 transactions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/check-2025-transactions.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect archive
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const zlib = require('zlib');
+          const path = 'data/history/2025/league.json.gz';
+          const league = JSON.parse(zlib.gunzipSync(fs.readFileSync(path)));
+          const tx = league.transactions || [];
+          console.log(`transactions=${tx.length}`);
+          const counts = {};
+          for (const t of tx) {
+            const week = t.scoringPeriodId ?? 'none';
+            const key = `${week}|${t.type}|${t.status}`;
+            counts[key] = (counts[key] || 0) + 1;
+          }
+          for (const key of Object.keys(counts).sort()) console.log(`${key}=${counts[key]}`);
+          const adds = tx.filter(t => t.status === 'EXECUTED' && ['WAIVER','FREEAGENT'].includes(t.type) && (t.items || []).some(i => i.type === 'ADD'));
+          console.log(`executed_add_transactions=${adds.length}`);
+          for (const t of adds.slice(0, 20)) {
+            const add = (t.items || []).find(i => i.type === 'ADD');
+            console.log(JSON.stringify({week:t.scoringPeriodId,type:t.type,bid:t.bidAmount,playerId:add?.playerId,toTeamId:add?.toTeamId}));
+          }
+          NODE
