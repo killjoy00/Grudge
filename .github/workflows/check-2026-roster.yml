@@ -1,0 +1,31 @@
+name: Inspect current roster player metadata
+
+on:
+  push:
+    paths:
+      - '.github/workflows/check-2026-roster.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect current league archive
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const zlib = require('zlib');
+          const live = JSON.parse(zlib.gunzipSync(fs.readFileSync('data/seasons/2026/league.json.gz')));
+          const target = 4686658;
+          const seen = [];
+          for (const matchup of live.schedule || []) {
+            for (const side of [matchup.home, matchup.away]) {
+              for (const e of side?.rosterForCurrentScoringPeriod?.entries || []) {
+                const p = e.playerPoolEntry?.player;
+                if (p?.id === target) seen.push({name:p.fullName,pos:p.defaultPositionId,team:p.proTeamId,eligible:p.eligibleSlots});
+              }
+            }
+          }
+          console.log(`target_player_matches=${seen.length}`);
+          for (const row of seen.slice(0,5)) console.log(JSON.stringify(row));
+          NODE
