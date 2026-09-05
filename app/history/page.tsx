@@ -3,6 +3,7 @@ import type { SortColumn, SortRow } from '../../components/SortableTable.tsx';
 import { getCachedHistory } from '../../lib/cached-queries.ts';
 import { getCachedRichChampions } from '../../lib/history-cache.ts';
 import { franchiseHref, managerHref, record, seasonHref, winRate } from '../../lib/history-format.ts';
+import { getCachedRegularSeasonChampions } from '../../lib/regular-season-history.ts';
 import { POSITIONS } from '../../pipeline/trade.ts';
 
 export const dynamic = 'force-dynamic';
@@ -51,30 +52,51 @@ function totalsCells(row: TotalsRow): SortRow['cells'] {
 }
 
 export default async function History() {
-  const [[espnEra, playedSeasons, franchises, managers, _oldChampions, topWeeks, topPlayers], champions] =
-    await Promise.all([getCachedHistory(), getCachedRichChampions()]);
+  const [
+    [espnEra, playedSeasons, franchises, managers, _oldChampions, topWeeks, topPlayers],
+    champions,
+    regularSeasonChampions,
+  ] = await Promise.all([
+    getCachedHistory(),
+    getCachedRichChampions(),
+    getCachedRegularSeasonChampions(),
+  ]);
   const played = champions.length;
   const first = champions.length ? champions[champions.length - 1]!.season : null;
   const last = champions.length ? champions[0]!.season : null;
   const currentManagers = managers.filter((row) => row.last_season === last);
   const formerManagers = managers.filter((row) => row.last_season !== last);
 
-  const franchiseRows: SortRow[] = franchises.map((row) => ({
-    key: row.franchise_key,
-    cells: {
-      name: {
-        v: row.current_name,
-        href: franchiseHref(row.franchise_key),
-        sub: `${row.first_season}–${row.last_season}`,
-        note: row.title_seasons ? `🏆 ${row.title_seasons.split(' ').join(', ')}` : undefined,
+  const regularTitlesByFranchise = new Map<string, number[]>();
+  for (const row of [...regularSeasonChampions].reverse()) {
+    const seasons = regularTitlesByFranchise.get(row.franchise_key) ?? [];
+    seasons.push(row.season);
+    regularTitlesByFranchise.set(row.franchise_key, seasons);
+  }
+
+  const franchiseRows: SortRow[] = franchises.map((row) => {
+    const regularTitles = regularTitlesByFranchise.get(row.franchise_key) ?? [];
+    return {
+      key: row.franchise_key,
+      cells: {
+        name: {
+          v: row.current_name,
+          href: franchiseHref(row.franchise_key),
+          sub: `${row.first_season}–${row.last_season}`,
+          note: row.title_seasons ? `🏆 ${row.title_seasons.split(' ').join(', ')}` : undefined,
+        },
+        ...totalsCells(row),
+        regTitles: {
+          v: regularTitles.length,
+          note: regularTitles.length ? `Won: ${regularTitles.join(', ')}` : undefined,
+        },
+        points: {
+          v: row.regular_points_for ? Number(row.regular_points_for) : 0,
+          d: row.regular_points_for ? Number(row.regular_points_for).toLocaleString() : '—',
+        },
       },
-      ...totalsCells(row),
-      points: {
-        v: row.regular_points_for ? Number(row.regular_points_for) : 0,
-        d: row.regular_points_for ? Number(row.regular_points_for).toLocaleString() : '—',
-      },
-    },
-  }));
+    };
+  });
 
   const managerRows = (rows: typeof managers): SortRow[] => rows.map((row) => ({
     key: row.manager_key,
@@ -129,12 +151,19 @@ export default async function History() {
           </div>
 
           <h2>By franchise</h2>
-          <p className="sub">The permanent league slots. Every row now opens the full franchise file, including archive-era teams.</p>
+          <p className="sub">The permanent league slots. Regular-season titles use the same standings rule as the season pages: win percentage, then points scored.</p>
           <div className="card">
             <SortableTable
               columns={[
                 { key: 'name', label: 'Franchise' },
-                ...RECORD_COLUMNS,
+                { key: 'seasons', label: 'Seasons', numeric: true },
+                { key: 'regular', label: 'Regular', numeric: true, title: 'Sort by regular-season win %' },
+                { key: 'regTitles', label: 'Reg. titles', numeric: true, title: 'Regular-season championships' },
+                { key: 'playoffs', label: 'Playoffs', numeric: true, title: 'Sort by playoff win %' },
+                { key: 'berths', label: 'Berths', numeric: true, title: 'Playoff appearances' },
+                { key: 'top4', label: 'Top 4', numeric: true, title: 'Semifinal or better' },
+                { key: 'finals', label: 'Finals', numeric: true, title: 'Championship games reached' },
+                { key: 'titles', label: 'Titles', numeric: true },
                 { key: 'points', label: 'Points', numeric: true },
               ]}
               rows={franchiseRows}
