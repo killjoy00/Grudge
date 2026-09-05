@@ -9,12 +9,7 @@ import 'server-only';
  */
 import { unstable_cache } from 'next/cache';
 import { allTimeTradeRecords, seasonTrades } from './trade-history-queries.ts';
-import { getEspnEraAllTime } from './game-context.ts';
 import {
-  getFranchiseHistory,
-  getFranchiseManagers,
-  getFranchiseSeasons,
-  getFranchiseKeyPlayers,
   getLuck,
   getPlayedSeasons,
   getPreseasonTeams,
@@ -23,9 +18,6 @@ import {
   getSeasonChampions,
   getSeasonStandings,
   getStandings,
-  getTopScoringWeeks,
-  getTopPlayerWeeks,
-  getManagerHistory,
 } from './queries.ts';
 
 export const getCachedPlayedSeasons = unstable_cache(
@@ -40,10 +32,7 @@ export const getCachedStandings = unstable_cache(
   { revalidate: 3600 }
 );
 
-/**
- * A season's table from the franchise record, plus the luck index where the
- * weekly feed exists. Archive seasons simply have no luck rows.
- */
+/** A season's standings plus the score-derived schedule-luck index. */
 export const getCachedSeasonTable = unstable_cache(
   async (season: number) => Promise.all([getSeasonStandings(season), getLuck(season)]),
   ['season-table'],
@@ -57,18 +46,7 @@ export const getCachedPreseasonTeams = unstable_cache(
   { revalidate: 3600 }
 );
 
-/**
- * The season table on its own, for the archive-era power ranking. Separate
- * from getCachedSeasonTable because that one also fetches the luck index,
- * which does not exist before 2018 and is not wanted here.
- */
-export const getCachedArchiveSeason = unstable_cache(
-  getSeasonStandings,
-  ['archive-season'],
-  { revalidate: 86400 }
-);
-
-/** Every season on record, newest first -- the archive era included. */
+/** Every season on record, newest first. */
 export const getCachedSeasonList = unstable_cache(
   getSeasonChampions,
   ['season-list'],
@@ -85,31 +63,6 @@ export const getCachedPlayoffOdds = unstable_cache(
   getPlayoffOdds,
   ['playoff-odds'],
   { revalidate: 3600 }
-);
-
-export const getCachedHistory = unstable_cache(
-  async () => Promise.all([
-    getEspnEraAllTime(),
-    getPlayedSeasons(),
-    getFranchiseHistory(),
-    getManagerHistory(),
-    getSeasonChampions(),
-    getTopScoringWeeks(10),
-    getTopPlayerWeeks(10),
-  ]),
-  ['all-time-history'],
-  { revalidate: 86400 }
-);
-
-/** The franchise file behind an ESPN team id: its seasons and its managers. */
-export const getCachedFranchiseFile = unstable_cache(
-  async (espnTeamId: number) => Promise.all([
-    getFranchiseSeasons(espnTeamId),
-    getFranchiseManagers(espnTeamId),
-    getFranchiseKeyPlayers(espnTeamId),
-  ]),
-  ['franchise-file'],
-  { revalidate: 86400 }
 );
 
 /**
