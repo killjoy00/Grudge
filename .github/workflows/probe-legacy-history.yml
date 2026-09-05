@@ -1,0 +1,59 @@
+name: Probe legacy ESPN history
+
+on:
+  # The first merge of this workflow runs the probe automatically. Later it is
+  # still available by hand while the temporary ESPN secrets exist.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-legacy-history.yml'
+      - 'scripts/probe-legacy-history.mjs'
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: 'Comma-separated seasons to probe'
+        required: true
+        default: '2005,2010,2017'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Check temporary ESPN credentials
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: |
+          if [ -z "$ESPN_SWID" ] || [ -z "$ESPN_S2" ]; then
+            echo "::error::Temporary ESPN_SWID and ESPN_S2 repository secrets are required."
+            exit 1
+          fi
+
+      - name: Probe old scoreboards, drafts, transactions and boxscores
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          REQUESTED_SEASONS: ${{ inputs.seasons || '2005,2010,2017' }}
+        run: node scripts/probe-legacy-history.mjs --seasons="$REQUESTED_SEASONS"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Legacy ESPN history probe"
+            echo ""
+            echo "- Seasons tested: **${{ inputs.seasons || '2005,2010,2017' }}**"
+            echo "- Result: **${{ job.status }}**"
+            echo ""
+            echo "This probe is read-only. It does not alter the archive or database."
+          } >> "$GITHUB_STEP_SUMMARY"
