@@ -12,7 +12,7 @@ function league(season: number): EspnLeague {
   return JSON.parse(raw.toString()) as EspnLeague;
 }
 
-test('every recovered 2005-2017 season supports the full current power model', () => {
+test('every recovered 2005-2017 season supports all score-derived modern features', () => {
   for (let season = 2005; season <= 2017; season += 1) {
     const built = buildScoreDerivedSeason(season, league(season));
     const teams = season === 2005 ? 8 : 10;
@@ -24,6 +24,7 @@ test('every recovered 2005-2017 season supports the full current power model', (
       team_week_results: rows,
       luck_index: rows,
       power_rankings: rows,
+      weekly_awards: weeks * 4,
     }, `${season} derived-row coverage`);
 
     const powerStatements = built.statements.filter((statement) => statement.text.includes('public.power_rankings'));
@@ -35,11 +36,15 @@ test('every recovered 2005-2017 season supports the full current power model', (
   }
 });
 
-test('score-only history leaves lineup-specific columns null', () => {
+test('score-only history leaves lineup-specific fields and awards absent', () => {
   const built = buildScoreDerivedSeason(2005, league(2005));
   const teamWeek = built.statements.find((statement) => statement.text.includes('public.team_week_results'))!;
   assert.match(teamWeek.text, /optimal_points/);
-  // There is no legacy roster payload to feed these columns. The generated
-  // parameter list must therefore contain nulls rather than invented values.
   assert.ok(teamWeek.params.some((value) => value === null));
+
+  const awards = built.statements.find((statement) => statement.text.includes('public.weekly_awards'))!;
+  for (const key of ['high_scorer', 'low_scorer', 'blowout', 'nailbiter']) {
+    assert.ok(awards.params.includes(key), `missing score-only ${key}`);
+  }
+  assert.ok(!awards.params.includes('worst_bench'), 'legacy archive must never invent worst-bench awards');
 });
