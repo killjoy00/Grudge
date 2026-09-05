@@ -9,6 +9,7 @@ const TABS = [
   ['/predictions', 'Predictions'],
   ['/trades', 'Trades'],
   ['/history', 'History'],
+  ['/history/vault', 'The Vault'],
 ];
 
 export function Nav() {
@@ -16,7 +17,11 @@ export function Nav() {
   return (
     <nav className="tabs">
       {TABS.map(([href, label]) => {
-        const active = href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+        const active = href === '/'
+          ? path === '/'
+          : href === '/history'
+            ? path === '/history' || (path.startsWith('/history/') && !path.startsWith('/history/vault'))
+            : path === href || path.startsWith(`${href}/`);
         return (
           <a key={href} href={href} className={active ? 'on' : ''}
              aria-current={active ? 'page' : undefined}>
