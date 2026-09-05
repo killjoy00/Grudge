@@ -5,6 +5,7 @@ import { espnTeamUrl } from '../../../lib/espn-links.ts';
 import { getCachedFranchiseByKey } from '../../../lib/history-cache.ts';
 import { finish, managerHref, record, seasonHref, winRate } from '../../../lib/history-format.ts';
 import { getCurrentSeason, getRivalries } from '../../../lib/queries.ts';
+import { getCachedRegularSeasonChampions } from '../../../lib/regular-season-history.ts';
 
 export const revalidate = 3600;
 
@@ -14,11 +15,19 @@ const POSITIONS: Record<number, string> = {
 
 export default async function FranchisePage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
-  const [identity, bySeason, managers, keyPlayers] = await getCachedFranchiseByKey(key);
+  const [[identity, bySeason, managers, keyPlayers], regularSeasonChampions] = await Promise.all([
+    getCachedFranchiseByKey(key),
+    getCachedRegularSeasonChampions(),
+  ]);
   if (!identity || bySeason.length === 0) notFound();
 
   const rivals = identity.espn_team_id ? await getRivalries(identity.espn_team_id) : [];
   const currentSeason = await getCurrentSeason();
+  const regularSeasonTitleSeasons = new Set(
+    regularSeasonChampions
+      .filter((row) => row.franchise_key === identity.franchise_key)
+      .map((row) => row.season)
+  );
   const totals = bySeason.reduce(
     (sum, s) => ({
       wins: sum.wins + s.wins,
@@ -63,8 +72,11 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
         milestones.push({ season: season.season, text: `${season.manager} takes over as manager.` });
       }
     }
-    if (season.is_champion) milestones.push({ season: season.season, text: `Wins the league championship.` });
-    else if (season.is_runner_up) milestones.push({ season: season.season, text: `Reaches the championship game.` });
+    if (regularSeasonTitleSeasons.has(season.season)) {
+      milestones.push({ season: season.season, text: 'Wins the regular-season championship.' });
+    }
+    if (season.is_champion) milestones.push({ season: season.season, text: 'Wins the league championship.' });
+    else if (season.is_runner_up) milestones.push({ season: season.season, text: 'Reaches the championship game.' });
   });
 
   return (
@@ -74,23 +86,38 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
         <h1>{identity.current_name}</h1>
         <p>{managers[0]?.display_name ? `Current manager: ${managers[0].display_name}` : 'Permanent league franchise'}</p>
         {identity.espn_team_id && (
-          <p style={{ marginTop: 10 }}>
-            <a className="btn btn-quiet" href={espnTeamUrl(identity.espn_team_id, currentSeason)}
-               target="_blank" rel="noopener noreferrer">
+          <p style={{ marginTop: 12 }}>
+            <a
+              href={espnTeamUrl(identity.espn_team_id, currentSeason)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-block',
+                padding: '5px 9px',
+                color: 'white',
+                border: '1px solid #9fc8e2',
+                borderRadius: 3,
+                fontSize: 13,
+                fontWeight: 750,
+                letterSpacing: '.01em',
+                textDecoration: 'none',
+              }}
+            >
               Roster on ESPN ↗
             </a>
           </p>
         )}
       </div>
 
-      <div className="stat-strip three">
+      <div className="stat-strip">
         <div><span>All-time</span><strong>{record(totals.wins, totals.losses, totals.ties)}</strong></div>
         <div><span>Seasons</span><strong>{bySeason.length}</strong></div>
-        <div><span>Titles</span><strong>{totals.titles}</strong></div>
+        <div><span>Regular-season titles</span><strong>{regularSeasonTitleSeasons.size}</strong></div>
+        <div><span>League titles</span><strong>{totals.titles}</strong></div>
       </div>
 
       <h2>Franchise timeline</h2>
-      <p className="sub">The handoffs, renames and title runs that changed this franchise.</p>
+      <p className="sub">The handoffs, renames, regular-season crowns and title runs that changed this franchise.</p>
       <div className="card">
         <div style={{ display: 'grid', gap: 12 }}>
           {milestones.map((event, index) => (
@@ -148,6 +175,7 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
                   <td><a href={seasonHref(season.season)} className="tname">{season.season}</a></td>
                   <td>
                     {season.team_name}
+                    {regularSeasonTitleSeasons.has(season.season) && <span className="tag era">Regular-season champ</span>}
                     {season.is_champion && <span className="tag best">Champion</span>}
                     {season.is_runner_up && <span className="tag era">Runner-up</span>}
                     {identity.espn_team_id && season.season >= 2018 && (
