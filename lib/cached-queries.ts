@@ -9,8 +9,8 @@ import 'server-only';
  */
 import { unstable_cache } from 'next/cache';
 import { allTimeTradeRecords, seasonTrades } from './trade-history-queries.ts';
+import { getEspnEraAllTime } from './game-context.ts';
 import {
-  getAllTime,
   getFranchiseHistory,
   getFranchiseManagers,
   getFranchiseSeasons,
@@ -89,7 +89,7 @@ export const getCachedPlayoffOdds = unstable_cache(
 
 export const getCachedHistory = unstable_cache(
   async () => Promise.all([
-    getAllTime(),
+    getEspnEraAllTime(),
     getPlayedSeasons(),
     getFranchiseHistory(),
     getManagerHistory(),
