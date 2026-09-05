@@ -14,14 +14,15 @@ export const archiveDir = new URL('../data/manual-history/', import.meta.url);
 /**
  * BOTH ESPN archive directories, and both are permanent.
  *
- * data/history/ is the one-off 2018-2025 backfill. data/seasons/ is where the
- * weekly pipeline writes, so it is where every season from 2026 on lives and
- * where the season currently being played is right now.
+ * data/history/ now contains authenticated raw evidence back to 2005, including
+ * the recovered legacy scoreboards/drafts plus the one-off 2018-2025 backfill.
+ * data/seasons/ is where the weekly pipeline writes 2026 onward.
  *
- * This used to read data/history/ alone, which meant the archive could not see
- * a season the pipeline had captured -- so a season that finished would never
- * reach the record books at all, no matter how often anything was re-run. The
- * bug was invisible because no season had finished under the new layout yet.
+ * readEspnLeagues() deliberately returns the whole raw archive because callers
+ * such as The Vault may want it. readArchiveSources(), however, feeds the
+ * canonical franchise-season derivation: 2005-2017 final standings and titles
+ * remain commissioner-authoritative, so that function passes only 2018+ ESPN
+ * seasons and avoids treating the recovered evidence as a competing source.
  *
  * Later directories win on a collision, but there should not be one: a season
  * is captured by exactly one of the two.
@@ -58,6 +59,8 @@ export function readArchiveSources(): ArchiveSources {
     tenures: readArchiveFile('manager-tenures.csv'),
     franchiseIdMap: readArchiveFile('espn-franchises.csv'),
     espnManagerMap: readArchiveFile('espn-managers.csv'),
-    espnLeagues: readEspnLeagues(),
+    // Recovered 2005-2017 ESPN data enriches games/drafts, but the commissioner
+    // ledger still owns those seasons' final standings/championship record.
+    espnLeagues: readEspnLeagues().filter(({ season }) => season >= 2018),
   };
 }
