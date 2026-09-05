@@ -15,12 +15,15 @@ export function Nav() {
   const path = usePathname();
   return (
     <nav className="tabs">
-      {TABS.map(([href, label]) => (
-        <a key={href} href={href} className={path === href ? 'on' : ''}
-           aria-current={path === href ? 'page' : undefined}>
-          {label}
-        </a>
-      ))}
+      {TABS.map(([href, label]) => {
+        const active = href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+        return (
+          <a key={href} href={href} className={active ? 'on' : ''}
+             aria-current={active ? 'page' : undefined}>
+            {label}
+          </a>
+        );
+      })}
     </nav>
   );
 }
