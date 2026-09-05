@@ -78,3 +78,7 @@ echo "==> running attacks"
 # when the summary block raises, and a failing security suite reports green.
 psql -h "$SOCKET" -p "$PORT" -U postgres -v ON_ERROR_STOP=1 \
      -f "$ROOT/tests/rls/02-attacks.sql"
+
+echo "==> running current-week prediction regression"
+psql -h "$SOCKET" -p "$PORT" -U postgres -v ON_ERROR_STOP=1 \
+     -f "$ROOT/tests/rls/03-current-prediction-week.sql"
