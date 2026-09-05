@@ -52,7 +52,7 @@ jobs:
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RECAP_FROM_EMAIL: ${{ vars.RECAP_FROM_EMAIL }}
+          RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
           RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
         run: |
           npm run recap -- \
