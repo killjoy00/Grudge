@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { getCachedSeasonList } from '../../../lib/cached-queries.ts';
 import { getCachedHistorySeason } from '../../../lib/history-cache.ts';
-import { finish, franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
+import { finish, franchiseHref, managerHref, pointsPerGame, record, seasonHref } from '../../../lib/history-format.ts';
 
 export const revalidate = 86400;
 
@@ -24,11 +24,10 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
   const managerByFranchise = new Map(managers.map((manager) => [manager.franchise_key, manager]));
   const champion = rows.find((row) => row.is_champion) ?? null;
   const runnerUp = rows.find((row) => row.is_runner_up) ?? null;
+  // getSeasonStandings is already ordered by the league's regular-season rule:
+  // win percentage first, then points scored.
+  const regularSeasonChampion = rows[0]!;
   const finalRows = [...rows].sort((a, b) => (a.final_place ?? 999) - (b.final_place ?? 999));
-  const bestRecord = [...rows].sort((a, b) => {
-    const diff = winRate(b.wins, b.losses, b.ties) - winRate(a.wins, a.losses, a.ties);
-    return diff || Number(b.points_for ?? 0) - Number(a.points_for ?? 0);
-  })[0]!;
   const topOffense = [...rows].sort((a, b) =>
     (pointsPerGame(b.points_for, b.wins, b.losses, b.ties) ?? 0)
     - (pointsPerGame(a.points_for, a.wins, a.losses, a.ties) ?? 0)
@@ -46,22 +45,42 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
     return 'First round';
   };
 
+  const sameChampion = champion?.franchise_key === regularSeasonChampion.franchise_key;
+
   return (
     <>
       <div className="page-hero">
         <div className="eyebrow">Season file · {source === 'manual' ? 'commissioner archive' : 'ESPN record'}</div>
         <h1>{season} Grudge Match</h1>
         <p>
-          {champion ? <><strong>{champion.team_name}</strong> won the championship.</> : 'Final season record.'}
+          {champion ? (
+            sameChampion ? (
+              <><strong>{champion.team_name}</strong> won both the regular season and league championship.</>
+            ) : (
+              <>
+                <strong>{champion.team_name}</strong> won the league championship.{' '}
+                <strong>{regularSeasonChampion.team_name}</strong> won the regular season.
+              </>
+            )
+          ) : (
+            <><strong>{regularSeasonChampion.team_name}</strong> won the regular season.</>
+          )}
         </p>
       </div>
 
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '0 0 24px' }}>
+        {older && <a className="btn btn-quiet" href={seasonHref(older)}>← Previous season: {older}</a>}
+        <a className="btn btn-quiet" href="/history">League history</a>
+        <a className="btn btn-quiet" href={`/standings?season=${season}`}>Standings view</a>
+        {newer && <a className="btn btn-quiet" href={seasonHref(newer)}>Next season: {newer} →</a>}
+      </div>
+
       <div className="stat-strip three">
-        <div><span>Champion</span><strong>{champion?.team_name ?? '—'}</strong></div>
+        <div><span>League champion</span><strong>{champion?.team_name ?? '—'}</strong></div>
         <div>
-          <span>Best regular season</span>
-          <strong>{record(bestRecord.wins, bestRecord.losses, bestRecord.ties)}</strong>
-          <small className="block note">{bestRecord.team_name}</small>
+          <span>Regular-season champion</span>
+          <strong>{regularSeasonChampion.team_name}</strong>
+          <small className="block note">{record(regularSeasonChampion.wins, regularSeasonChampion.losses, regularSeasonChampion.ties)}</small>
         </div>
         <div>
           <span>Best offense</span>
@@ -79,6 +98,9 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
               finished {record(champion.wins, champion.losses, champion.ties)} and beat{' '}
               {runnerUp ? <a href={franchiseHref(runnerUp.franchise_key)}>{runnerUp.team_name}</a> : 'the runner-up'}.
             </p>
+            {sameChampion && (
+              <p className="note">They also finished first in the regular-season standings.</p>
+            )}
             {managerByFranchise.get(champion.franchise_key) && (
               <p className="note" style={{ marginBottom: 0 }}>
                 Managed by{' '}
@@ -176,11 +198,14 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
             <tbody>
               {finalRows.map((row) => {
                 const manager = managerByFranchise.get(row.franchise_key);
+                const wonRegularSeason = row.franchise_key === regularSeasonChampion.franchise_key;
                 return (
                   <tr key={row.franchise_key} className={row.is_champion ? 'title-row' : undefined}>
                     <td className="rank">{row.final_place ?? '—'}</td>
                     <td>
                       <a className="tname" href={franchiseHref(row.franchise_key)}>{row.team_name}</a>
+                      {wonRegularSeason && <span className="tag era">Regular-season champ</span>}
+                      {row.is_champion && <span className="tag best">League champ</span>}
                       {row.team_name !== row.current_name && <span className="tsub block">now {row.current_name}</span>}
                     </td>
                     <td>{manager ? <a href={managerHref(manager.manager_key)}>{manager.display_name}</a> : '—'}</td>
@@ -197,13 +222,6 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
         {source === 'manual' && (
           <p className="note">The 2005–2017 commissioner archive contains season totals and playoff finish order, but not weekly scores or individual player performances.</p>
         )}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 24 }}>
-        {older && <a className="btn btn-quiet" href={seasonHref(older)}>← {older}</a>}
-        <a className="btn btn-quiet" href={`/standings?season=${season}`}>Standings view</a>
-        <a className="btn btn-quiet" href="/history">League history</a>
-        {newer && <a className="btn btn-quiet" href={seasonHref(newer)}>{newer} →</a>}
       </div>
     </>
   );
