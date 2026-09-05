@@ -12,25 +12,34 @@ function league(season: number): EspnLeague {
   return JSON.parse(raw.toString()) as EspnLeague;
 }
 
-test('2005 recovered scores support the full current power model', () => {
-  const built = buildScoreDerivedSeason(2005, league(2005));
-  assert.deepEqual(built.summary, {
-    teams: 8,
-    weeks: 12,
-    team_week_results: 96,
-    luck_index: 96,
-    power_rankings: 96,
-  });
-  const powerStatements = built.statements.filter((statement) => statement.text.includes('public.power_rankings'));
-  assert.ok(powerStatements.length > 0);
-  assert.ok(powerStatements.some((statement) => statement.params.includes(MODEL_VERSION)));
+test('every recovered 2005-2017 season supports the full current power model', () => {
+  for (let season = 2005; season <= 2017; season += 1) {
+    const built = buildScoreDerivedSeason(season, league(season));
+    const teams = season === 2005 ? 8 : 10;
+    const weeks = season === 2005 ? 12 : 13;
+    const rows = teams * weeks;
+    assert.deepEqual(built.summary, {
+      teams,
+      weeks,
+      team_week_results: rows,
+      luck_index: rows,
+      power_rankings: rows,
+    }, `${season} derived-row coverage`);
+
+    const powerStatements = built.statements.filter((statement) => statement.text.includes('public.power_rankings'));
+    assert.ok(powerStatements.length > 0, `${season} has a power upsert`);
+    assert.ok(
+      powerStatements.some((statement) => statement.params.includes(MODEL_VERSION)),
+      `${season} uses ${MODEL_VERSION}`
+    );
+  }
 });
 
-test('2017 recovered scores support 13 full regular-season weeks', () => {
-  const built = buildScoreDerivedSeason(2017, league(2017));
-  assert.equal(built.summary.teams, 10);
-  assert.equal(built.summary.weeks, 13);
-  assert.equal(built.summary.team_week_results, 130);
-  assert.equal(built.summary.luck_index, 130);
-  assert.equal(built.summary.power_rankings, 130);
+test('score-only history leaves lineup-specific columns null', () => {
+  const built = buildScoreDerivedSeason(2005, league(2005));
+  const teamWeek = built.statements.find((statement) => statement.text.includes('public.team_week_results'))!;
+  assert.match(teamWeek.text, /optimal_points/);
+  // There is no legacy roster payload to feed these columns. The generated
+  // parameter list must therefore contain nulls rather than invented values.
+  assert.ok(teamWeek.params.some((value) => value === null));
 });
