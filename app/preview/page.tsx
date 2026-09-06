@@ -142,7 +142,7 @@ export default async function PreviewPage() {
           <p className="note" style={{ margin: 0 }}>
             {dashboard?.active?.my_projection && dashboard?.active?.opponent_projection
               ? `Tuesday projection: ${dashboard.active.my_projection} – ${dashboard.active.opponent_projection}. `
-              : 'Tuesday projections, matchup context and rivalry history live here. '}
+              : 'Tuesday projections, matchup context and manager-grudge history live here. '}
             Prediction completion is hidden only in this auth-free Preview fallback.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
