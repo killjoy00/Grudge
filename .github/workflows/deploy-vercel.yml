@@ -5,8 +5,9 @@ name: Controlled Vercel deploy
 #   1. once each morning at 08:00 America/Chicago, if main has changed since
 #      the last successful deploy-hook request;
 #   2. manually from the Actions tab; or
-#   3. when the vercel-deploy-request branch is pushed, which gives external
-#      automation (including ChatGPT via GitHub) a deliberate deploy trigger.
+#   3. when .vercel-deploy-request changes on the vercel-deploy-request branch,
+#      which gives external automation (including ChatGPT via GitHub) a
+#      deliberate deploy trigger without changing main.
 on:
   schedule:
     - cron: '0 8 * * *'
@@ -15,6 +16,8 @@ on:
   push:
     branches:
       - vercel-deploy-request
+    paths:
+      - '.vercel-deploy-request'
 
 concurrency:
   group: vercel-production-deploy
