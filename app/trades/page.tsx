@@ -2,7 +2,13 @@ import { auth } from '@clerk/nextjs/server';
 import { tradeSeasons, tradeVotes, votingOpen, type TradeCard, type VoteState }
   from '../../lib/trade-history-queries.ts';
 import { getCachedSeasonTrades, getCachedTradeRecords } from '../../lib/cached-queries.ts';
+import {
+  getAllTimeTradeProductionRecords,
+  getTradeProductionForSeason,
+  type TradeProductionValue,
+} from '../../lib/trade-production-queries.ts';
 import { UNGRADED_POSITIONS, type SideValue } from '../../pipeline/trade-value.ts';
+import type { ProductionSide } from '../../pipeline/trade-production.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
 import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
@@ -14,10 +20,11 @@ export const dynamic = 'force-dynamic';
 const signed = (n: number) => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1));
 
 function TradeSide({
-  card, teamId, accent, side, ahead,
+  card, teamId, accent, side, production, ahead,
 }: {
   card: TradeCard; teamId: number; accent: string;
   side: SideValue;
+  production: ProductionSide | undefined;
   ahead: boolean;
 }) {
   const players = card.received[teamId] ?? [];
@@ -47,17 +54,17 @@ function TradeSide({
         <span className={`trade-impact ${side.lineupImpact > 0 ? 'up' : side.lineupImpact < 0 ? 'down' : ''}`}>
           {signed(side.lineupImpact)}
         </span>
-        <span className="trade-impact-label">to their lineup</span>
+        <span className="trade-impact-label">team fit · lineup impact</span>
         <div className="note trade-secondary">
-          {/* A dash, not 0.0, when nothing was measured. An acquisition who
-              never made the lineup contributed nothing, which is a different
-              statement from one who scored exactly replacement level. */}
-          <span title={side.valuedWeeks === 0
-            ? 'Never in the best lineup, so there is nothing to measure against replacement.'
-            : `Measured over ${side.valuedWeeks} week${side.valuedWeeks === 1 ? '' : 's'} in the best lineup.`}>
-            {side.valuedWeeks === 0 ? '—' : signed(side.playerValue)} over replacement
+          <span
+            className={production && production.value > 0 ? 'up' : production && production.value < 0 ? 'down' : undefined}
+            title={production?.playerWeeks
+              ? `Actual acquired-player production minus positional replacement across ${production.playerWeeks} owned player-week${production.playerWeeks === 1 ? '' : 's'}.`
+              : 'No acquired offensive player-week has been completed while this team owned the player.'}
+          >
+            {production?.playerWeeks ? signed(production.value) : '—'} player value
           </span>{' · '}
-          {side.startedPoints.toFixed(1)} of {side.rosteredPoints.toFixed(1)} started
+          {side.startedPoints.toFixed(1)} of {side.rosteredPoints.toFixed(1)} acquired points started
         </div>
       </div>
     </div>
@@ -65,14 +72,19 @@ function TradeSide({
 }
 
 function TradeArticle({
-  card, vote, signedIn,
-}: { card: TradeCard; vote: VoteState | undefined; signedIn: boolean }) {
+  card, production, vote, signedIn,
+}: {
+  card: TradeCard;
+  production: TradeProductionValue | undefined;
+  vote: VoteState | undefined;
+  signedIn: boolean;
+}) {
   const { trade, value, teamNames } = card;
   const aName = teamNames[trade.team_a] ?? `Team ${trade.team_a}`;
   const bName = teamNames[trade.team_b] ?? `Team ${trade.team_b}`;
   const winnerName = value.winner === trade.team_a ? aName : bName;
-  // Either no week has been played since the trade, or the whole deal was
-  // kickers and defences. Both mean there is no verdict to give.
+  const productionWinner = production?.winner === trade.team_a ? aName
+    : production?.winner === trade.team_b ? bName : null;
   const ungraded = !value.graded;
 
   return (
@@ -95,21 +107,26 @@ function TradeArticle({
           </span>
         )}
         {ungraded ? (
-          <span className="tag">Not scored yet</span>
+          <span className="tag">Team fit: not scored yet</span>
         ) : value.mutual ? (
-          <span className="tag best">Both sides won</span>
+          <span className="tag best">Team fit: both improved</span>
         ) : value.winner === null ? (
-          <span className="tag">Dead even</span>
+          <span className="tag">Team fit: dead even</span>
         ) : (
-          <span className="tag best">{winnerName} by {Math.abs(value.margin).toFixed(1)}</span>
+          <span className="tag best">Team fit: {winnerName} by {Math.abs(value.margin).toFixed(1)}</span>
+        )}
+        {production?.graded && (
+          productionWinner
+            ? <span className="tag era">Player value: {productionWinner} by {Math.abs(production.margin).toFixed(1)}</span>
+            : <span className="tag era">Player value: dead even</span>
         )}
       </header>
 
       <div className="trade-sides">
         <TradeSide card={card} teamId={trade.team_a} accent="var(--accent)"
-                   side={value.a} ahead={value.winner === trade.team_a} />
+                   side={value.a} production={production?.a} ahead={value.winner === trade.team_a} />
         <TradeSide card={card} teamId={trade.team_b} accent="var(--gold)"
-                   side={value.b} ahead={value.winner === trade.team_b} />
+                   side={value.b} production={production?.b} ahead={value.winner === trade.team_b} />
       </div>
 
       <p className="note trade-basis">
@@ -117,9 +134,9 @@ function TradeArticle({
           ? value.weeksScored === 0
             ? 'No week has been played since this trade, so there is nothing to score yet.'
             : 'Kickers and defences are left out of the scoring, and there was nothing else in this trade.'
-          : `Points added to each side's best possible lineup from week ${trade.effective_week} on, ` +
-            `against the roster they would have had without the trade. ` +
-            `${value.weeksScored} week${value.weeksScored === 1 ? '' : 's'} counted.`}
+          : `Team fit measures points added to each side's best possible lineup from week ${trade.effective_week} on. ` +
+            `Player value separately measures the acquired players' actual production above their positional replacement baselines, ` +
+            `whether or not someone else on that roster was even better.`}
       </p>
 
       <TradeVote
@@ -136,6 +153,54 @@ function TradeArticle({
   );
 }
 
+type LedgerRow = {
+  franchiseKey: string;
+  name: string;
+  trades: number;
+  won: number;
+  lost: number;
+  even: number;
+  gained: number;
+  given: number;
+  net: number;
+};
+
+function TradeLedger({ title, note, rows, valueLabels }: {
+  title: string;
+  note: string;
+  rows: LedgerRow[];
+  valueLabels: [string, string];
+}) {
+  return (
+    <div className="card">
+      <strong style={{ fontSize: 14 }}>{title}</strong>
+      <p className="note" style={{ marginTop: 6 }}>{note}</p>
+      <div className="scroll" style={{ marginTop: 12 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Manager</th><th>Trades</th><th>W–L</th>
+              <th>{valueLabels[0]}</th><th>{valueLabels[1]}</th><th>Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.franchiseKey}>
+                <td>{r.name}</td>
+                <td>{r.trades}</td>
+                <td>{r.won}–{r.lost}{r.even ? `–${r.even}` : ''}</td>
+                <td>{r.gained.toFixed(1)}</td>
+                <td>{r.given.toFixed(1)}</td>
+                <td className={r.net > 0 ? 'up' : r.net < 0 ? 'down' : ''}>{signed(r.net)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default async function Trades({
   searchParams,
 }: { searchParams: Promise<{ season?: string }> }) {
@@ -145,12 +210,12 @@ export default async function Trades({
   ]);
   const season = Number(sp.season) || current || seasons[0] || new Date().getUTCFullYear();
 
-  const [cards, records] = await Promise.all([
+  const [cards, records, productionByTrade, productionRecords] = await Promise.all([
     getCachedSeasonTrades(season),
     getCachedTradeRecords(),
+    getTradeProductionForSeason(season),
+    getAllTimeTradeProductionRecords(),
   ]);
-  // Votes need a session and the member's identity; a signed-out visitor sees
-  // the trades and the grades, just not the ballot.
   const votes: Record<string, VoteState> =
     userId ? await tradeVotes(season).catch(() => ({})) : {};
 
@@ -160,14 +225,10 @@ export default async function Trades({
         <div className="eyebrow">{season} season</div>
         <h1>Trades</h1>
         <p>
-          Every trade, who actually won it, and what the league thought at the time.
+          Every trade scored two ways: what it did for the roster, and how good the players themselves were.
         </p>
       </div>
 
-      {/* An accepted trade is not a trade yet. ESPN holds it in a review
-          window, and nothing here can see it until the players actually move
-          and the Tuesday run picks that up -- so the league will otherwise
-          wonder why a deal everyone just agreed to is missing. */}
       {season === current && (
         <p className="note trade-pending-note">
           A trade appears here once ESPN actually moves the players. An accepted
@@ -184,107 +245,64 @@ export default async function Trades({
       ) : (
         cards.map((card) => (
           <TradeArticle key={card.trade.trade_id} card={card}
+                        production={productionByTrade[card.trade.trade_id]}
                         vote={votes[card.trade.trade_id]} signedIn={Boolean(userId)} />
         ))
       )}
 
-      {records.length > 0 && (
-        <div className="card">
-          <strong style={{ fontSize: 14 }}>All-time trade ledger</strong>
-          <p className="note" style={{ marginTop: 6 }}>
-            Lineup points gained minus lineup points handed to the other side,
-            every trade, every season. Ranked on points rather than wins and
-            losses, because two lopsided trades and two coin flips are not the
-            same record.
-          </p>
-          <div className="scroll" style={{ marginTop: 12 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Manager</th><th>Trades</th><th>W–L</th>
-                  <th>Gained</th><th>Given</th><th>Net</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((r) => (
-                  <tr key={r.franchiseKey}>
-                    <td>{r.name}</td>
-                    <td>{r.trades}</td>
-                    <td>{r.won}–{r.lost}{r.even ? `–${r.even}` : ''}</td>
-                    <td>{r.gained.toFixed(1)}</td>
-                    <td>{r.given.toFixed(1)}</td>
-                    <td className={r.net > 0 ? 'up' : r.net < 0 ? 'down' : ''}>
-                      {signed(r.net)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {(records.length > 0 || productionRecords.length > 0) && (
+        <>
+          <h2>All-time trade ledgers</h2>
+          <p className="sub">Same trades, two different questions. Neither rating is treated as the one true answer.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(390px, 1fr))', gap: 14 }}>
+            <TradeLedger
+              title="Team fit · lineup impact"
+              note="Best-lineup points gained minus the best-lineup points gained by your trade partners. This rewards filling actual roster holes."
+              rows={records}
+              valueLabels={['Gained', 'Given']}
+            />
+            <TradeLedger
+              title="Player value · above replacement"
+              note="Actual acquired-player production above positional replacement, independent of whether your roster happened to have an even better option."
+              rows={productionRecords}
+              valueLabels={['Received', 'Sent']}
+            />
           </div>
-        </div>
+        </>
       )}
 
       <div className="card">
         <details>
-          <summary>How a trade is scored</summary>
+          <summary>How the two trade grades work</summary>
           <div className="note trade-explainer">
             <p>
-              Not by adding up points &mdash; by what it did to your lineup. Each
-              week after the trade we take your real roster, work out the best
-              lineup it could have fielded, then do the same for the roster you
-              would have had without the trade. The gap is what the trade was
-              worth that week.
+              <strong>Team Fit</strong> asks what the deal did to your particular roster. Each week after the trade we take your real roster,
+              work out the best lineup it could have fielded, then do the same for the roster you would have had without the trade.
+              The difference is the trade&rsquo;s lineup impact. It deliberately does not give full credit for a fourth great running back who never improves the lineup.
             </p>
 
-            <p><strong>Example: week 10, 2024.</strong> Austin Bubbs sent Kareem
-              Hunt to the Penguins for Chris Olave. Olave scored 0.0 in all eight
-              remaining weeks &mdash; he never played again. Hunt scored 63.9.</p>
-            <ul>
-              <li>
-                <strong>Bubbs, &minus;17.4 to their lineup.</strong> Keeping Hunt
-                would have added 17.4 points to his best lineups. Not 63.9,
-                because Bubbs had other backs: Hunt only counts in the weeks he
-                would actually have started, and only by the margin.
-              </li>
-              <li>
-                <strong>Penguins, +31.1 to their lineup and &minus;1.6 over
-                replacement.</strong> Both true. Hunt was a mediocre starting back
-                in absolute terms, but better than what they had on the bench.
-              </li>
-            </ul>
+            <p>
+              <strong>Player Value</strong> asks the complementary question: how good were the players you acquired, regardless of your existing roster?
+              Every week you still own an acquired QB, RB, WR or TE, his actual fantasy points are compared with the replacement baseline at his position.
+              Those values are summed and compared with what the other side received. So if you trade for a very good receiver but a random receiver already on
+              your bench happens to outscore him every week, the deal can look mediocre on Team Fit while still looking excellent on Player Value.
+            </p>
 
-            <p><strong>So the two numbers ask different questions.</strong>{' '}
-              <em>To their lineup</em> &mdash; did this put points on my field,
-              measured against the team I actually had. <em>Over replacement</em>
-              &mdash; was the player any good, measured against a freely available
-              body at his position. A dash means he never reached the lineup, so
-              there was nothing to measure.</p>
+            <p><strong>Why keep both?</strong> They measure real but different things. Team Fit rewards roster construction and opportunity cost.
+              Player Value grades the talent return without letting the rest of the roster obscure it. A smart trade can win one, both, or neither.</p>
 
-            <p><strong>Voting</strong> opens on the Tuesday after the week a trade
-              takes effect and runs for seven days. A deal made between the draft
-              and week 1 opens when week 1 finishes and closes when week 2 does;
-              one made during week 1 opens a week after that. This season only.
-              Your pick stays private until you make it, then you see the
-              league&rsquo;s.</p>
+            <p><strong>Dropped and re-traded players.</strong> Both models count a player only while the team that acquired him still owns him.
+              Kickers and defences are listed as part of the historical trade but excluded from both grades.</p>
 
-            <p><strong>Also:</strong> the best lineup is used, not the one you set,
-              so this scores the trade and not your Sunday morning &mdash; what you
-              actually started is shown alongside. A player counts only while the
-              team that got him keeps him. Both sides can gain, and that is what a
-              good trade looks like. Kickers and defences are listed but not
-              counted.</p>
+            <p><strong>Voting</strong> opens on the Tuesday after the week a trade takes effect and runs for seven days. A deal made between the draft
+              and week 1 opens when week 1 finishes and closes when week 2 does; one made during week 1 opens a week after that. This season only.
+              Your pick stays private until you make it, then you see the league&rsquo;s.</p>
 
-            <p><strong>Where these came from.</strong> For 2018–2025, completed ESPN
-              transaction envelopes are the source of truth whenever the archive
-              preserves the players sent in both directions. Some accepted trades
-              survive only as an empty transaction shell; those are marked{' '}
-              <span className="tag era">Reconstructed</span> and are included only
-              when consecutive weekly rosters show players moving both directions
-              between the same two teams. A one-way roster change is never called
-              a trade. That matters when a player is traded twice between weekly
-              snapshots: the itemized ESPN ledger wins instead of collapsing two
-              real deals into a fictional net move. Nothing before 2018 has the
-              player-level weekly roster history needed to grade a trade.</p>
+            <p><strong>Where these came from.</strong> For 2018–2025, completed ESPN transaction envelopes are the source of truth whenever the archive
+              preserves the players sent in both directions. Some accepted trades survive only as an empty transaction shell; those are marked{' '}
+              <span className="tag era">Reconstructed</span> and are included only when consecutive weekly rosters show players moving both directions
+              between the same two teams. A one-way roster change is never called a trade. Nothing before 2018 has the player-level weekly roster history
+              needed to grade a trade.</p>
           </div>
         </details>
       </div>
