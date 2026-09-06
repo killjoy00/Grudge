@@ -1,0 +1,105 @@
+name: Controlled Vercel deploy
+
+# Vercel's Git integration is disabled in vercel.json. Production is deployed
+# only through the existing deploy hook:
+#   1. once each morning at 08:00 America/Chicago, if main has changed since
+#      the last successful deploy-hook request;
+#   2. manually from the Actions tab; or
+#   3. when .vercel-deploy-request changes on the vercel-deploy-request branch,
+#      which gives external automation (including ChatGPT via GitHub) a
+#      deliberate deploy trigger without changing main.
+on:
+  schedule:
+    - cron: '0 8 * * *'
+      timezone: 'America/Chicago'
+  workflow_dispatch:
+  push:
+    branches:
+      - vercel-deploy-request
+    paths:
+      - '.vercel-deploy-request'
+
+concurrency:
+  group: vercel-production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Decide whether to deploy
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          main_sha=$(git rev-parse HEAD)
+          marker_sha=$(git ls-remote origin refs/heads/vercel-deployed | cut -f1 || true)
+
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
+          echo "marker_sha=${marker_sha:-none}" >> "$GITHUB_OUTPUT"
+
+          # Scheduled runs are change-aware: no code/data change means no Vercel
+          # request and therefore no wasted deployment quota. Manual triggers are
+          # intentionally forceful because a person explicitly asked for a deploy.
+          if [ "$EVENT_NAME" = "schedule" ] && [ -n "$marker_sha" ] && [ "$main_sha" = "$marker_sha" ]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "reason=main already matches last requested production SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "reason=$EVENT_NAME trigger" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Vercel production deploy
+        if: steps.gate.outputs.deploy == 'true'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$HOOK" ]; then
+            echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. The controlled deploy gate cannot reach Vercel."
+            exit 1
+          fi
+
+          code=$(curl -sS -X POST -o /tmp/deploy.json -w '%{http_code}' "$HOOK")
+          echo "Vercel responded $code"
+          cat /tmp/deploy.json || true
+
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Vercel deploy hook failed with HTTP $code"
+            exit 1
+          fi
+
+      # This branch is only a durable marker for the SHA whose deploy hook was
+      # accepted. It is not Vercel's production branch and never receives code
+      # changes of its own. A failed hook request never advances it, so the next
+      # scheduled run will retry the same main SHA.
+      - name: Record requested production SHA
+        if: steps.gate.outputs.deploy == 'true'
+        run: git push origin HEAD:refs/heads/vercel-deployed --force
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Controlled Vercel deploy"
+            echo ""
+            echo "- Trigger: **${{ github.event_name }}**"
+            echo "- Vercel requested: **${{ steps.gate.outputs.deploy || 'false' }}**"
+            echo "- Reason: ${{ steps.gate.outputs.reason || 'gate did not complete' }}"
+            echo "- Main SHA: \`${{ steps.gate.outputs.main_sha || 'unknown' }}\`"
+            echo "- Previous marker: \`${{ steps.gate.outputs.marker_sha || 'unknown' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

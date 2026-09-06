@@ -119,7 +119,7 @@ jobs:
       # Free-agent ownership snapshot. Runs BEFORE the commit, with the other
       # database writes, so a kona_player_info outage fails the week loudly and
       # writes nothing -- the same contract as everything else here. Placing it
-      # after the deploy step instead would mean a failure leaves the site
+      # after the data commit instead would mean a failure leaves the site
       # serving stale data, which is the worse of the two outcomes.
       #
       # Unlike the main load this is not gated on week completeness: a waiver
@@ -131,7 +131,9 @@ jobs:
         run: npx tsx pipeline/ownership.ts
 
       # Only reached if every data step above succeeded. The archive is
-      # append-only history: raw payloads exactly as ESPN served them.
+      # append-only history: raw payloads exactly as ESPN served them. Vercel is
+      # intentionally not touched here; the controlled deploy workflow picks up
+      # this commit at the next 08:00 America/Chicago release window.
       - name: Commit raw data
         id: commit
         run: |
@@ -147,26 +149,6 @@ jobs:
 
           Automated capture from the ESPN v3 API."
             git push
-          fi
-
-      # A raw-data commit already triggers Vercel through its Git integration.
-      # Only call the hook when there was no commit, which refreshes runtime
-      # caches without creating a duplicate deployment on normal Tuesdays.
-      - name: Trigger Vercel deploy
-        if: steps.commit.outputs.changed != 'true'
-        env:
-          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-        run: |
-          if [ -z "$HOOK" ]; then
-            echo "::notice::VERCEL_DEPLOY_HOOK_URL not set -- skipping deploy."
-            exit 0
-          fi
-          code=$(curl -sS -X POST -o /tmp/deploy.json -w '%{http_code}' "$HOOK")
-          echo "Vercel responded $code"
-          cat /tmp/deploy.json || true
-          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
-            echo "::error::Vercel deploy hook failed with HTTP $code"
-            exit 1
           fi
 
       # Scheduled Tuesdays send automatically. Manual runs are opt-in so a
