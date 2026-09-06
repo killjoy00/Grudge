@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - 'data/manual-history/espn-franchises.csv'
+      - 'data/derived/legacy-draft-performance.csv'
       - 'scripts/import-manual-history.ts'
       - 'scripts/backfill-score-derived-history.ts'
+      - 'scripts/import-legacy-draft-performance.ts'
       - 'lib/history-id-map.ts'
       - '.github/workflows/refresh-legacy-history-model.yml'
   workflow_dispatch:
@@ -49,6 +51,11 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run history:scores -- --from=2005 --to=2017
 
+      - name: Import legacy draft performance
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run history:draft-performance:import
+
       - name: Summary
         if: always()
         run: |
@@ -58,5 +65,6 @@ jobs:
             echo "- Result: **${{ job.status }}**"
             echo '- Durable ESPN franchise IDs refreshed for the full 2005+ league record.'
             echo '- 2005–2017 team-week results, all-play luck, current-formula power rankings, and score-only weekly awards rebuilt from recovered scoreboards.'
+            echo '- 2008–2017 legacy draft-performance totals imported from the committed validated dataset.'
             echo '- No player-lineup, worst-bench, transaction or FAAB data is synthesized for the legacy era.'
           } >> "$GITHUB_STEP_SUMMARY"
