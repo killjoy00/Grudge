@@ -7,15 +7,19 @@ import { getCachedHistoryRecords } from '../../../lib/history-cache.ts';
 import { franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
 import type { AllSeasonRecordRow, MatchupRecordRow } from '../../../lib/history-queries.ts';
 import {
+  getFinalPowerSeasonRecords,
   getLuckiestSeasons,
   getPowerRankingChampions,
   getUnluckiestSeasons,
+  type PowerSeasonRecordRow,
   type SeasonLuckRecordRow,
 } from '../../../lib/history-record-insights.ts';
 import { getTrackedTopPlayerWeeks, getTrackedTopScoringWeeks } from '../../../lib/tracked-game-queries.ts';
 import { POSITIONS } from '../../../pipeline/trade.ts';
 
 export const dynamic = 'force-dynamic';
+
+const POWER_FORMULA = '40% all-play record · 30% points per game · 20% actual record · 10% strength of schedule';
 
 function bySeasonQuality(a: AllSeasonRecordRow, b: AllSeasonRecordRow) {
   const rate = winRate(b.wins, b.losses, b.ties) - winRate(a.wins, a.losses, a.ties);
@@ -29,29 +33,8 @@ function byOffense(a: AllSeasonRecordRow, b: AllSeasonRecordRow) {
     - (pointsPerGame(a.points_for, a.wins, a.losses, a.ties) ?? 0);
 }
 
-function percentile(value: number, values: number[]) {
-  if (values.length <= 1) return 1;
-  let below = 0;
-  let equal = 0;
-  for (const candidate of values) {
-    if (candidate < value) below += 1;
-    else if (candidate === value) equal += 1;
-  }
-  return (below + Math.max(0, equal - 1) / 2) / (values.length - 1);
-}
-
-function seasonKey(row: AllSeasonRecordRow) {
-  return `${row.season}:${row.franchise_key}`;
-}
-
-function makeQualityScores(rows: AllSeasonRecordRow[]) {
-  const rates = rows.map((row) => winRate(row.wins, row.losses, row.ties));
-  const ppgs = rows.map((row) => pointsPerGame(row.points_for, row.wins, row.losses, row.ties) ?? 0);
-  return new Map(rows.map((row) => {
-    const recordPercentile = percentile(winRate(row.wins, row.losses, row.ties), rates);
-    const scoringPercentile = percentile(pointsPerGame(row.points_for, row.wins, row.losses, row.ties) ?? 0, ppgs);
-    return [seasonKey(row), 50 * recordPercentile + 50 * scoringPercentile] as const;
-  }));
+function powerScore(score: string) {
+  return (Number(score) * 100).toFixed(1);
 }
 
 function SeasonTable({ rows, value, markLabel = 'Mark' }: {
@@ -70,6 +53,24 @@ function SeasonTable({ rows, value, markLabel = 'Mark' }: {
           <td>{row.manager_key && row.manager ? <a href={managerHref(row.manager_key)}>{row.manager}</a> : '—'}</td>
           <td className="num">{record(row.wins, row.losses, row.ties)}</td>
           <td className="num"><strong>{value(row)}</strong></td>
+        </tr>
+      ))}</tbody>
+    </table></div></div>
+  );
+}
+
+function PowerSeasonTable({ rows }: { rows: PowerSeasonRecordRow[] }) {
+  return (
+    <div className="card"><div className="scroll"><table>
+      <thead><tr><th className="rank">#</th><th>Season</th><th>Franchise</th><th>Manager</th><th className="num">Record</th><th className="num">Power</th></tr></thead>
+      <tbody>{rows.map((row, index) => (
+        <tr key={`${row.season}-${row.franchise_key}`} className={row.is_champion ? 'title-row' : undefined}>
+          <td className="rank">{index + 1}</td>
+          <td><a className="tname" href={`/rankings?season=${row.season}`}>{row.season}</a></td>
+          <td><a href={franchiseHref(row.franchise_key)}>{row.team_name}</a>{row.is_champion && <span className="tag best">Champion</span>}</td>
+          <td>{row.manager_key && row.manager ? <a href={managerHref(row.manager_key)}>{row.manager}</a> : '—'}</td>
+          <td className="num">{record(row.wins, row.losses, row.ties)}</td>
+          <td className="num"><strong>{powerScore(row.score)}</strong><span className="tsub block">#{row.rank} that season</span></td>
         </tr>
       ))}</tbody>
     </table></div></div>
@@ -115,25 +116,24 @@ function LuckTable({ title, rows }: { title: string; rows: SeasonLuckRecordRow[]
 }
 
 export default async function RecordsPage() {
-  const [[seasons, games], topWeeks, topPlayers, powerChampions, luckiest, unluckiest, draftRecords] = await Promise.all([
+  const [[seasons, games], topWeeks, topPlayers, powerSeasons, powerChampions, luckiest, unluckiest, draftRecords] = await Promise.all([
     getCachedHistoryRecords(),
     getTrackedTopScoringWeeks(10),
     getTrackedTopPlayerWeeks(10),
+    getFinalPowerSeasonRecords(),
     getPowerRankingChampions(),
     getLuckiestSeasons(10),
     getUnluckiestSeasons(10),
     getDraftRecords(),
   ]);
   const eligible = seasons.filter((row) => row.points_for !== null);
-  const qualityScores = makeQualityScores(eligible);
-  const byBlendedQuality = (a: AllSeasonRecordRow, b: AllSeasonRecordRow) =>
-    (qualityScores.get(seasonKey(b)) ?? 0) - (qualityScores.get(seasonKey(a)) ?? 0) || bySeasonQuality(a, b);
-
   const bestSeasons = [...eligible].sort(bySeasonQuality).slice(0, 10);
   const offenses = [...eligible].sort(byOffense).slice(0, 10);
-  const champions = eligible.filter((row) => row.is_champion).sort(byBlendedQuality).slice(0, 10);
-  const nonChampions = eligible.filter((row) => !row.is_champion).sort(byBlendedQuality).slice(0, 10);
-  const missedPlayoffs = seasons.filter((row) => row.final_place !== null && row.final_place > 6).sort(bySeasonQuality).slice(0, 10);
+  const champions = powerSeasons.filter((row) => row.is_champion).slice(0, 10);
+  const nonChampions = powerSeasons.filter((row) => !row.is_champion).slice(0, 10);
+  const missedPlayoffs = powerSeasons
+    .filter((row) => row.final_place !== null && row.final_place > row.playoff_team_count)
+    .slice(0, 10);
 
   return (
     <>
@@ -155,14 +155,16 @@ export default async function RecordsPage() {
       <SeasonTable rows={offenses} markLabel="PF/G" value={(row) => `${pointsPerGame(row.points_for, row.wins, row.losses, row.ties)?.toFixed(1) ?? '—'}`} />
 
       <h3>Best champions</h3>
-      <p className="sub">Quality index: 50% regular-season win-percentage percentile and 50% PF/G percentile across every recorded season.</p>
-      <SeasonTable rows={champions} markLabel="Quality" value={(row) => `${(qualityScores.get(seasonKey(row)) ?? 0).toFixed(1)}`} />
+      <p className="sub">Final regular-season power score: {POWER_FORMULA}. Every season from 2005 onward uses the same model.</p>
+      <PowerSeasonTable rows={champions} />
 
       <h3>Best teams that did not win it</h3>
-      <SeasonTable rows={nonChampions} markLabel="Quality" value={(row) => `${(qualityScores.get(seasonKey(row)) ?? 0).toFixed(1)}`} />
+      <p className="sub">Highest final regular-season power scores among non-champions.</p>
+      <PowerSeasonTable rows={nonChampions} />
 
       <h3>Best teams to miss the playoffs</h3>
-      <SeasonTable rows={missedPlayoffs} markLabel="Win %" value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
+      <p className="sub">Highest final regular-season power scores among teams that finished outside that season&rsquo;s playoff field.</p>
+      <PowerSeasonTable rows={missedPlayoffs} />
 
       <h2>Single-game team records</h2>
       <p className="sub">Recovered team-level weekly scoreboards cover 2005 onward. Regular-season and championship-bracket games count; consolation placement games do not.</p>
@@ -170,6 +172,8 @@ export default async function RecordsPage() {
         <GameRecord label="Highest score" row={games.highestScore} detail={(row) => `${row.points_for} points`} />
         <GameRecord label="Lowest score" row={games.lowestScore} detail={(row) => `${row.points_for} points`} />
         <GameRecord label="Highest-scoring loss" row={games.highestScoringLoss} detail={(row) => `${row.points_for}–${row.points_against}`} />
+        <GameRecord label="Lowest-scoring win" row={games.lowestScoringWin} detail={(row) => `${row.points_for}–${row.points_against}`} />
+        <GameRecord label="Highest combined score" row={games.highestCombinedScore} detail={(row) => `${row.points_for}–${row.points_against} (${(Number(row.points_for) + Number(row.points_against)).toFixed(1)} combined)`} />
         <GameRecord label="Biggest blowout" row={games.biggestBlowout} detail={(row) => `${row.points_for}–${row.points_against} (+${Math.abs(Number(row.margin)).toFixed(1)})`} />
         <GameRecord label="Closest finish" row={games.closestFinish} detail={(row) => `${row.points_for}–${row.points_against} (${Math.abs(Number(row.margin)).toFixed(1)} points)`} />
       </div>
@@ -208,13 +212,13 @@ export default async function RecordsPage() {
       <h2>Power-ranking champions</h2>
       <p className="sub">The team ranked #1 after the final regular-season week, using the same current 40/30/20/10 formula in every recoverable season.</p>
       <div className="card"><div className="scroll"><table>
-        <thead><tr><th>Season</th><th>Team</th><th>Manager</th><th className="num">Score</th></tr></thead>
+        <thead><tr><th>Season</th><th>Team</th><th>Manager</th><th className="num">Power</th></tr></thead>
         <tbody>{powerChampions.map((row) => (
           <tr key={row.season}>
             <td><a className="tname" href={`/rankings?season=${row.season}`}>{row.season}</a></td>
             <td><a href={franchiseHref(row.franchise_key)}>{row.team_name}</a></td>
             <td>{row.manager_key && row.manager ? <a href={managerHref(row.manager_key)}>{row.manager}</a> : '—'}</td>
-            <td className="num">{row.score}</td>
+            <td className="num">{powerScore(row.score)}</td>
           </tr>
         ))}</tbody>
       </table></div></div>
