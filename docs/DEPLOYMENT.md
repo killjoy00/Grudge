@@ -6,7 +6,7 @@ Grudge deliberately does **not** deploy to Vercel on every Git push.
 
 ## Normal release window
 
-The controlled deploy workflow checks once each day at **08:00 America/Chicago**. GitHub cron schedules are UTC-only, so the workflow is registered for both possible UTC hours and uses a timezone guard to remain fixed at 08:00 across daylight-saving changes.
+The controlled deploy workflow checks once each day at **08:00 America/Chicago**. GitHub Actions' timezone-aware schedule keeps that release window fixed across daylight-saving changes.
 
 A scheduled run compares `main` with the `vercel-deployed` marker branch. If they point to the same commit, the workflow exits without contacting Vercel. If `main` has advanced, it calls the production deploy hook once and moves `vercel-deployed` to that SHA after Vercel accepts the hook request.
 
