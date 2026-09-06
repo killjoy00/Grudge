@@ -17,7 +17,7 @@ This means normal coding, pull requests, merges, and the Tuesday data pipeline c
 There are two intentional manual paths:
 
 1. Run **Controlled Vercel deploy** from the GitHub Actions tab. Manual runs always call Vercel, even when `main` matches the marker.
-2. Push or advance the `vercel-deploy-request` branch. This exists so an authorized automation such as ChatGPT's GitHub connection can deliberately request a production release without changing `main`.
+2. Change `.vercel-deploy-request` on the `vercel-deploy-request` branch. This exists so an authorized automation such as ChatGPT's GitHub connection can deliberately request a production release without changing `main`. The workflow is path-scoped to that file so ordinary movement or maintenance of the control branch does not deploy anything.
 
 Both paths use the same deploy hook and the same concurrency group, so they cannot overlap with the scheduled release.
 
