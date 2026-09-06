@@ -178,7 +178,7 @@ export default async function History() {
       <div className="card">
         <SortableTable columns={archiveColumns} rows={archiveRows} rank={false} />
         <p className="note" style={{ margin: '10px 2px 0' }}>
-          * 2005–2017: commissioner standings. _ 2018–2025: ESPN archive.
+          * 2005–2017 · _ 2018–2025
         </p>
       </div>
 
