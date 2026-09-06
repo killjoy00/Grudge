@@ -1,11 +1,8 @@
 import { notFound } from 'next/navigation';
 
 import { EspnMatchupLink } from '../../../../../components/EspnLink.tsx';
-import {
-  getMatchupTeamContext,
-  getRivalrySeries,
-  type RivalryGame,
-} from '../../../../../lib/game-context.ts';
+import { getMatchupTeamContext } from '../../../../../lib/game-context.ts';
+import { getManagerGrudgeForTeams, type ManagerGrudgeGame } from '../../../../../lib/rivalry-queries.ts';
 import {
   getTeamStars,
   getWeekMatchups,
@@ -19,11 +16,19 @@ function record(wins: number, losses: number, ties: number) {
   return `${wins}-${losses}${ties ? `-${ties}` : ''}`;
 }
 
-function viewFrom(game: RivalryGame, teamId: number) {
-  const home = game.home_team_id === teamId;
+function grudgeView(game: ManagerGrudgeGame, managerKey: string) {
+  const home = game.home_manager_key === managerKey;
   const pointsFor = Number(home ? game.home_points ?? 0 : game.away_points ?? 0);
   const pointsAgainst = Number(home ? game.away_points ?? 0 : game.home_points ?? 0);
   return { pointsFor, pointsAgainst };
+}
+
+function roundLabel(game: ManagerGrudgeGame) {
+  if (game.playoff_rounds_from_final === null) return 'Regular';
+  if (game.playoff_rounds_from_final === 1) return 'Championship';
+  if (game.playoff_rounds_from_final === 2) return 'Semifinal';
+  if (game.playoff_rounds_from_final === 3) return 'First round';
+  return 'Playoffs';
 }
 
 export default async function MatchupPreview({
@@ -41,11 +46,11 @@ export default async function MatchupPreview({
   const matchup = matchups.find((row) => row.espn_matchup_id === matchupId);
   if (!matchup) notFound();
 
-  const [contexts, projectionRows, starRows, rivalry] = await Promise.all([
+  const [contexts, projectionRows, starRows, grudge] = await Promise.all([
     getMatchupTeamContext(season, week, matchup.home_team_id, matchup.away_team_id),
     getWeekProjections(season, week),
     getTeamStars(season, week),
-    getRivalrySeries(matchup.away_team_id, matchup.home_team_id),
+    getManagerGrudgeForTeams(season, matchup.away_team_id, matchup.home_team_id),
   ]);
 
   const byTeam = new Map(contexts.map((row) => [row.espn_team_id, row]));
@@ -63,17 +68,23 @@ export default async function MatchupPreview({
   }
   const starBasis = starRows[0]?.basis ?? null;
 
+  const awayManager = grudge.managerA;
+  const homeManager = grudge.managerB;
   let awayWins = 0;
   let homeWins = 0;
   let ties = 0;
-  for (const game of rivalry.games) {
-    const v = viewFrom(game, matchup.away_team_id);
-    if (v.pointsFor > v.pointsAgainst) awayWins += 1;
-    else if (v.pointsFor < v.pointsAgainst) homeWins += 1;
-    else ties += 1;
+  if (awayManager && homeManager) {
+    for (const game of grudge.games) {
+      const v = grudgeView(game, awayManager.manager_key);
+      if (v.pointsFor > v.pointsAgainst) awayWins += 1;
+      else if (v.pointsFor < v.pointsAgainst) homeWins += 1;
+      else ties += 1;
+    }
   }
-  const recent = rivalry.games.slice(0, 3);
-  const seriesHref = `/rivalry/${matchup.away_team_id}/${matchup.home_team_id}`;
+  const recent = grudge.games.slice(0, 3);
+  const seriesHref = awayManager && homeManager
+    ? `/grudge/${encodeURIComponent(awayManager.manager_key)}/${encodeURIComponent(homeManager.manager_key)}`
+    : '/history/rivalries';
 
   const teamCard = (teamId: number, name: string, ctx: typeof away) => (
     <div style={{ flex: '1 1 260px' }}>
@@ -106,12 +117,10 @@ export default async function MatchupPreview({
       <div className="page-hero">
         <div className="eyebrow">{season} · week {week} matchup preview</div>
         <h1>{matchup.away_name} at {matchup.home_name}</h1>
-        <p>
-          The form, the stars, ESPN&rsquo;s captured line, and the receipts from every prior meeting.
-        </p>
+        <p>The form, the stars, ESPN&rsquo;s captured line, and the managers&rsquo; receipts against each other.</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
           <a href="/predictions" className="btn">Back to predictions</a>
-          <a href={seriesHref} className="btn btn-quiet">Full rivalry history</a>
+          <a href={seriesHref} className="btn btn-quiet">Full manager grudge</a>
           <EspnMatchupLink season={season} week={week} teamId={matchup.away_team_id} label="Open on ESPN" />
         </div>
       </div>
@@ -148,33 +157,38 @@ export default async function MatchupPreview({
         {teamCard(matchup.home_team_id, matchup.home_name, home)}
       </div>
 
-      <h2>Series context</h2>
+      <h2>Grudge context</h2>
       <div className="card">
-        <div className="stat-strip three">
-          <div><span>{matchup.away_name}</span><strong>{awayWins}</strong><small className="block note">wins</small></div>
-          <div><span>All meetings</span><strong>{rivalry.games.length}</strong><small className="block note">{ties ? `${ties} tie${ties === 1 ? '' : 's'}` : 'no ties'}</small></div>
-          <div><span>{matchup.home_name}</span><strong>{homeWins}</strong><small className="block note">wins</small></div>
-        </div>
+        {awayManager && homeManager ? (
+          <>
+            <div className="stat-strip three">
+              <div><span>{awayManager.display_name}</span><strong>{awayWins}</strong><small className="block note">wins</small></div>
+              <div><span>Manager meetings</span><strong>{grudge.games.length}</strong><small className="block note">{ties ? `${ties} tie${ties === 1 ? '' : 's'}` : 'no ties'}</small></div>
+              <div><span>{homeManager.display_name}</span><strong>{homeWins}</strong><small className="block note">wins</small></div>
+            </div>
 
-        {recent.length > 0 && (
-          <div className="scroll" style={{ marginTop: 12 }}>
-            <table>
-              <thead><tr><th>Recent meeting</th><th className="num">Score</th><th>Round</th></tr></thead>
-              <tbody>
-                {recent.map((game) => (
-                  <tr key={`${game.season}-${game.espn_matchup_id}`}>
-                    <td><a href={`/standings?season=${game.season}`}>{game.season} week {game.week}</a></td>
-                    <td className="num">{game.away_name} {game.away_points ?? '—'} · {game.home_name} {game.home_points ?? '—'}</td>
-                    <td>{game.playoff_tier ? <span className="tag era">{game.playoff_tier === 'WINNERS_BRACKET' ? 'Playoffs' : 'Consolation'}</span> : 'Regular'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            {recent.length > 0 && (
+              <div className="scroll" style={{ marginTop: 12 }}>
+                <table>
+                  <thead><tr><th>Recent meeting</th><th>Teams</th><th className="num">Score</th><th>Round</th></tr></thead>
+                  <tbody>
+                    {recent.map((game) => (
+                      <tr key={`${game.season}-${game.espn_matchup_id}`}>
+                        <td><a href={`/standings?season=${game.season}`}>{game.season} week {game.week}</a></td>
+                        <td>{game.away_team_name} at {game.home_team_name}</td>
+                        <td className="num">{game.away_points ?? '—'}–{game.home_points ?? '—'}</td>
+                        <td>{game.playoff_rounds_from_final !== null ? <span className="tag era">{roundLabel(game)}</span> : 'Regular'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="note" style={{ marginTop: 10 }}><a href={seriesHref}>Open the full manager grudge →</a></p>
+          </>
+        ) : (
+          <p className="note" style={{ margin: 0 }}>Manager identity is not recorded for both sides of this historical matchup.</p>
         )}
-        <p className="note" style={{ marginTop: 10 }}>
-          <a href={seriesHref}>Open the full rivalry ledger →</a>
-        </p>
       </div>
     </>
   );
