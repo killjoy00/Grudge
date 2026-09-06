@@ -104,23 +104,34 @@ export async function getTrackedTopPlayerWeeks(limit = 10) {
   );
 }
 
+type TrackedMatchupRecordKind =
+  | 'highest_score'
+  | 'lowest_score'
+  | 'highest_scoring_loss'
+  | 'lowest_scoring_win'
+  | 'highest_combined_score'
+  | 'biggest_blowout'
+  | 'closest_finish';
+
 async function getTrackedMatchupRecord(
   season: number | null,
-  kind: 'highest_score' | 'lowest_score' | 'highest_scoring_loss' | 'biggest_blowout' | 'closest_finish'
+  kind: TrackedMatchupRecordKind
 ) {
   const tracked = trackedMatchupSql('m');
   const filter = kind === 'highest_scoring_loss'
     ? `and x.result = 'L'`
-    : kind === 'biggest_blowout'
+    : kind === 'lowest_scoring_win' || kind === 'biggest_blowout'
       ? `and x.result = 'W'`
       : '';
   const order = kind === 'highest_score' || kind === 'highest_scoring_loss'
     ? 'x.points_for desc'
-    : kind === 'lowest_score'
+    : kind === 'lowest_score' || kind === 'lowest_scoring_win'
       ? 'x.points_for asc'
-      : kind === 'biggest_blowout'
-        ? 'abs(x.points_for - x.points_against) desc'
-        : 'abs(x.points_for - x.points_against) asc, x.points_for desc';
+      : kind === 'highest_combined_score'
+        ? '(x.points_for + x.points_against) desc, greatest(x.points_for, x.points_against) desc'
+        : kind === 'biggest_blowout'
+          ? 'abs(x.points_for - x.points_against) desc'
+          : 'abs(x.points_for - x.points_against) asc, x.points_for desc';
 
   const rows = await asPublic<MatchupRecordRow>(
     `with sides as (
@@ -194,12 +205,30 @@ export async function getTrackedSeasonHighlights(season: number) {
 }
 
 export async function getTrackedGameRecords() {
-  const [highestScore, lowestScore, highestScoringLoss, biggestBlowout, closestFinish] = await Promise.all([
+  const [
+    highestScore,
+    lowestScore,
+    highestScoringLoss,
+    lowestScoringWin,
+    highestCombinedScore,
+    biggestBlowout,
+    closestFinish,
+  ] = await Promise.all([
     getTrackedMatchupRecord(null, 'highest_score'),
     getTrackedMatchupRecord(null, 'lowest_score'),
     getTrackedMatchupRecord(null, 'highest_scoring_loss'),
+    getTrackedMatchupRecord(null, 'lowest_scoring_win'),
+    getTrackedMatchupRecord(null, 'highest_combined_score'),
     getTrackedMatchupRecord(null, 'biggest_blowout'),
     getTrackedMatchupRecord(null, 'closest_finish'),
   ]);
-  return { highestScore, lowestScore, highestScoringLoss, biggestBlowout, closestFinish };
+  return {
+    highestScore,
+    lowestScore,
+    highestScoringLoss,
+    lowestScoringWin,
+    highestCombinedScore,
+    biggestBlowout,
+    closestFinish,
+  };
 }
