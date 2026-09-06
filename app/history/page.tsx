@@ -30,9 +30,9 @@ const managerColumns: SortColumn[] = [
 
 const archiveColumns: SortColumn[] = [
   { key: 'season', label: 'Season', numeric: true },
-  { key: 'champion', label: 'League champion' },
-  { key: 'regular', label: 'Regular-season champion' },
+  { key: 'champion', label: 'Champion' },
   { key: 'runnerUp', label: 'Runner-up' },
+  { key: 'regular', label: 'Regular-season champion' },
 ];
 
 function groupSeasons(rows: Array<{ season: number; key: string | null }>) {
@@ -131,11 +131,11 @@ export default async function History() {
             ? managerHref(row.champion_manager_key)
             : undefined,
         },
-        regular: regular
-          ? { v: regular.team_name, d: regular.team_name, href: franchiseHref(regular.franchise_key) }
-          : { v: null, d: '—' },
         runnerUp: row.runner_up_key && row.runner_up_team_name
           ? { v: row.runner_up_team_name, d: row.runner_up_team_name, href: franchiseHref(row.runner_up_key) }
+          : { v: null, d: '—' },
+        regular: regular
+          ? { v: regular.team_name, d: regular.team_name, href: franchiseHref(regular.franchise_key) }
           : { v: null, d: '—' },
       },
     };
