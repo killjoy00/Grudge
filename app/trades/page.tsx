@@ -85,7 +85,7 @@ function TradeArticle({
               { month: 'short', day: 'numeric' })}`}
         </span>
         {trade.confidence === 'reciprocal' && (
-          <span className="tag era" title="Reconstructed from roster movement: ESPN kept no transaction record for this season.">
+          <span className="tag era" title="Reconstructed from reciprocal weekly roster movement because the completed ESPN item list did not survive.">
             Reconstructed
           </span>
         )}
@@ -274,15 +274,17 @@ export default async function Trades({
               good trade looks like. Kickers and defences are listed but not
               counted.</p>
 
-            <p><strong>Where these came from.</strong> ESPN publishes no trade
-              contents, so they are reconstructed from weekly rosters. From 2026
-              the transaction ledger explains every waiver move, so a player who
-              changes teams with nothing to explain it was traded. Earlier seasons
-              have no transactions at all, so only genuine two-way swaps are
-              claimed and those are marked{' '}
-              <span className="tag era">Reconstructed</span> &mdash; a one-sided
-              deal from those years is invisible, and nothing before 2018 has the
-              data.</p>
+            <p><strong>Where these came from.</strong> For 2018–2025, completed ESPN
+              transaction envelopes are the source of truth whenever the archive
+              preserves the players sent in both directions. Some accepted trades
+              survive only as an empty transaction shell; those are marked{' '}
+              <span className="tag era">Reconstructed</span> and are included only
+              when consecutive weekly rosters show players moving both directions
+              between the same two teams. A one-way roster change is never called
+              a trade. That matters when a player is traded twice between weekly
+              snapshots: the itemized ESPN ledger wins instead of collapsing two
+              real deals into a fictional net move. Nothing before 2018 has the
+              player-level weekly roster history needed to grade a trade.</p>
           </div>
         </details>
       </div>

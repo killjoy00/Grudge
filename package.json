@@ -15,6 +15,8 @@
     "history:import": "tsx scripts/import-manual-history.ts",
     "history:transactions": "node scripts/backfill-history-transactions.mjs",
     "history:drafts": "node scripts/backfill-history-drafts.mjs",
+    "history:draft-performance": "node scripts/build-legacy-draft-performance.mjs",
+    "history:draft-performance:import": "tsx scripts/import-legacy-draft-performance.ts",
     "history:scores": "tsx scripts/backfill-score-derived-history.ts",
     "history:backfill": "node scripts/backfill-history.mjs && node scripts/backfill-history-transactions.mjs",
     "history:refresh": "npm run history:derive && npm run history:import -- --franchises=data/manual-history/franchises.csv --seasons=data/manual-history/season-results.csv --managers=data/manual-history/managers.csv --manager-seasons=data/manual-history/manager-seasons.csv --espn-franchises=data/manual-history/espn-franchises.csv",
