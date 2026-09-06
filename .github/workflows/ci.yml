@@ -31,12 +31,9 @@ jobs:
 
       - run: npm ci
 
-      # Keep the warning that started this cleanup from quietly coming back.
-      # This is temporarily non-blocking while the current audit findings are
-      # identified and upgraded in this same pull request; it becomes enforced
-      # before merge.
+      # Do not let a known moderate-or-higher dependency vulnerability quietly
+      # re-enter the application after this maintenance cleanup.
       - name: Dependency audit
-        continue-on-error: true
         run: npm audit --audit-level=moderate
 
       - name: Typecheck
