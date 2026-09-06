@@ -40,7 +40,7 @@ export interface MyGrudgeDashboard {
   active: {
     week: number;
     locked: boolean;
-    picks_made: number;
+    picks_made: number | null;
     picks_total: number;
     matchup_id: number | null;
     opponent_id: number | null;
@@ -57,14 +57,16 @@ export interface MyGrudgeDashboard {
 }
 
 /**
- * The signed-in manager's current-season snapshot. All league-wide facts use
- * the same public read paths as the rest of the site; only `getMyPicks` uses
- * the signed-in RLS identity, so another manager's open picks can never leak
- * into this dashboard.
+ * A current-season snapshot for one team. League-wide facts use the same
+ * public read paths as the rest of the site. By default `getMyPicks` also runs
+ * through the signed-in RLS identity; Preview can opt out of that one private
+ * read when Clerk has not been assigned to the Vercel Preview environment.
  */
 export async function getMyGrudgeDashboard(
-  espnTeamId: number
+  espnTeamId: number,
+  options: { includePicks?: boolean } = {}
 ): Promise<MyGrudgeDashboard> {
+  const includePicks = options.includePicks !== false;
   const season = await getCurrentSeason();
   const activeWeek = await getCurrentIncompleteWeek(season);
 
@@ -114,7 +116,7 @@ export async function getMyGrudgeDashboard(
         [season, espnTeamId]
       ),
       activeWeek ? getWeekMatchups(season, activeWeek.week) : Promise.resolve([]),
-      activeWeek ? getMyPicks(season, activeWeek.week) : Promise.resolve([]),
+      activeWeek && includePicks ? getMyPicks(season, activeWeek.week) : Promise.resolve(null),
       activeWeek ? getWeekProjections(season, activeWeek.week) : Promise.resolve([]),
     ]);
 
@@ -178,7 +180,7 @@ export async function getMyGrudgeDashboard(
     active = {
       week: activeWeek.week,
       locked: lockAt ? Date.parse(lockAt) <= Date.now() : true,
-      picks_made: picks.length,
+      picks_made: picks ? picks.length : null,
       picks_total: matchups.length,
       matchup_id: matchup?.espn_matchup_id ?? null,
       opponent_id: opponentId,
