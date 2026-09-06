@@ -7,10 +7,19 @@
  * Clerk's resource-first guidance and avoids the deprecated
  * createRouteMatcher helper. The database's RLS policies remain the final
  * authorization boundary.
+ *
+ * Vercel Preview is a special case: if its Preview environment has not been
+ * assigned the Clerk variables yet, let the request reach the app so public
+ * pages can still be reviewed. Production never fails open.
  */
 import { clerkMiddleware } from '@clerk/nextjs/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
+import { previewWithoutClerk } from './lib/clerk-config.ts';
 
-export default clerkMiddleware();
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
+  if (previewWithoutClerk()) return NextResponse.next();
+  return clerkMiddleware()(request, event);
+}
 
 export const config = {
   matcher: [
