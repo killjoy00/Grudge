@@ -68,6 +68,10 @@ export default async function PreviewPage() {
     // database variable. Production does not use this route.
   }
 
+  const grudgeHref = dashboard?.active?.manager_key && dashboard.active.opponent_manager_key
+    ? `/grudge/${encodeURIComponent(dashboard.active.manager_key)}/${encodeURIComponent(dashboard.active.opponent_manager_key)}`
+    : null;
+
   return (
     <>
       <div className="page-hero">
@@ -84,6 +88,7 @@ export default async function PreviewPage() {
         <a className="btn btn-quiet" href="/history/rivalries">Grudges →</a>
         <a className="btn btn-quiet" href="/history/drafts">Draft history →</a>
         <a className="btn btn-quiet" href="/history/records">Record book →</a>
+        {grudgeHref && <a className="btn btn-quiet" href={grudgeHref}>Current manager grudge →</a>}
       </nav>
 
       <div className="callout">
@@ -151,6 +156,7 @@ export default async function PreviewPage() {
                 Matchup preview
               </a>
             )}
+            {grudgeHref && <a className="btn btn-quiet" href={grudgeHref}>Manager grudge</a>}
             {teamId !== null && <a className="btn btn-quiet" href={`/team/${teamId}`}>Team page</a>}
           </div>
         </div>
