@@ -138,18 +138,16 @@ function DashboardView({
                   )}
                 </div>
 
-                {dashboard.active.rivalry_games > 0 && (
+                {dashboard.active.grudge_games > 0 && dashboard.active.manager_key && dashboard.active.opponent_manager_key && (
                   <p className="note" style={{ margin: '14px 0 0' }}>
-                    All-time series: <strong>
+                    Manager grudge: <strong>
                       {record(
-                        dashboard.active.rivalry_wins,
-                        dashboard.active.rivalry_losses,
-                        dashboard.active.rivalry_ties
+                        dashboard.active.grudge_wins,
+                        dashboard.active.grudge_losses,
+                        dashboard.active.grudge_ties
                       )}
-                    </strong> across {dashboard.active.rivalry_games} meeting{dashboard.active.rivalry_games === 1 ? '' : 's'}.
-                    {dashboard.active.opponent_id !== null && profile.espn_team_id !== null && (
-                      <> <a href={`/rivalry/${profile.espn_team_id}/${dashboard.active.opponent_id}`}>Full rivalry →</a></>
-                    )}
+                    </strong> for {dashboard.active.manager_name ?? 'your manager'} against {dashboard.active.opponent_manager_name ?? 'the opposing manager'} across {dashboard.active.grudge_games} meeting{dashboard.active.grudge_games === 1 ? '' : 's'}.
+                    {' '}<a href={`/grudge/${encodeURIComponent(dashboard.active.manager_key)}/${encodeURIComponent(dashboard.active.opponent_manager_key)}`}>Full grudge →</a>
                   </p>
                 )}
 
@@ -157,7 +155,7 @@ function DashboardView({
                   {dashboard.active.picks_made === null ? (
                     <p className="note" style={{ margin: 0 }}>
                       Prediction completion is hidden in this unauthenticated preview. Matchup,
-                      projections and rivalry context are still the real current-season data.
+                      projections and manager-grudge context are still the real current-season data.
                     </p>
                   ) : (
                     <p className="note" style={{ margin: 0 }}>
