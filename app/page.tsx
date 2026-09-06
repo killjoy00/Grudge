@@ -4,8 +4,10 @@ import {
   getBenchWatch, getComments, getStandings, getPlayoffWeek, getWeekMatchups,
 } from '../lib/queries.ts';
 import { getCurrentIncompleteWeek } from '../lib/game-context.ts';
+import { getLeagueWire } from '../lib/league-wire.ts';
 import { Comments } from '../components/Comments.tsx';
 import { EspnMatchupLink, EspnTeamLink } from '../components/EspnLink.tsx';
+import { LeagueWire } from '../components/LeagueWire.tsx';
 import { asPublic } from '../lib/db.ts';
 
 export const dynamic = 'force-dynamic';
@@ -49,9 +51,10 @@ async function preseason() {
 export default async function Home() {
   const { userId } = await auth();
   const currentSeason = await getCurrentSeason();
-  const [week, activeWeek] = await Promise.all([
+  const [week, activeWeek, wire] = await Promise.all([
     latestPlayedWeek(currentSeason),
     getCurrentIncompleteWeek(currentSeason),
+    getLeagueWire(currentSeason, 16),
   ]);
   const now = Date.now();
   const activeStarted = Boolean(
@@ -120,6 +123,8 @@ export default async function Home() {
             </a>
           </div>
         </div>
+
+        <LeagueWire events={wire} />
       </>
     );
   }
@@ -180,6 +185,8 @@ export default async function Home() {
             <a href="/standings" className="btn btn-quiet">Season books</a>
           </div>
         </div>
+
+        <LeagueWire events={wire} />
       </>
     );
   }
@@ -252,6 +259,8 @@ export default async function Home() {
             seeding the bracket came from.
           </p>
         </div>
+
+        <LeagueWire events={wire} />
       </>
     );
   }
@@ -380,6 +389,7 @@ export default async function Home() {
         </table>
       </div>
 
+      <LeagueWire events={wire} />
       <Comments season={season} week={week} comments={comments} me={userId ?? null} />
     </>
   );
