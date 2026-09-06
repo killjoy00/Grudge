@@ -15,6 +15,15 @@ export interface DraftSlotPerformanceRow {
   worst_pct: string;
 }
 
+export interface DraftSlotOutcomeRow {
+  draft_slot: number;
+  seasons_on_file: number;
+  regular_season_firsts: number;
+  regular_season_first_pct: string;
+  championships: number;
+  championship_pct: string;
+}
+
 export interface FranchiseDraftSlotRow {
   franchise_key: string;
   team_name: string;
@@ -26,6 +35,7 @@ export interface FranchiseDraftSlotRow {
 
 export interface DraftSlotRecords {
   performance: DraftSlotPerformanceRow[];
+  outcomes: DraftSlotOutcomeRow[];
   franchises: FranchiseDraftSlotRow[];
 }
 
@@ -88,7 +98,7 @@ with modern_weekly as (
 `;
 
 export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
-  const [performance, franchises] = await Promise.all([
+  const [performance, outcomes, franchises] = await Promise.all([
     asPublic<DraftSlotPerformanceRow>(`${GRADED_CTE},
       class_scores as (
         select season, espn_team_id,
@@ -135,6 +145,44 @@ export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
         from slot_classes
        group by draft_slot
        order by draft_slot`),
+    asPublic<DraftSlotOutcomeRow>(`
+      with slot_rows as (
+        select d.season,
+               d.overall_pick::int as draft_slot,
+               tf.franchise_key
+          from public.draft_picks d
+          join public.team_franchise tf
+            on tf.season = d.season and tf.espn_team_id = d.espn_team_id
+         where d.round = 1
+           and d.season between 2005 and 2025
+           and d.season <> 2020
+      ), regular_ranked as (
+        select fs.season,
+               fs.franchise_key,
+               row_number() over (
+                 partition by fs.season
+                 order by (fs.regular_wins + fs.regular_ties / 2.0)
+                          / nullif(fs.regular_wins + fs.regular_losses + fs.regular_ties, 0) desc,
+                          fs.regular_points_for desc,
+                          fs.franchise_key
+               ) as regular_rank,
+               fs.is_champion
+          from public.franchise_seasons fs
+         where fs.season between 2005 and 2025
+           and fs.season <> 2020
+      )
+      select sr.draft_slot,
+             count(*)::int as seasons_on_file,
+             count(*) filter (where rr.regular_rank = 1)::int as regular_season_firsts,
+             round(100.0 * count(*) filter (where rr.regular_rank = 1) / nullif(count(*), 0), 1)::text as regular_season_first_pct,
+             count(*) filter (where rr.is_champion)::int as championships,
+             round(100.0 * count(*) filter (where rr.is_champion) / nullif(count(*), 0), 1)::text as championship_pct
+        from slot_rows sr
+        left join regular_ranked rr
+          on rr.season = sr.season
+         and rr.franchise_key = sr.franchise_key
+       group by sr.draft_slot
+       order by sr.draft_slot`),
     asPublic<FranchiseDraftSlotRow>(`
       with slot_rows as (
         select d.season,
@@ -180,5 +228,5 @@ export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
        order by totals.first_overall_times desc, totals.team_name`),
   ]);
 
-  return { performance, franchises };
+  return { performance, outcomes, franchises };
 }
