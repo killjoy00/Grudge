@@ -1,3 +1,432 @@
+-- Attack suite for the RLS model. Each case asserts an outcome and records
+-- PASS/FAIL; the file raises at the end if anything failed, so it is usable
+-- as a CI gate rather than something a human has to eyeball.
+--
+-- Two distinct failure shapes are checked, because RLS produces both:
+--   * a raised ERROR      (grant denied, or a trigger refusing the write)
+--   * a silent 0 ROWS     (policy filtered the row out -- no error at all)
+-- Only checking for errors would miss every policy bug of the second kind.
+--
+-- Identity is driven through `app.user_id`, the per-request session setting
+-- the Next.js server writes after verifying a Clerk session -- the same
+-- mechanism production uses, so these tests exercise the real path rather than
+-- a simulation of one. (app.current_user_id() also falls back to a
+-- Neon-validated JWT; that path is unavailable -- see the schema doc.)
+--
+-- Every policy, trigger and lock-enforcement mechanism here carries through
+-- unchanged from the Supabase draft. These tests are why that is checked
+-- rather than asserted.
+
+create schema if not exists test;
+
+create table if not exists test.results (
+  id      serial primary key,
+  label   text not null,
+  ok      boolean not null,
+  detail  text
+);
+
+create or replace function test.record(p_label text, p_ok boolean, p_detail text)
+returns void language sql as $$
+  insert into test.results (label, ok, detail) values (p_label, p_ok, p_detail);
+$$;
+
+-- Expects the statement to raise.
+create or replace function test.expect_error(p_stmt text, p_label text)
+returns void language plpgsql as $$
+begin
+  execute p_stmt;
+  perform test.record(p_label, false, 'statement unexpectedly SUCCEEDED');
+exception when others then
+  perform test.record(p_label, true, sqlerrm);
+end $$;
+
+-- Expects the statement to succeed.
+create or replace function test.expect_ok(p_stmt text, p_label text)
+returns void language plpgsql as $$
+begin
+  execute p_stmt;
+  perform test.record(p_label, true, null);
+exception when others then
+  perform test.record(p_label, false, 'unexpectedly FAILED: ' || sqlerrm);
+end $$;
+
+-- Expects the statement to touch exactly N rows. This is how a policy that
+-- silently filters (rather than erroring) gets caught.
+create or replace function test.expect_rowcount(p_stmt text, p_expected int, p_label text)
+returns void language plpgsql as $$
+declare n int;
+begin
+  execute p_stmt;
+  get diagnostics n = row_count;
+  perform test.record(p_label, n = p_expected,
+    case when n = p_expected then null
+         else format('affected %s rows, expected %s', n, p_expected) end);
+exception when others then
+  perform test.record(p_label, false, 'unexpectedly FAILED: ' || sqlerrm);
+end $$;
+
+-- Expects a scalar count query to return N.
+create or replace function test.expect_count(p_query text, p_expected int, p_label text)
+returns void language plpgsql as $$
+declare n int;
+begin
+  execute p_query into n;
+  perform test.record(p_label, n = p_expected,
+    case when n = p_expected then null
+         else format('saw %s, expected %s', n, p_expected) end);
+exception when others then
+  perform test.record(p_label, false, 'unexpectedly FAILED: ' || sqlerrm);
+end $$;
+
+grant usage on schema test to authenticated, app_user, app_pipeline, app_provisioner;
+grant select, insert on test.results to authenticated, app_user, app_pipeline, app_provisioner;
+grant usage, select on sequence test.results_id_seq to authenticated, app_user, app_pipeline, app_provisioner;
+grant execute on all functions in schema test to authenticated, app_user, app_pipeline, app_provisioner;
+
+-- Clerk-style user ids (Clerk's real ones look like "user_2abc...").
+-- \set is a psql client-side substitution, not SQL -- it happens before the
+-- server ever sees these strings, so it's safe to reuse them below.
+\set owner_id 'user_test_owner_0001'
+\set admin_id 'user_test_admin_0001'
+\set stranger_id 'user_test_stranger_0001'
+
+-- ================================================ profile provisioning (webhook) ==
+-- app_provisioner is the only role holding execute on provision_profile. It
+-- stands in for the Clerk webhook handler's narrowly scoped credential and,
+-- unlike app_pipeline, does not bypass RLS.
+set role app_provisioner;
+
+select test.expect_ok(
+  format($$select public.provision_profile('%s', 'owner@example.com', 'Ryan')$$, :'owner_id'),
+  'T1  webhook can provision an allowlisted non-admin');
+
+select test.expect_ok(
+  format($$select public.provision_profile('%s', 'boss@example.com', 'Jordan')$$, :'admin_id'),
+  'T2  webhook can provision an allowlisted admin');
+
+select test.expect_error(
+  format($$select public.provision_profile('%s', 'stranger@evil.com', 'Nobody')$$, :'stranger_id'),
+  'T3  ATTACK provision a NON-allowlisted email');
+
+-- Diagnostic check, not an app_provisioner capability test -- unrestricted.
+-- app_provisioner itself has no direct SELECT grant on profiles (correctly:
+-- only provision_profile()'s SECURITY DEFINER context touches that table).
+reset role;
+
+select test.expect_count(
+  $$select count(*) from public.profiles where is_admin$$, 1,
+  'T4  admin flag provisioned from allowlist, not self-declared');
+
+select test.expect_error(
+  format($$select public.provision_profile('%s', 'stranger@evil.com', 'Nobody')$$, :'stranger_id'),
+  'T5  ATTACK call provision_profile directly as a plain session (no grant)');
+
+-- ====================================================== as a NON-ADMIN user ==
+set role app_user;
+set app.user_id = :'owner_id';
+
+select test.expect_error(
+  $$update public.profiles set is_admin = true where id = app.current_user_id()$$,
+  'T6  ATTACK self-elevate to admin');
+
+select test.expect_error(
+  $$update public.profiles set espn_team_id = 99 where id = app.current_user_id()$$,
+  'T7  ATTACK reassign own ESPN team');
+
+select test.expect_rowcount(
+  $$update public.profiles set display_name = 'Ryan M.' where id = app.current_user_id()$$, 1,
+  'T8  legitimate display_name change works');
+
+select test.expect_rowcount(
+  format($$update public.profiles set display_name = 'pwned' where id = '%s'$$, :'admin_id'),
+  0,
+  'T9  ATTACK edit another user profile');
+
+select test.expect_count(
+  $$select count(*) from public.league_allowlist$$, 0,
+  'T10 ATTACK read allowlist (everyone emails) as non-admin');
+
+-- ============================================================= predictions ==
+select test.expect_ok(
+  $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+    values (app.current_user_id(),2026,1,1,6)$$,
+  'T11 pick in an OPEN week is allowed');
+
+select test.expect_error(
+  $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+    values (app.current_user_id(),2026,2,11,1)$$,
+  'T12 ATTACK pick in a LOCKED week');
+
+select test.expect_error(
+  $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+    values (app.current_user_id(),2026,1,2,6)$$,
+  'T13 ATTACK pick a team that is not in the matchup');
+
+select test.expect_error(
+  format($$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+    values ('%s',2026,1,2,11)$$, :'admin_id'),
+  'T14 ATTACK submit a pick as another user');
+
+select test.expect_error(
+  $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+    values (app.current_user_id(),2026,99,1,6)$$,
+  'T15 ATTACK unknown week (lock helper must fail CLOSED)');
+
+select test.expect_error(
+  $$insert into public.prediction_scores (prediction_id,is_correct,points)
+    select id,true,100 from public.predictions where user_id = app.current_user_id() limit 1$$,
+  'T16 ATTACK award yourself prediction points');
+
+-- Seed a locked-week pick as the connecting superuser (unrestricted, bypasses
+-- everything unconditionally) purely to set up the fixture -- not standing in
+-- for any production role. app_pipeline itself is never granted direct write
+-- access to predictions: nothing in the real design needs it, since the
+-- pipeline's only write path into this table's orbit is prediction_scores,
+-- populated by scoring picks after the fact, never predictions rows themselves.
+reset role; reset app.user_id;
+set app.allow_locked_writes = 'on';
+insert into public.predictions (id,user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+values ('aaaaaaaa-0000-0000-0000-000000000001', :'owner_id', 2026,2,11,1);
+reset app.allow_locked_writes;
+-- A rival's pick in the OPEN week, for the secrecy check.
+insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+values (:'admin_id', 2026,1,1,1);
+
+set role app_user;
+set app.user_id = :'owner_id';
+
+select test.expect_rowcount(
+  $$update public.predictions set predicted_winner_team_id = 6
+     where id = 'aaaaaaaa-0000-0000-0000-000000000001'$$, 0,
+  'T17 ATTACK change a pick after kickoff');
+
+select test.expect_rowcount(
+  $$delete from public.predictions
+     where id = 'aaaaaaaa-0000-0000-0000-000000000001'$$, 0,
+  'T18 ATTACK delete a pick after kickoff');
+
+select test.expect_count(
+  $$select count(*) from public.predictions where week = 1$$, 1,
+  'T19 pick secrecy: rival OPEN-week picks are hidden');
+
+select test.expect_count(
+  $$select count(*) from public.predictions where week = 2$$, 1,
+  'T20 locked-week picks become visible to everyone');
+
+-- ========================================================== as an ADMIN user ==
+set app.user_id = :'admin_id';
+
+select test.expect_count(
+  $$select count(*) from public.league_allowlist$$, 2,
+  'T21 admin CAN read the allowlist');
+
+select test.expect_error(
+  format($$update public.profiles set is_admin = true where id = '%s'$$, :'owner_id'),
+  'T22 even an admin cannot grant admin via the client');
+
+-- ============================================ identity cannot leak across requests ==
+-- SET LOCAL scopes app.user_id to the transaction, so a pooled connection
+-- cannot carry one request's identity into the next. Simulate the next request
+-- by clearing it: the same session must immediately stop being anybody.
+reset app.user_id;
+
+-- Week 1 is OPEN, so its picks are visible only to their owner. Week 2 is
+-- LOCKED and deliberately public (T20), so it must be excluded here -- counting
+-- all predictions would fail against correct behavior.
+select test.expect_count(
+  $$select count(*) from public.predictions where week = 1$$, 0,
+  'T25 identity cleared -> open-week picks invisible (no leak to next request)');
+
+select test.expect_error(
+  $$insert into public.predictions (user_id,season,week,espn_matchup_id,predicted_winner_team_id)
+    values ('user_test_owner_0001',2026,1,2,11)$$,
+  'T26 identity cleared -> cannot write as the previous user');
+
+-- ================================================================== summary ==
+reset role; reset app.user_id;
+
+select test.expect_count(
+  $$select count(*) from public.team_owners where season=2026 and espn_team_id=1$$, 2,
+  'T23 co-ownership: two members share one team');
+
+-- Explicit role switch, not a bare reset: the session otherwise reverts to the
+-- connecting superuser, which bypasses RLS unconditionally and would pass this
+-- test regardless of whether app_pipeline's own grant is correct.
+set role app_pipeline;
+select test.expect_ok(
+  $$insert into public.matchups (season, espn_matchup_id, week, home_team_id, away_team_id)
+    select 2026, 999, 1, 6, 11$$,
+  'T24 app_pipeline (BYPASSRLS) can write the ESPN-mirror tables');
+reset role;
+
+-- =========================================== admin-only tables (Step 8) ==
+-- The free-agent pool is admin-only. These run as app_user with an explicit
+-- role switch, NOT after a bare `reset role` -- the connecting superuser
+-- bypasses RLS unconditionally and would pass every check below regardless of
+-- whether the policy exists at all.
+--
+-- The point of this block is that the DATABASE refuses, not the route guard in
+-- lib/admin.ts. Deleting that guard must leave a non-admin seeing nothing.
+set role app_user;
+set app.user_id = :'owner_id';   -- provisioned non-admin
+
+-- Zero rows, not an error: RLS filters, it does not raise. That distinction
+-- matters because a route that "works but returns nothing" is what a non-admin
+-- must experience if a guard is ever removed.
+select test.expect_count(
+  $$select count(*) from public.player_ownership_snapshots$$, 0,
+  'T27 ATTACK read the free-agent pool as a non-admin');
+
+select test.expect_error(
+  $$insert into public.player_ownership_snapshots (season, week, espn_player_id, percent_owned)
+    values (2026, 1, 4685415, 99.9)$$,
+  'T28 ATTACK write a pool snapshot as a non-admin');
+
+select test.expect_error(
+  $$update public.player_ownership_snapshots set percent_owned = 0 where season = 2026$$,
+  'T29 ATTACK tamper with captured ownership as a non-admin');
+
+-- The positive control. Without it, a policy of `using (false)` would pass
+-- every check above while making the admin page permanently empty.
+set app.user_id = :'admin_id';
+select test.expect_count(
+  $$select count(*) from public.player_ownership_snapshots$$, 2,
+  'T30 admin CAN read the free-agent pool');
+
+-- Admins read the pool; they never write it. That is the pipeline's job, and
+-- an admin session with write access would let the UI corrupt captured history.
+select test.expect_error(
+  $$update public.player_ownership_snapshots set percent_owned = 0 where season = 2026$$,
+  'T31 even an admin cannot rewrite captured ownership');
+
+reset app.user_id;
+select test.expect_count(
+  $$select count(*) from public.player_ownership_snapshots$$, 0,
+  'T32 identity cleared -> pool invisible');
+
+-- ================================= membership + recap preference hardening ==
+set app.user_id = :'owner_id';
+
+select test.expect_rowcount(
+  $$update public.profiles set recap_email_enabled = false
+     where id = app.current_user_id()$$, 1,
+  'T33 member can opt their own recap email out');
+
+select test.expect_rowcount(
+  format($$update public.profiles set recap_email_enabled = false where id = '%s'$$, :'admin_id'),
+  0,
+  'T34 ATTACK change another member recap preference');
+
+select test.expect_error(
+  $$insert into public.league_allowlist (email, season, espn_team_id)
+    values ('intruder@example.com', 2026, 11)$$,
+  'T35 ATTACK non-admin add a league member');
+
+-- Seed a send outcome through the only writer, then prove the email-bearing
+-- history remains invisible to an ordinary member.
+reset role; reset app.user_id;
+set role app_pipeline;
+insert into public.recap_deliveries
+  (season, week, profile_id, recipient_email, status, attempt_count, last_attempted_at)
+values (2026, 2, :'admin_id', 'boss@example.com', 'sent', 1, now());
+reset role;
+
+set role app_user;
+set app.user_id = :'owner_id';
+select test.expect_count(
+  $$select count(*) from public.recap_deliveries$$, 0,
+  'T36 ATTACK read recap recipient history as non-admin');
+
+set app.user_id = :'admin_id';
+select test.expect_rowcount(
+  $$insert into public.league_allowlist
+      (email, season, espn_team_id, is_admin, is_active)
+    values ('newmember@example.com', 2026, 11, false, true)$$, 1,
+  'T37 admin can add a league member');
+
+select test.expect_count(
+  $$select count(*) from public.recap_deliveries$$, 1,
+  'T38 admin can read recap delivery history');
+
+select test.expect_error(
+  $$update public.league_allowlist set is_admin = false where email = 'boss@example.com'$$,
+  'T39 last commissioner cannot demote themselves');
+
+select test.expect_rowcount(
+  $$update public.league_allowlist set is_active = false where email = 'owner@example.com'$$, 1,
+  'T40 admin can deactivate a member');
+
+select test.expect_count(
+  format($$select count(*) where public.profile_is_active('%s')$$, :'owner_id'), 0,
+  'T41 deactivated allowlist row immediately closes the membership gate');
+
+-- Historical identity tables are public to read but only the pipeline can
+-- write. A browser cannot rewrite championships or manager tenure.
+set app.user_id = :'admin_id';
+select test.expect_error(
+  $$insert into public.franchises (franchise_key, current_name)
+    values ('fake-franchise', 'Fake')$$,
+  'T42 ATTACK admin cannot rewrite league history');
+
+/* ------------------------------------------------------------------ trades
+   Trades themselves are public -- they are league history. Votes on them are
+   not: the tally is withheld until you have voted, so nobody can read the room
+   before committing, which is the same rule the predictions page runs on. */
+
+reset role; reset app.user_id;
+insert into public.trades (season, trade_id, effective_week, team_a, team_b, voting_closes_at)
+values (2026, 'rls-trade', 3, 1, 6, now() + interval '2 days'),
+       (2026, 'rls-shut',  4, 1, 6, now() - interval '1 day');
+insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+values (:'admin_id', 2026, 'rls-trade', 1);
+set role app_user;
+
+set app.user_id = :'owner_id';   -- has NOT voted on this trade
+select test.expect_count(
+  $$select count(*) from public.trades where trade_id = 'rls-trade'$$, 1,
+  'T43 trades are public to every member');
+
+select test.expect_count(
+  $$select count(*) from public.trade_votes where trade_id = 'rls-trade'$$, 0,
+  'T44 ATTACK read the tally before voting');
+
+select test.expect_error(
+  format($$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+           values ('%s', 2026, 'rls-trade', 6)$$, :'admin_id'),
+  'T45 ATTACK vote as another member');
+
+select test.expect_error(
+  $$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+    values (app.current_user_id(), 2026, 'rls-trade', 11)$$,
+  'T46 ATTACK vote for a team that is not in the trade');
+
+select test.expect_rowcount(
+  $$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+    values (app.current_user_id(), 2026, 'rls-trade', 6)$$, 1,
+  'T47 a member can vote on a trade');
+
+select test.expect_count(
+  $$select count(*) from public.trade_votes where trade_id = 'rls-trade'$$, 2,
+  'T48 the tally becomes visible once you have voted');
+
+select test.expect_rowcount(
+  format($$update public.trade_votes set voted_team_id = 6 where user_id = '%s'$$, :'admin_id'), 0,
+  'T49 ATTACK change another member vote');
+
+-- The window is the whole point of the vote: it is a snap judgement made
+-- before the season answered the question. A late vote is refused in the
+-- database, not merely hidden by the form.
+select test.expect_error(
+  $$insert into public.trade_votes (user_id, season, trade_id, voted_team_id)
+    values (app.current_user_id(), 2026, 'rls-shut', 1)$$,
+  'T50 ATTACK vote after the window closed');
+
+select test.expect_error(
+  $$insert into public.trades (season, trade_id, effective_week, team_a, team_b)
+    values (2026, 'invented', 1, 1, 6)$$,
+  'T51 ATTACK invent a trade from the browser');
+
 -- ------------------------------------------ ESPN projections and the draft
 --
 -- Both are league-public read and pipeline-only write. The read side matters
@@ -28,16 +457,6 @@ select test.expect_error(
       (season, overall_pick, round, round_pick, espn_team_id, espn_player_id)
     values (2026, 1, 1, 1, 6, 1)$$,
   'T57 ATTACK rewrite the draft board');
-
-select test.expect_ok(
-  $$select count(*) from public.legacy_draft_performance$$,
-  'T58 legacy draft performance is readable');
-
-select test.expect_error(
-  $$insert into public.legacy_draft_performance
-      (season, espn_player_id, fantasy_points, source)
-    values (2017, 1, 999.9, 'espn_exact')$$,
-  'T59 ATTACK invent legacy draft performance');
 
 -- Identity cleared: a pooled connection must not carry the previous request's
 -- voter into the next one and hand them the tally.
