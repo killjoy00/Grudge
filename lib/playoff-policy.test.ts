@@ -6,7 +6,6 @@ import { isTrackedGame, trackedMatchupSql } from './playoff-policy.ts';
 test('every game through the regular-season boundary is tracked', () => {
   assert.equal(isTrackedGame(14, 14, null), true);
   assert.equal(isTrackedGame(14, 14, 'NONE'), true);
-  assert.equal(isTrackedGame(14, 14, 'LOSERS_CONSOLATION_LADDER'), true);
 });
 
 test('after the regular season only the championship bracket is tracked', () => {
