@@ -2,13 +2,14 @@ import { notFound } from 'next/navigation';
 
 import { HistoryNav } from '../../../components/HistoryNav.tsx';
 import { getCachedManagerFile } from '../../../lib/history-cache.ts';
-import { finish, franchiseHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
+import { finish, franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
 import {
   getManagerGameMoments,
   getManagerRegularSeasonTitleSeasons,
   getManagerSeasonMetrics,
   type HistoryGameMoment,
 } from '../../../lib/history-profile-queries.ts';
+import { getManagerGrudges } from '../../../lib/rivalry-queries.ts';
 
 export const revalidate = 86400;
 
@@ -36,11 +37,12 @@ function receipt(label: string, row: HistoryGameMoment | undefined) {
 
 export default async function ManagerPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
-  const [[profile, seasons], metrics, moments, regularTitles] = await Promise.all([
+  const [[profile, seasons], metrics, moments, regularTitles, grudges] = await Promise.all([
     getCachedManagerFile(key),
     getManagerSeasonMetrics(key),
     getManagerGameMoments(key),
     getManagerRegularSeasonTitleSeasons(key),
+    getManagerGrudges(key),
   ]);
   if (!profile || seasons.length === 0) notFound();
 
@@ -153,6 +155,33 @@ export default async function ManagerPage({ params }: { params: Promise<{ key: s
         </div>
         <p className="note">Power and luck use the same score-based formulas for every season with a recovered weekly scoreboard. Player/bench metrics remain unavailable before 2018.</p>
       </div>
+
+      {grudges.length > 0 && (
+        <>
+          <h2>Grudges</h2>
+          <p className="sub">The opponent is another manager, not a franchise. This record follows both people through team changes.</p>
+          <div className="card">
+            <div className="scroll">
+              <table>
+                <thead><tr><th>Opponent</th><th className="num">Record</th><th className="num">Games</th><th className="num">Playoffs</th><th className="num">Since</th></tr></thead>
+                <tbody>{grudges.map((grudge) => (
+                  <tr key={grudge.opp_key}>
+                    <td>
+                      <a className="tname" href={managerHref(grudge.opp_key)}>{grudge.name}</a>
+                      <a className="tsub block" href={`/grudge/${encodeURIComponent(key)}/${encodeURIComponent(grudge.opp_key)}`}>Full grudge →</a>
+                    </td>
+                    <td className="num">{record(grudge.wins, grudge.losses, grudge.ties)}</td>
+                    <td className="num">{grudge.games}</td>
+                    <td className="num">{grudge.playoff_games ? `${grudge.playoff_wins}-${grudge.playoff_losses}` : '—'}</td>
+                    <td className="num">{grudge.first_season}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <p className="note"><a href="/history/rivalries">Open the league-wide Grudges record book →</a></p>
+          </div>
+        </>
+      )}
 
       {franchiseKeys.length > 1 && (
         <>
