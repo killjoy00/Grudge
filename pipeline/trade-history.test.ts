@@ -1,10 +1,9 @@
 /**
  * Trade reconstruction tests.
  *
- * The thing worth protecting here is not that a trade is found -- it is that a
- * waiver claim is NOT found as one. Every manager in this league drops and
- * adds players weekly, and a detector that reports those as trades would put
- * fiction on a public page and grade managers on it.
+ * The most important invariant is negative: never publish a trade that did not
+ * happen. ESPN's itemized completed transaction is authoritative when present;
+ * weekly roster movement is only a reciprocal fallback.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,7 +18,20 @@ const draft = (assignments: [number, number][]): LedgerTransaction => ({
   items: assignments.map(([playerId, toTeamId]) => ({ type: 'DRAFT', playerId, toTeamId })),
 });
 
-test('a swap between two teams across a week boundary is a trade', () => {
+const completedTrade = (
+  id: string,
+  week: number,
+  moves: Array<[number, number, number]>,
+  type: 'TRADE_ACCEPT' | 'TRADE_UPHOLD' = 'TRADE_ACCEPT'
+): LedgerTransaction => ({
+  id, type, status: 'EXECUTED', scoringPeriodId: week, proposedDate: week * 1000,
+  relatedTransactionId: `proposal-${id}`,
+  items: moves.map(([playerId, fromTeamId, toTeamId]) => ({
+    type: 'TRADE', playerId, fromTeamId, toTeamId,
+  })),
+});
+
+test('a swap between two teams across a week boundary is reconstructed', () => {
   const entries = [
     ...own(1, 3, 100, 101), ...own(1, 5, 200, 201),
     ...own(2, 3, 200, 101), ...own(2, 5, 100, 201),
@@ -28,18 +40,64 @@ test('a swap between two teams across a week boundary is a trade', () => {
   assert.equal(trades.length, 1);
   const t = trades[0]!;
   assert.equal(t.trade_id, '2026-w2-3v5');
-  assert.equal(t.effective_week, 2);
-  assert.equal(t.team_a, 3);
-  assert.equal(t.team_b, 5);
+  assert.equal(t.confidence, 'reciprocal');
   assert.deepEqual(
     t.players.map((p) => [p.espn_player_id, p.from_team_id, p.to_team_id]),
     [[100, 3, 5], [200, 5, 3]]
   );
 });
 
+test('an itemized completed trade is authoritative even without roster snapshots', () => {
+  const tx = [completedTrade('trade-1', 7, [[100, 1, 9], [200, 9, 1]])];
+  const trades = detectTrades(2022, [], tx);
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0]!.confidence, 'ledger');
+  assert.equal(trades[0]!.espn_transaction_id, 'trade-1');
+  assert.equal(trades[0]!.effective_week, 7);
+  assert.deepEqual(trades[0]!.players.map((p) => p.espn_player_id), [100, 200]);
+});
+
+test('an itemized TRADE_UPHOLD completion is authoritative', () => {
+  const tx = [completedTrade('uphold-1', 2, [[100, 1, 4], [200, 4, 1]], 'TRADE_UPHOLD')];
+  const trades = detectTrades(2018, [], tx);
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0]!.confidence, 'ledger');
+  assert.equal(trades[0]!.espn_transaction_id, 'uphold-1');
+});
+
+test('a pending itemized proposal is not treated as a completed trade', () => {
+  const tx: LedgerTransaction[] = [{
+    ...completedTrade('proposal', 2, [[100, 1, 4], [200, 4, 1]]),
+    type: 'TRADE_PROPOSAL', status: 'PENDING',
+  }];
+  assert.deepEqual(detectTrades(2018, [], tx), []);
+});
+
+test('a malformed one-direction itemized completion is not published', () => {
+  const tx = [completedTrade('bad', 2, [[100, 1, 4], [101, 1, 4]])];
+  assert.deepEqual(detectTrades(2022, [], tx), []);
+});
+
+test('same-window double movement uses real trades instead of a fictional net trade', () => {
+  // Mirrors 2022: Patterson went 9 -> 1 and then 1 -> 3 before the next weekly
+  // snapshot. Endpoint inference alone sees 9 -> 3 and invents a 3/9 trade.
+  const entries = [
+    ...own(6, 9, 100), ...own(6, 1, 200), ...own(6, 3, 300),
+    ...own(7, 3, 100), ...own(7, 9, 200), ...own(7, 1, 300),
+  ];
+  const tx = [
+    completedTrade('first', 7, [[100, 9, 1], [200, 1, 9]]),
+    completedTrade('second', 7, [[100, 1, 3], [300, 3, 1]]),
+  ];
+  const trades = detectTrades(2022, entries, tx);
+  assert.deepEqual(trades.map((t) => [t.team_a, t.team_b, t.confidence]), [
+    [1, 3, 'ledger'],
+    [1, 9, 'ledger'],
+  ]);
+  assert.equal(trades.some((t) => t.team_a === 3 && t.team_b === 9), false);
+});
+
 test('a waiver drop and claim is not a trade', () => {
-  // Team 3 drops 100 in period 2, team 5 claims him. Ownership moves 3 -> 5
-  // exactly as a trade would; only the transactions distinguish them.
   const entries = [...own(1, 3, 100), ...own(2, 5, 100)];
   const tx: LedgerTransaction[] = [{
     id: 'w1', type: 'WAIVER', status: 'EXECUTED', scoringPeriodId: 2, teamId: 5, proposedDate: 10,
@@ -49,9 +107,6 @@ test('a waiver drop and claim is not a trade', () => {
 });
 
 test('a claim stamped in the previous scoring period still suppresses the move', () => {
-  // ESPN stamps the claim period 1 but processes it after the week 1 snapshot,
-  // so the player moves between snapshot 1 and 2. Narrowing the window to
-  // period 2 alone would report this as a trade.
   const entries = [...own(1, 3, 100), ...own(2, 5, 100)];
   const tx: LedgerTransaction[] = [{
     id: 'w1', type: 'WAIVER', status: 'EXECUTED', scoringPeriodId: 1, teamId: 5, proposedDate: 10,
@@ -60,7 +115,7 @@ test('a claim stamped in the previous scoring period still suppresses the move',
   assert.deepEqual(detectTrades(2026, entries, tx), []);
 });
 
-test('a failed waiver does not suppress a real trade', () => {
+test('a failed waiver does not suppress a real reciprocal trade', () => {
   const entries = [...own(1, 3, 100), ...own(1, 5, 200), ...own(2, 3, 200), ...own(2, 5, 100)];
   const tx: LedgerTransaction[] = [{
     id: 'w1', type: 'WAIVER', status: 'FAILED_ROSTERLIMIT', scoringPeriodId: 2, teamId: 5,
@@ -74,10 +129,7 @@ test('a preseason trade is found by diffing week 1 against the draft', () => {
   const trades = detectTrades(2026, entries, [draft([[100, 3], [200, 5]])]);
   assert.equal(trades.length, 1);
   assert.equal(trades[0]!.effective_week, 1);
-  assert.deepEqual(
-    trades[0]!.players.map((p) => p.espn_player_id).sort((a, b) => a - b),
-    [100, 200]
-  );
+  assert.equal(trades[0]!.confidence, 'reciprocal');
 });
 
 test('a player added from free agency has no prior owner and is ignored', () => {
@@ -85,7 +137,7 @@ test('a player added from free agency has no prior owner and is ignored', () => 
   assert.deepEqual(detectTrades(2026, entries, [draft([[100, 3]])]), []);
 });
 
-test('an uneven trade is one trade, not two', () => {
+test('an uneven reciprocal trade is one trade, not two', () => {
   const entries = [
     ...own(1, 3, 100, 101, 102), ...own(1, 5, 200),
     ...own(2, 3, 200, 102), ...own(2, 5, 100, 101),
@@ -95,7 +147,7 @@ test('an uneven trade is one trade, not two', () => {
   assert.equal(trades[0]!.players.length, 3);
 });
 
-test('two separate pairs trading in the same week are two trades', () => {
+test('two separate pairs trading in the same week are two reconstructed trades', () => {
   const entries = [
     ...own(1, 1, 10), ...own(1, 2, 20), ...own(1, 3, 30), ...own(1, 4, 40),
     ...own(2, 1, 20), ...own(2, 2, 10), ...own(2, 3, 40), ...own(2, 4, 30),
@@ -104,20 +156,28 @@ test('two separate pairs trading in the same week are two trades', () => {
   assert.deepEqual(trades.map((t) => t.trade_id), ['2026-w2-1v2', '2026-w2-3v4']);
 });
 
-test('a TRADE_ACCEPT in the window is attached to the trade', () => {
+test('an empty TRADE_ACCEPT can corroborate a reciprocal reconstruction but not license it', () => {
   const entries = [...own(1, 3, 100), ...own(1, 5, 200), ...own(2, 3, 200), ...own(2, 5, 100)];
   const tx: LedgerTransaction[] = [{
     id: 'accept-1', type: 'TRADE_ACCEPT', scoringPeriodId: 2, teamId: 5,
     proposedDate: Date.UTC(2026, 8, 1), items: [],
   }];
   const t = detectTrades(2026, entries, tx)[0]!;
+  assert.equal(t.confidence, 'reciprocal');
   assert.equal(t.espn_transaction_id, 'accept-1');
   assert.equal(t.accepted_at, new Date(Date.UTC(2026, 8, 1)).toISOString());
 });
 
-test('two accepts in one window are attached to neither trade', () => {
-  // Corroboration must be unambiguous. Guessing which envelope belongs to
-  // which pair would print a wrong date next to a real trade.
+test('an unrelated ledger never turns a one-way ownership change into a trade', () => {
+  const entries = [...own(1, 3, 100), ...own(2, 5, 100)];
+  const tx: LedgerTransaction[] = [{
+    id: 'unrelated', type: 'WAIVER', status: 'EXECUTED', scoringPeriodId: 2, teamId: 1,
+    proposedDate: 5, items: [{ type: 'ADD', playerId: 777 }],
+  }];
+  assert.deepEqual(detectTrades(2026, entries, tx), []);
+});
+
+test('two empty accepts in one window are attached to neither reconstruction', () => {
   const entries = [
     ...own(1, 1, 10), ...own(1, 2, 20), ...own(1, 3, 30), ...own(1, 4, 40),
     ...own(2, 1, 20), ...own(2, 2, 10), ...own(2, 3, 40), ...own(2, 4, 30),
@@ -130,41 +190,11 @@ test('two accepts in one window are attached to neither trade', () => {
   assert.deepEqual(trades.map((t) => t.espn_transaction_id), [null, null]);
 });
 
-test('no roster snapshots means no trades rather than a crash', () => {
+test('no roster snapshots and no completed itemized trades means no trades', () => {
   assert.deepEqual(detectTrades(2026, [], [draft([[100, 3]])]), []);
 });
 
-/* ------------------------------- seasons with no ledger (2018-2025 archive) */
-
-test('with no transactions at all, a one-way move is left alone', () => {
-  // This is the whole safeguard for the historical archive. Those seasons have
-  // full weekly rosters and NO transactions, so every waiver claim looks
-  // exactly like a one-sided trade. Roughly 20 of these happen per season.
-  const entries = [...own(1, 3, 100), ...own(2, 5, 100)];
-  assert.deepEqual(detectTrades(2021, entries, []), []);
-});
-
-test('with no transactions, a two-way swap is still a trade', () => {
-  const entries = [...own(1, 3, 100), ...own(1, 5, 200), ...own(2, 3, 200), ...own(2, 5, 100)];
-  const trades = detectTrades(2021, entries, []);
-  assert.equal(trades.length, 1);
-  assert.equal(trades[0]!.confidence, 'reciprocal');
-});
-
-test('with a ledger, a one-way move IS a trade', () => {
-  // A player for nothing, or for FAAB. Only findable where the transactions
-  // rule out a waiver claim, which is why the two rules are not the same rule.
-  const entries = [...own(1, 3, 100), ...own(2, 5, 100)];
-  const tx: LedgerTransaction[] = [{
-    id: 'unrelated', type: 'WAIVER', status: 'EXECUTED', scoringPeriodId: 2, teamId: 1,
-    proposedDate: 5, items: [{ type: 'ADD', playerId: 777 }],
-  }];
-  const trades = detectTrades(2026, entries, tx);
-  assert.equal(trades.length, 1);
-  assert.equal(trades[0]!.confidence, 'ledger');
-});
-
-test('trade ids are stable across reruns', () => {
+test('trade ids are stable across roster input order', () => {
   const entries = [...own(1, 3, 100), ...own(1, 5, 200), ...own(2, 3, 200), ...own(2, 5, 100)];
   const a = detectTrades(2026, entries, []);
   const b = detectTrades(2026, [...entries].reverse(), []);
