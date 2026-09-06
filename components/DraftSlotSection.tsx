@@ -21,6 +21,7 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       ? row
       : best
   ), records.performance[0]);
+  const outcomesBySlot = new Map(records.outcomes.map((row) => [row.draft_slot, row]));
 
   return (
     <>
@@ -40,22 +41,28 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       )}
 
       <div className="card"><div className="scroll"><table>
-        <thead><tr><th>Draft slot</th><th className="num">Avg value</th><th className="num">Avg class rank</th><th className="num">Best draft</th><th className="num">Top 3</th><th className="num">Worst draft</th></tr></thead>
-        <tbody>{records.performance.map((row) => (
-          <tr key={row.draft_slot}>
-            <td><strong>{slotLabel(row.draft_slot)}</strong><span className="tsub block">#{row.draft_slot} overall</span></td>
-            <td className={`num ${Number(row.avg_class_value) > 0 ? 'up' : Number(row.avg_class_value) < 0 ? 'down' : ''}`}><strong>{signed(row.avg_class_value)}</strong><span className="tsub block">positional slots / pick</span></td>
-            <td className="num"><strong>{Number(row.avg_class_rank).toFixed(2)}</strong><span className="tsub block">1 = best class</span></td>
-            <td className="num"><strong>{row.best_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.best_draft_pct).toFixed(1)}%</span></td>
-            <td className="num"><strong>{row.top3_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.top3_pct).toFixed(1)}%</span></td>
-            <td className="num"><strong>{row.worst_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.worst_pct).toFixed(1)}%</span></td>
-          </tr>
-        ))}</tbody>
+        <thead><tr><th>Draft slot</th><th className="num">Avg value</th><th className="num">Avg class rank</th><th className="num">Best draft</th><th className="num">Top 3</th><th className="num">Worst draft</th><th className="num">Reg. Champ.</th><th className="num">Champ</th></tr></thead>
+        <tbody>{records.performance.map((row) => {
+          const outcome = outcomesBySlot.get(row.draft_slot);
+          return (
+            <tr key={row.draft_slot}>
+              <td><strong>{slotLabel(row.draft_slot)}</strong><span className="tsub block">#{row.draft_slot} overall</span></td>
+              <td className={`num ${Number(row.avg_class_value) > 0 ? 'up' : Number(row.avg_class_value) < 0 ? 'down' : ''}`}><strong>{signed(row.avg_class_value)}</strong><span className="tsub block">positional slots / pick</span></td>
+              <td className="num"><strong>{Number(row.avg_class_rank).toFixed(2)}</strong><span className="tsub block">1 = best class</span></td>
+              <td className="num"><strong>{row.best_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.best_draft_pct).toFixed(1)}%</span></td>
+              <td className="num"><strong>{row.top3_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.top3_pct).toFixed(1)}%</span></td>
+              <td className="num"><strong>{row.worst_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.worst_pct).toFixed(1)}%</span></td>
+              <td className="num"><strong>{outcome ? `${outcome.regular_season_firsts}/${outcome.seasons_on_file}` : '—'}</strong>{outcome && <span className="tsub block">{Number(outcome.regular_season_first_pct).toFixed(1)}%</span>}</td>
+              <td className="num"><strong>{outcome ? `${outcome.championships}/${outcome.seasons_on_file}` : '—'}</strong>{outcome && <span className="tsub block">{Number(outcome.championship_pct).toFixed(1)}%</span>}</td>
+            </tr>
+          );
+        })}</tbody>
       </table></div></div>
 
       <p className="note">
-        Draft-slot performance uses the 17 fully graded ten-team drafts from 2008–2025, excluding 2020.
+        Draft-quality columns use the 17 fully graded ten-team drafts from 2008–2025, excluding 2020.
         “Best draft” and “worst draft” mean the highest and lowest class value in that season; exact value ties count for each tied class.
+        Reg. Champ. and Champ use every recovered draft slot from 2005–2025, excluding 2020, and match the History page&rsquo;s regular-season champion and championship records.
       </p>
 
       <h3>Franchise draft-order history</h3>
