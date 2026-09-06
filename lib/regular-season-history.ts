@@ -8,6 +8,8 @@ export interface RegularSeasonChampionRow {
   franchise_key: string;
   current_name: string;
   team_name: string;
+  manager_key: string | null;
+  manager_name: string | null;
   wins: number;
   losses: number;
   ties: number;
@@ -36,10 +38,14 @@ async function getRegularSeasonChampions() {
          from public.franchise_seasons fs
      )
      select r.season, r.franchise_key, f.current_name, r.team_name,
+            m.manager_key, m.display_name as manager_name,
             r.regular_wins as wins, r.regular_losses as losses, r.regular_ties as ties,
             round(r.regular_points_for, 1)::text as points_for
        from ranked r
        join public.franchises f using (franchise_key)
+       left join public.manager_franchise_seasons ms
+         on ms.season = r.season and ms.franchise_key = r.franchise_key and ms.is_primary
+       left join public.managers m using (manager_key)
       where r.regular_rank = 1
       order by r.season desc`
   );
@@ -47,6 +53,6 @@ async function getRegularSeasonChampions() {
 
 export const getCachedRegularSeasonChampions = unstable_cache(
   getRegularSeasonChampions,
-  ['regular-season-champions'],
+  ['regular-season-champions-v2'],
   { revalidate: 86400 }
 );
