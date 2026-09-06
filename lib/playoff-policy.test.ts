@@ -1,23 +1,26 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { isTrackedPlayoffTier, trackedMatchupSql } from './playoff-policy.ts';
+import { isTrackedGame, trackedMatchupSql } from './playoff-policy.ts';
 
-test('regular season and championship bracket are tracked', () => {
-  assert.equal(isTrackedPlayoffTier(null), true);
-  assert.equal(isTrackedPlayoffTier(undefined), true);
-  assert.equal(isTrackedPlayoffTier('NONE'), true);
-  assert.equal(isTrackedPlayoffTier('WINNERS_BRACKET'), true);
+test('every game through the regular-season boundary is tracked', () => {
+  assert.equal(isTrackedGame(14, 14, null), true);
+  assert.equal(isTrackedGame(14, 14, 'NONE'), true);
+  assert.equal(isTrackedGame(14, 14, 'LOSERS_CONSOLATION_LADDER'), true);
 });
 
-test('all consolation/lower brackets are excluded', () => {
-  assert.equal(isTrackedPlayoffTier('LOSERS_CONSOLATION_LADDER'), false);
-  assert.equal(isTrackedPlayoffTier('CONSOLATION_LADDER'), false);
-  assert.equal(isTrackedPlayoffTier('LOSERS_BRACKET'), false);
+test('after the regular season only the championship bracket is tracked', () => {
+  assert.equal(isTrackedGame(15, 14, 'WINNERS_BRACKET'), true);
+  assert.equal(isTrackedGame(15, 14, null), false);
+  assert.equal(isTrackedGame(15, 14, 'NONE'), false);
+  assert.equal(isTrackedGame(15, 14, 'LOSERS_CONSOLATION_LADDER'), false);
+  assert.equal(isTrackedGame(17, 14, 'CONSOLATION_LADDER'), false);
 });
 
-test('SQL policy mirrors the same rule', () => {
-  assert.match(trackedMatchupSql('x'), /x\.playoff_tier is null/);
-  assert.match(trackedMatchupSql('x'), /'NONE'/);
-  assert.match(trackedMatchupSql('x'), /'WINNERS_BRACKET'/);
+test('SQL policy enforces both season boundary and explicit winners bracket', () => {
+  const sql = trackedMatchupSql('x');
+  assert.match(sql, /public\.seasons/);
+  assert.match(sql, /x\.week <= tracked_season\.regular_season_weeks/);
+  assert.match(sql, /x\.playoff_tier = 'WINNERS_BRACKET'/);
+  assert.doesNotMatch(sql, /playoff_tier is null/);
 });
