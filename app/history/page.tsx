@@ -157,7 +157,7 @@ export default async function History() {
       </div>
 
       <nav aria-label="Explore league history" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '22px 0 30px' }}>
-        <a className="btn btn-quiet" href="/history/rivalries">Grudges →</a>
+        <a className="btn btn-quiet" href="/history/rivalries">Manager grudges →</a>
         <a className="btn btn-quiet" href="/history/drafts">Draft history →</a>
         <a className="btn btn-quiet" href="/history/records">Record book →</a>
       </nav>
