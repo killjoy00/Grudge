@@ -9,7 +9,8 @@ import {
   getWeekMatchups,
   getWeekProjections,
 } from './queries.ts';
-import { getCurrentIncompleteWeek, getRivalrySeries } from './game-context.ts';
+import { getCurrentIncompleteWeek } from './game-context.ts';
+import { getManagerGrudgeForTeams } from './rivalry-queries.ts';
 
 export interface MyRecentMove {
   week: number;
@@ -48,10 +49,14 @@ export interface MyGrudgeDashboard {
     opponent_owners: string | null;
     my_projection: string | null;
     opponent_projection: string | null;
-    rivalry_games: number;
-    rivalry_wins: number;
-    rivalry_losses: number;
-    rivalry_ties: number;
+    manager_key: string | null;
+    manager_name: string | null;
+    opponent_manager_key: string | null;
+    opponent_manager_name: string | null;
+    grudge_games: number;
+    grudge_wins: number;
+    grudge_losses: number;
+    grudge_ties: number;
   } | null;
   recent_moves: MyRecentMove[];
 }
@@ -158,21 +163,31 @@ export async function getMyGrudgeDashboard(
         )
       : null;
 
-    let rivalryGames = 0;
-    let rivalryWins = 0;
-    let rivalryLosses = 0;
-    let rivalryTies = 0;
+    let managerKey: string | null = null;
+    let managerName: string | null = null;
+    let opponentManagerKey: string | null = null;
+    let opponentManagerName: string | null = null;
+    let grudgeGames = 0;
+    let grudgeWins = 0;
+    let grudgeLosses = 0;
+    let grudgeTies = 0;
     if (opponentId !== null) {
-      const rivalry = await getRivalrySeries(espnTeamId, opponentId);
-      rivalryGames = rivalry.games.length;
-      for (const game of rivalry.games) {
-        if (game.winner === 'TIE') {
-          rivalryTies += 1;
-          continue;
+      const grudge = await getManagerGrudgeForTeams(season, espnTeamId, opponentId);
+      managerKey = grudge.managerA?.manager_key ?? null;
+      managerName = grudge.managerA?.display_name ?? null;
+      opponentManagerKey = grudge.managerB?.manager_key ?? null;
+      opponentManagerName = grudge.managerB?.display_name ?? null;
+      grudgeGames = grudge.games.length;
+      if (managerKey) {
+        for (const game of grudge.games) {
+          if (game.winner === 'TIE') {
+            grudgeTies += 1;
+            continue;
+          }
+          const winnerKey = game.winner === 'HOME' ? game.home_manager_key : game.away_manager_key;
+          if (winnerKey === managerKey) grudgeWins += 1;
+          else grudgeLosses += 1;
         }
-        const winnerId = game.winner === 'HOME' ? game.home_team_id : game.away_team_id;
-        if (winnerId === espnTeamId) rivalryWins += 1;
-        else rivalryLosses += 1;
       }
     }
 
@@ -188,10 +203,14 @@ export async function getMyGrudgeDashboard(
       opponent_owners: opponentOwners,
       my_projection: mine?.projected_points ?? null,
       opponent_projection: theirs?.projected_points ?? null,
-      rivalry_games: rivalryGames,
-      rivalry_wins: rivalryWins,
-      rivalry_losses: rivalryLosses,
-      rivalry_ties: rivalryTies,
+      manager_key: managerKey,
+      manager_name: managerName,
+      opponent_manager_key: opponentManagerKey,
+      opponent_manager_name: opponentManagerName,
+      grudge_games: grudgeGames,
+      grudge_wins: grudgeWins,
+      grudge_losses: grudgeLosses,
+      grudge_ties: grudgeTies,
     };
   }
 
