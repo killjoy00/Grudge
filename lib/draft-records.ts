@@ -47,6 +47,29 @@ export interface FirstRoundPositionRow {
   picks: number;
 }
 
+export interface DraftPositionSummaryRow {
+  default_position_id: number;
+  picks: number;
+  first_picks: number;
+}
+
+export interface FranchiseDraftPositionRow {
+  franchise_key: string;
+  team_name: string;
+  total_picks: number;
+  drafts_on_file: number;
+  most_drafted_position_id: number | null;
+  most_drafted_picks: number | null;
+  first_pick_position_id: number | null;
+  first_pick_times: number | null;
+  best_value_position_id: number | null;
+  best_avg_value_delta: string | null;
+  best_graded_picks: number | null;
+  worst_value_position_id: number | null;
+  worst_avg_value_delta: string | null;
+  worst_graded_picks: number | null;
+}
+
 export interface DraftRecords {
   bestClasses: DraftClassRow[];
   worstClasses: DraftClassRow[];
@@ -54,6 +77,8 @@ export interface DraftRecords {
   busts: DraftPickValueRow[];
   repeats: RepeatDraftRow[];
   firstRoundPositions: FirstRoundPositionRow[];
+  positionSummary: DraftPositionSummaryRow[];
+  franchisePositions: FranchiseDraftPositionRow[];
 }
 
 /**
@@ -131,7 +156,16 @@ with modern_weekly as (
 `;
 
 export async function getDraftRecords(): Promise<DraftRecords> {
-  const [bestClasses, worstClasses, steals, busts, repeats, firstRoundPositions] = await Promise.all([
+  const [
+    bestClasses,
+    worstClasses,
+    steals,
+    busts,
+    repeats,
+    firstRoundPositions,
+    positionSummary,
+    franchisePositions,
+  ] = await Promise.all([
     asPublic<DraftClassRow>(`${GRADED_CTE}
       select season, franchise_key, team_name, manager_key, manager,
              count(*)::int as graded_picks,
@@ -198,7 +232,132 @@ export async function getDraftRecords(): Promise<DraftRecords> {
          and d.season <> 2020
        group by p.default_position_id
        order by count(*) desc, p.default_position_id nulls last`),
+    asPublic<DraftPositionSummaryRow>(`
+      with draft_base as (
+        select d.season, d.overall_pick, tf.franchise_key, p.default_position_id
+          from public.draft_picks d
+          join public.team_franchise tf
+            on tf.season = d.season and tf.espn_team_id = d.espn_team_id
+          left join public.players p using (espn_player_id)
+         where d.season between 2005 and 2025
+           and d.season <> 2020
+           and p.default_position_id is not null
+      ), first_pick_rows as (
+        select draft_base.*,
+               row_number() over (
+                 partition by season, franchise_key
+                 order by overall_pick
+               ) as team_pick_number
+          from draft_base
+      ), pick_counts as (
+        select default_position_id, count(*)::int as picks
+          from draft_base
+         group by default_position_id
+      ), first_counts as (
+        select default_position_id, count(*)::int as first_picks
+          from first_pick_rows
+         where team_pick_number = 1
+         group by default_position_id
+      )
+      select pc.default_position_id::int,
+             pc.picks,
+             coalesce(fc.first_picks, 0)::int as first_picks
+        from pick_counts pc
+        left join first_counts fc using (default_position_id)
+       order by pc.picks desc, pc.default_position_id`),
+    asPublic<FranchiseDraftPositionRow>(`${GRADED_CTE},
+      draft_base as (
+        select d.season, d.overall_pick, tf.franchise_key,
+               coalesce(f.current_name, tf.team_name) as team_name,
+               p.default_position_id
+          from public.draft_picks d
+          join public.team_franchise tf
+            on tf.season = d.season and tf.espn_team_id = d.espn_team_id
+          left join public.franchises f using (franchise_key)
+          left join public.players p using (espn_player_id)
+         where d.season between 2005 and 2025
+           and d.season <> 2020
+           and p.default_position_id is not null
+      ), franchise_totals as (
+        select franchise_key,
+               max(team_name) as team_name,
+               count(*)::int as total_picks,
+               count(distinct season)::int as drafts_on_file
+          from draft_base
+         group by franchise_key
+      ), position_counts as (
+        select franchise_key, default_position_id,
+               count(*)::int as picks,
+               row_number() over (
+                 partition by franchise_key
+                 order by count(*) desc, default_position_id
+               ) as position_rank
+          from draft_base
+         group by franchise_key, default_position_id
+      ), first_pick_rows as (
+        select draft_base.*,
+               row_number() over (
+                 partition by season, franchise_key
+                 order by overall_pick
+               ) as team_pick_number
+          from draft_base
+      ), first_pick_counts as (
+        select franchise_key, default_position_id,
+               count(*)::int as times,
+               row_number() over (
+                 partition by franchise_key
+                 order by count(*) desc, default_position_id
+               ) as position_rank
+          from first_pick_rows
+         where team_pick_number = 1
+         group by franchise_key, default_position_id
+      ), value_by_position as (
+        select franchise_key, default_position_id,
+               count(*)::int as graded_picks,
+               round(avg(value_delta)::numeric, 2)::text as avg_value_delta,
+               row_number() over (
+                 partition by franchise_key
+                 order by avg(value_delta) desc, count(*) desc, default_position_id
+               ) as best_rank,
+               row_number() over (
+                 partition by franchise_key
+                 order by avg(value_delta) asc, count(*) desc, default_position_id
+               ) as worst_rank
+          from scored
+         group by franchise_key, default_position_id
+        having count(*) >= 8
+      )
+      select ft.franchise_key, ft.team_name, ft.total_picks, ft.drafts_on_file,
+             pc.default_position_id::int as most_drafted_position_id,
+             pc.picks::int as most_drafted_picks,
+             fp.default_position_id::int as first_pick_position_id,
+             fp.times::int as first_pick_times,
+             best.default_position_id::int as best_value_position_id,
+             best.avg_value_delta as best_avg_value_delta,
+             best.graded_picks::int as best_graded_picks,
+             worst.default_position_id::int as worst_value_position_id,
+             worst.avg_value_delta as worst_avg_value_delta,
+             worst.graded_picks::int as worst_graded_picks
+        from franchise_totals ft
+        left join position_counts pc
+          on pc.franchise_key = ft.franchise_key and pc.position_rank = 1
+        left join first_pick_counts fp
+          on fp.franchise_key = ft.franchise_key and fp.position_rank = 1
+        left join value_by_position best
+          on best.franchise_key = ft.franchise_key and best.best_rank = 1
+        left join value_by_position worst
+          on worst.franchise_key = ft.franchise_key and worst.worst_rank = 1
+       order by ft.team_name`),
   ]);
 
-  return { bestClasses, worstClasses, steals, busts, repeats, firstRoundPositions };
+  return {
+    bestClasses,
+    worstClasses,
+    steals,
+    busts,
+    repeats,
+    firstRoundPositions,
+    positionSummary,
+    franchisePositions,
+  };
 }

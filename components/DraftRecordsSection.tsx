@@ -7,6 +7,9 @@ const signed = (value: number | string) => {
   return `${n > 0 ? '+' : ''}${n.toFixed(2)}`;
 };
 
+const positionLabel = (positionId: number | null | undefined) =>
+  POSITIONS[positionId ?? 0] ?? (positionId == null ? '—' : `Pos. ${positionId}`);
+
 function sourceLabel(source: string) {
   if (source === 'espn_exact') return 'ESPN season total';
   if (source === 'espn_weekly') return 'ESPN weekly archive';
@@ -49,7 +52,7 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
             <td>{index + 1}</td>
             <td>
               <span className="tname">{row.full_name ?? `ESPN player #${row.espn_player_id}`}</span>
-              <span className="tsub block">{POSITIONS[row.default_position_id ?? 0] ?? '—'} · {row.season} R{row.round} P{row.round_pick} (#{row.overall_pick})</span>
+              <span className="tsub block">{positionLabel(row.default_position_id)} · {row.season} R{row.round} P{row.round_pick} (#{row.overall_pick})</span>
             </td>
             <td><a href={franchiseHref(row.franchise_key)}>{row.team_name}</a>{row.manager_key && row.manager && <span className="tsub block"><a href={managerHref(row.manager_key)}>{row.manager}</a></span>}</td>
             <td className={`num ${positive ? 'up' : 'down'}`}><strong>{row.value_delta > 0 ? '+' : ''}{row.value_delta}</strong><span className="tsub block">positional slots</span></td>
@@ -63,6 +66,8 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
 
 export function DraftRecordsSection({ records, full = false }: { records: DraftRecords; full?: boolean }) {
   const firstRoundTotal = records.firstRoundPositions.reduce((sum, row) => sum + row.picks, 0);
+  const positionTotal = records.positionSummary.reduce((sum, row) => sum + row.picks, 0);
+  const firstPickTotal = records.positionSummary.reduce((sum, row) => sum + row.first_picks, 0);
 
   if (!full) {
     return (
@@ -87,7 +92,7 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
         <div><strong>2005–2025</strong><span>Draft boards on file</span></div>
         <div><strong>2008–2025</strong><span>Drafts with performance grades</span></div>
         <div><strong>{firstRoundTotal}</strong><span>First-round picks recorded</span></div>
-        <div><strong>{records.firstRoundPositions[0] ? `${POSITIONS[records.firstRoundPositions[0].default_position_id ?? 0] ?? '—'} ${Math.round(records.firstRoundPositions[0].picks / Math.max(1, firstRoundTotal) * 100)}%` : '—'}</strong><span>Favorite first-round position</span></div>
+        <div><strong>{records.firstRoundPositions[0] ? `${positionLabel(records.firstRoundPositions[0].default_position_id)} ${Math.round(records.firstRoundPositions[0].picks / Math.max(1, firstRoundTotal) * 100)}%` : '—'}</strong><span>Favorite first-round position</span></div>
       </div>
 
       <div className="callout" style={{ marginBottom: 18 }}>
@@ -126,16 +131,54 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
         ))}</tbody>
       </table></div></div>
 
-      <h3>First-round position history</h3>
+      <h3>Position history</h3>
+      <p className="sub">
+        All drafted positions from the recovered boards. “First pick” means the first selection a franchise made in that season, rather than every pick that happened to fall in round 1.
+      </p>
       <div className="card"><div className="scroll"><table>
-        <thead><tr><th>Position</th><th className="num">Picks</th><th className="num">Share</th></tr></thead>
-        <tbody>{records.firstRoundPositions.map((row) => (
-          <tr key={row.default_position_id ?? -1}>
-            <td className="tname">{POSITIONS[row.default_position_id ?? 0] ?? '—'}</td>
+        <thead><tr><th>Position</th><th className="num">All picks</th><th className="num">Draft share</th><th className="num">First picks</th><th className="num">First-pick share</th></tr></thead>
+        <tbody>{records.positionSummary.map((row) => (
+          <tr key={row.default_position_id}>
+            <td className="tname">{positionLabel(row.default_position_id)}</td>
             <td className="num">{row.picks}</td>
-            <td className="num">{(row.picks / Math.max(1, firstRoundTotal) * 100).toFixed(1)}%</td>
+            <td className="num">{(row.picks / Math.max(1, positionTotal) * 100).toFixed(1)}%</td>
+            <td className="num"><strong>{row.first_picks}</strong></td>
+            <td className="num">{(row.first_picks / Math.max(1, firstPickTotal) * 100).toFixed(1)}%</td>
           </tr>
         ))}</tbody>
+      </table></div></div>
+
+      <h3>Franchise position report cards</h3>
+      <p className="sub">
+        Most drafted and first-pick tendencies use the full 2005–2025 boards. Best and worst positions use the same positional value metric as the steal/bust tables, require at least eight graded picks at that position, and cover QB/RB/WR/TE from 2008–2025.
+      </p>
+      <div className="card"><div className="scroll"><table>
+        <thead><tr><th>Franchise</th><th>Most drafted</th><th>Most common first pick</th><th>Best value position</th><th>Worst value position</th></tr></thead>
+        <tbody>{records.franchisePositions.map((row) => {
+          const bestValue = row.best_avg_value_delta == null ? null : Number(row.best_avg_value_delta);
+          const worstValue = row.worst_avg_value_delta == null ? null : Number(row.worst_avg_value_delta);
+          return (
+            <tr key={row.franchise_key}>
+              <td><a className="tname" href={franchiseHref(row.franchise_key)}>{row.team_name}</a></td>
+              <td>
+                <strong>{positionLabel(row.most_drafted_position_id)}</strong>
+                <span className="tsub block">{row.most_drafted_picks ?? 0} of {row.total_picks} picks</span>
+              </td>
+              <td>
+                <strong>{positionLabel(row.first_pick_position_id)}</strong>
+                <span className="tsub block">{row.first_pick_times ?? 0} of {row.drafts_on_file} drafts</span>
+              </td>
+              <td className={bestValue == null ? undefined : bestValue > 0 ? 'up' : bestValue < 0 ? 'down' : undefined}>
+                <strong>{positionLabel(row.best_value_position_id)}{bestValue == null ? '' : ` ${signed(bestValue)}`}</strong>
+                <span className="tsub block">{row.best_graded_picks ?? 0} graded picks</span>
+              </td>
+              <td className={worstValue == null ? undefined : worstValue > 0 ? 'up' : worstValue < 0 ? 'down' : undefined}>
+                <strong>{positionLabel(row.worst_value_position_id)}{worstValue == null ? '' : ` ${signed(worstValue)}`}</strong>
+                <span className="tsub block">{row.worst_graded_picks ?? 0} graded picks</span>
+              </td>
+            </tr>
+          );
+        })}</tbody>
       </table></div></div>
 
       <p className="note">
