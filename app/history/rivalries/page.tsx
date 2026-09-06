@@ -33,11 +33,12 @@ function pairName(row: RivalryPairRow) {
 
 export default async function AllTimeRivalriesPage() {
   const currentSeason = await getCurrentSeason();
-  const [[[_, managers], currentSeasonManagers], allPairs, highestGame] = await Promise.all([
+  const [[directory, currentSeasonManagers], allPairs, highestGame] = await Promise.all([
     Promise.all([getCachedHistoryDirectory(), getSeasonManagers(currentSeason)]),
     getAllTimeRivalryPairs(),
     getHighestScoringRivalryGame(),
   ]);
+  const managers = directory[1];
 
   const currentManagerKeys = new Set(currentSeasonManagers.map((row) => row.manager_key));
   if (currentManagerKeys.size === 0) {
