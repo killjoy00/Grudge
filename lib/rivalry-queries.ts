@@ -198,14 +198,33 @@ export interface ManagerTeamIdentity {
   espn_team_id: number;
 }
 
+/**
+ * Resolve the manager controlling a team in the requested season.
+ *
+ * Completed history uses exact season mappings elsewhere. This helper is for
+ * current matchup context, where the current season can exist in `teams`
+ * before result-derived `franchise_seasons` and the new manager-tenure rows are
+ * loaded. `team_franchise` already resolves that preseason identity safely;
+ * prefer an exact-season manager mapping, otherwise carry forward the latest
+ * primary manager recorded for that same durable franchise.
+ */
 export async function getManagerForTeamSeason(season: number, espnTeamId: number) {
   const rows = await asPublic<ManagerTeamIdentity>(
-    `select m.manager_key, m.display_name, fs.franchise_key, fs.team_name, fs.espn_team_id
-       from public.franchise_seasons fs
-       join public.manager_franchise_seasons ms
-         on ms.season = fs.season and ms.franchise_key = fs.franchise_key and ms.is_primary
-       join public.managers m using (manager_key)
-      where fs.season = $1 and fs.espn_team_id = $2
+    `select m.manager_key, m.display_name,
+            tf.franchise_key, tf.team_name, tf.espn_team_id
+       from public.team_franchise tf
+       join lateral (
+         select ms.manager_key
+           from public.manager_franchise_seasons ms
+          where ms.franchise_key = tf.franchise_key
+            and ms.is_primary
+            and ms.season <= $1
+          order by case when ms.season = $1 then 0 else 1 end,
+                   ms.season desc
+          limit 1
+       ) resolved on true
+       join public.managers m on m.manager_key = resolved.manager_key
+      where tf.season = $1 and tf.espn_team_id = $2
       limit 1`,
     [season, espnTeamId]
   );
