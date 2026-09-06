@@ -2,6 +2,7 @@ import 'server-only';
 
 import { asPublic } from './db.ts';
 import { canonicalEspnTeamIdSql } from './franchise-identity.ts';
+import { trackedMatchupSql } from './playoff-policy.ts';
 import type { RivalryPairRow } from './rivalry-leaderboard.ts';
 
 export interface FranchiseRivalry {
@@ -17,16 +18,14 @@ export interface FranchiseRivalry {
 }
 
 /**
- * All finalized meetings for one durable franchise, playoffs included.
- *
- * This intentionally reads matchups instead of public.head_to_head because the
- * legacy ESPN recovery proved one raw team-id handoff: CTE was team 7 in 2005
- * and team 10 thereafter. Canonicalizing both sides makes every opponent's
- * record correct too, not just CTE's own page.
+ * All tracked meetings for one durable franchise: regular season plus only the
+ * championship playoff bracket. Consolation placement games are deliberately
+ * excluded from rivalry records.
  */
 export async function getFranchiseRivalries(teamId: number) {
   const homeFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.home_team_id');
   const awayFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.away_team_id');
+  const tracked = trackedMatchupSql('m');
 
   return asPublic<FranchiseRivalry>(
     `with sides as (
@@ -37,7 +36,7 @@ export async function getFranchiseRivalries(teamId: number) {
               m.winner = 'HOME' as won,
               m.winner = 'TIE' as tied
          from public.matchups m
-        where m.is_final and m.home_points is not null and m.away_points is not null
+        where m.is_final and m.home_points is not null and m.away_points is not null and ${tracked}
        union all
        select m.season,
               ${awayFranchiseId}::int as team_id,
@@ -46,7 +45,7 @@ export async function getFranchiseRivalries(teamId: number) {
               m.winner = 'AWAY' as won,
               m.winner = 'TIE' as tied
          from public.matchups m
-        where m.is_final and m.home_points is not null and m.away_points is not null
+        where m.is_final and m.home_points is not null and m.away_points is not null and ${tracked}
      ), totals as (
        select opp_id,
               count(*)::int as games,
@@ -71,10 +70,11 @@ export async function getFranchiseRivalries(teamId: number) {
   );
 }
 
-/** One row per unordered durable-franchise pairing across the complete recovered ledger. */
+/** One row per unordered durable-franchise pairing across the tracked ledger. */
 export async function getAllTimeRivalryPairs() {
   const homeFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.home_team_id');
   const awayFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.away_team_id');
+  const tracked = trackedMatchupSql('m');
 
   return asPublic<RivalryPairRow>(
     `with games as (
@@ -88,7 +88,7 @@ export async function getAllTimeRivalryPairs() {
               end as winner_id,
               nullif(m.playoff_tier, 'NONE') as playoff_tier
          from public.matchups m
-        where m.is_final and m.home_points is not null and m.away_points is not null
+        where m.is_final and m.home_points is not null and m.away_points is not null and ${tracked}
      ), pairs as (
        select season,
               least(home_id, away_id)::int as team_a_id,
@@ -139,10 +139,11 @@ export interface HighestScoringRivalryGame {
   playoff_tier: string | null;
 }
 
-/** The highest combined score in any finalized head-to-head game on file. */
+/** The highest combined score in any tracked head-to-head game on file. */
 export async function getHighestScoringRivalryGame() {
   const homeFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.home_team_id');
   const awayFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.away_team_id');
+  const tracked = trackedMatchupSql('m');
   const rows = await asPublic<HighestScoringRivalryGame>(
     `select m.season, m.week, m.espn_matchup_id,
             ${homeFranchiseId}::int as home_team_id,
@@ -157,7 +158,7 @@ export async function getHighestScoringRivalryGame() {
          on ht.season = m.season and ht.espn_team_id = m.home_team_id
        join public.teams at
          on at.season = m.season and at.espn_team_id = m.away_team_id
-      where m.is_final and m.home_points is not null and m.away_points is not null
+      where m.is_final and m.home_points is not null and m.away_points is not null and ${tracked}
       order by m.home_points + m.away_points desc, m.season, m.week, m.espn_matchup_id
       limit 1`
   );
