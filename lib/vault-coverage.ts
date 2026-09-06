@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { asPublic } from './db.ts';
+import { trackedMatchupSql } from './playoff-policy.ts';
 
 export interface VaultCoverageRow {
   season: number;
@@ -13,14 +14,18 @@ export interface VaultCoverageRow {
 }
 
 /**
- * What evidence is actually queryable for each season. The Vault reports
- * coverage rather than implying every ESPN view survived equally far back.
+ * What evidence is actually queryable for each season. Game coverage follows
+ * the site-wide tracked-game rule: regular season plus championship bracket.
+ * ESPN's raw consolation evidence can remain archived without being counted as
+ * a Grudge game.
  */
 export async function getVaultCoverage() {
+  const tracked = trackedMatchupSql('m');
   return asPublic<VaultCoverageRow>(
     `select s.season,
             (select count(*)::int from public.teams t where t.season = s.season) as teams,
-            (select count(*)::int from public.matchups m where m.season = s.season and m.is_final) as decided_games,
+            (select count(*)::int from public.matchups m
+              where m.season = s.season and m.is_final and ${tracked}) as decided_games,
             (select count(*)::int from public.draft_picks d where d.season = s.season) as draft_picks,
             (select count(*)::int from public.transactions x where x.season = s.season) as transactions,
             (select count(*)::int from public.roster_entries r where r.season = s.season) as roster_entries,
