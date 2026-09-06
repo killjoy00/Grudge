@@ -1,4 +1,7 @@
 import { HistoryNav } from '../../../components/HistoryNav.tsx';
+import { getCachedHistoryDirectory } from '../../../lib/history-overview-cache.ts';
+import { getSeasonManagers } from '../../../lib/history-queries.ts';
+import { getCurrentSeason } from '../../../lib/queries.ts';
 import {
   rivalryHighlights,
   seriesLeader,
@@ -29,10 +32,30 @@ function pairName(row: RivalryPairRow) {
 }
 
 export default async function AllTimeRivalriesPage() {
-  const [pairs, highestGame] = await Promise.all([
+  const currentSeason = await getCurrentSeason();
+  const [[[_, managers], currentSeasonManagers], allPairs, highestGame] = await Promise.all([
+    Promise.all([getCachedHistoryDirectory(), getSeasonManagers(currentSeason)]),
     getAllTimeRivalryPairs(),
     getHighestScoringRivalryGame(),
   ]);
+
+  const currentManagerKeys = new Set(currentSeasonManagers.map((row) => row.manager_key));
+  if (currentManagerKeys.size === 0) {
+    const latestManagerSeason = Math.max(0, ...managers.map((row) => row.last_season));
+    for (const row of managers) {
+      if (row.last_season === latestManagerSeason) currentManagerKeys.add(row.manager_key);
+    }
+  }
+
+  const pairs = allPairs.filter((row) =>
+    currentManagerKeys.has(row.manager_a_key) && currentManagerKeys.has(row.manager_b_key)
+  );
+  const visibleHighestGame = highestGame
+    && currentManagerKeys.has(highestGame.home_manager_key)
+    && currentManagerKeys.has(highestGame.away_manager_key)
+    ? highestGame
+    : null;
+
   const highlights = rivalryHighlights(pairs);
   const dominationLeader = highlights.domination ? seriesLeader(highlights.domination) : null;
   const playoffNemesis = highlights.playoffNemesis ? seriesLeader(highlights.playoffNemesis, true) : null;
@@ -48,7 +71,7 @@ export default async function AllTimeRivalriesPage() {
       <HistoryNav current="rivalries" />
 
       <h2>Grudge superlatives</h2>
-      <p className="sub">Lifetime closeness and domination require at least 20 meetings so a short tenure cannot steal a historical headline.</p>
+      <p className="sub">Current managers only. Lifetime closeness and domination require at least 20 meetings so a short tenure cannot steal a historical headline.</p>
       <div className="card">
         <div style={{ display: 'grid', gap: 20 }}>
           {highlights.mostPlayed && (
@@ -81,13 +104,13 @@ export default async function AllTimeRivalriesPage() {
               <span className="block note"><a href={hrefFor(highlights.playoffNemesis)}>{playoffNemesis.wins}-{playoffNemesis.losses} in the playoffs against {playoffNemesis.id === highlights.playoffNemesis.manager_a_key ? highlights.playoffNemesis.manager_b_name : highlights.playoffNemesis.manager_a_name} · {highlights.playoffNemesis.playoff_games} playoff meetings →</a></span>
             </div>
           )}
-          {highestGame && (
+          {visibleHighestGame && (
             <div>
               <span className="eyebrow">Highest-scoring grudge game</span>
-              <strong className="block">{highestGame.away_manager_name} {highestGame.away_points}–{highestGame.home_points} {highestGame.home_manager_name}</strong>
+              <strong className="block">{visibleHighestGame.away_manager_name} {visibleHighestGame.away_points}–{visibleHighestGame.home_points} {visibleHighestGame.home_manager_name}</strong>
               <span className="block note">
-                <a href={grudgeHref(highestGame.away_manager_key, highestGame.home_manager_key)}>
-                  {highestGame.total_points} combined points · {highestGame.season} week {highestGame.week}{highestGame.playoff_tier ? ' · playoffs' : ''} · {highestGame.away_team_name} at {highestGame.home_team_name} →
+                <a href={grudgeHref(visibleHighestGame.away_manager_key, visibleHighestGame.home_manager_key)}>
+                  {visibleHighestGame.total_points} combined points · {visibleHighestGame.season} week {visibleHighestGame.week}{visibleHighestGame.playoff_tier ? ' · playoffs' : ''} · {visibleHighestGame.away_team_name} at {visibleHighestGame.home_team_name} →
                 </a>
               </span>
             </div>
@@ -95,8 +118,8 @@ export default async function AllTimeRivalriesPage() {
         </div>
       </div>
 
-      <h2>Every grudge</h2>
-      <p className="sub">All manager pairings, ordered by games played. A manager carries the same record across every franchise they controlled.</p>
+      <h2>Current league grudges</h2>
+      <p className="sub">Only pairings between managers currently in the league are listed here. Their full records still include every season and every franchise they controlled.</p>
       <div className="card">
         <div className="scroll"><table>
           <thead><tr><th>Managers</th><th className="num">Games</th><th className="num">Lifetime</th><th className="num">Playoffs</th><th className="num">Playoff record</th><th className="num">Since</th></tr></thead>
@@ -110,7 +133,7 @@ export default async function AllTimeRivalriesPage() {
       </div>
 
       <div className="callout" style={{ marginTop: 24 }}>
-        A game belongs to the primary managers recorded for those franchises in that season. Regular-season games count; after the regular-season boundary, only championship-bracket games count. Consolation games never enter a grudge.
+        Former-manager grudges remain in the permanent ledger and individual manager files; they are simply omitted from this current-league directory. Regular-season games count, and after the regular-season boundary only championship-bracket games count. Consolation games never enter a grudge.
       </div>
     </>
   );
