@@ -12,7 +12,6 @@ import {
 } from '../../../lib/history-profile-queries.ts';
 import { getCurrentSeason } from '../../../lib/queries.ts';
 import { getCachedRegularSeasonChampions } from '../../../lib/regular-season-history.ts';
-import { getFranchiseRivalries } from '../../../lib/rivalry-queries.ts';
 
 export const revalidate = 3600;
 
@@ -52,7 +51,6 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
   ]);
   if (!identity || bySeason.length === 0) notFound();
 
-  const rivals = identity.espn_team_id ? await getFranchiseRivalries(identity.espn_team_id) : [];
   const currentSeason = await getCurrentSeason();
   const regularSeasonTitleSeasons = new Set(
     regularSeasonChampions
@@ -84,17 +82,6 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
   const bestPower = metrics
     .filter((row) => row.power_rank !== null)
     .sort((a, b) => (a.power_rank ?? 999) - (b.power_rank ?? 999) || Number(b.power_score ?? 0) - Number(a.power_score ?? 0))[0] ?? null;
-
-  const mostWins = rivals.reduce<typeof rivals[number] | null>(
-    (best, row) => (!best || row.wins > best.wins ? row : best), null
-  );
-  const mostLosses = rivals.reduce<typeof rivals[number] | null>(
-    (worst, row) => (!worst || row.losses > worst.losses ? row : worst), null
-  );
-  const uniqueExtreme = (target: typeof rivals[number] | null, field: 'wins' | 'losses') =>
-    target && rivals.filter((row) => row[field] === target[field]).length === 1 ? target.opp_id : null;
-  const bestId = uniqueExtreme(mostWins, 'wins');
-  const worstId = uniqueExtreme(mostLosses, 'losses');
 
   const chronological = [...bySeason].reverse();
   const milestones: Array<{ season: number; text: string }> = [];
@@ -245,36 +232,6 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
         </div>
         <p className="note">Power and luck are score-derived and can use the recovered 2005–2017 weekly boards. Top-player lines begin in 2018 because ESPN no longer serves the older lineup entries.</p>
       </div>
-
-      {rivals.length > 0 && identity.espn_team_id && (
-        <>
-          <h2>All-time rivalries</h2>
-          <p className="sub">Every recovered meeting, playoffs included, rolled up by permanent franchise.</p>
-          <div className="card">
-            <div className="scroll">
-              <table>
-                <thead><tr><th>Opponent</th><th className="num">Record</th><th className="num">Games</th><th className="num">Since</th></tr></thead>
-                <tbody>
-                  {rivals.map((rival) => (
-                    <tr key={rival.opp_id}>
-                      <td>
-                        <a href={`/team/${rival.opp_id}`} className="tname">{rival.name}</a>
-                        {rival.opp_id === bestId && <span className="tag best">Most beaten</span>}
-                        {rival.opp_id === worstId && <span className="tag worst">Owns us</span>}
-                        <a href={`/rivalry/${identity.espn_team_id}/${rival.opp_id}`} className="tsub block">Full series →</a>
-                      </td>
-                      <td className="num">{record(rival.wins, rival.losses, rival.ties)}</td>
-                      <td className="num">{rival.games}</td>
-                      <td className="num">{rival.first_season}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="note"><a href="/history/rivalries">Open the league-wide rivalry record book →</a></p>
-          </div>
-        </>
-      )}
     </>
   );
 }
