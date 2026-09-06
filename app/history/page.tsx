@@ -35,17 +35,13 @@ const archiveColumns: SortColumn[] = [
   { key: 'runnerUp', label: 'Runner-up' },
 ];
 
-function seasonsMap<T extends string>(rows: Array<{ season: number } & Record<T, string | null>>) {
+function groupSeasons(rows: Array<{ season: number; key: string | null }>) {
   const out = new Map<string, number[]>();
   for (const row of rows) {
-    const keys = Object.keys(row).filter((key) => key !== 'season') as T[];
-    for (const key of keys) {
-      const value = row[key];
-      if (!value) continue;
-      const list = out.get(value) ?? [];
-      list.push(row.season);
-      out.set(value, list);
-    }
+    if (!row.key) continue;
+    const list = out.get(row.key) ?? [];
+    list.push(row.season);
+    out.set(row.key, list);
   }
   return out;
 }
@@ -77,11 +73,11 @@ export default async function History() {
     for (const row of managers) if (row.last_season === latestManagerSeason) currentManagerKeys.add(row.manager_key);
   }
 
-  const franchiseFirsts = seasonsMap(
-    regularSeasonChampions.map((row) => ({ season: row.season, franchise_key: row.franchise_key }))
+  const franchiseFirsts = groupSeasons(
+    regularSeasonChampions.map((row) => ({ season: row.season, key: row.franchise_key }))
   );
-  const managerFirsts = seasonsMap(
-    regularSeasonChampions.map((row) => ({ season: row.season, manager_key: row.manager_key }))
+  const managerFirsts = groupSeasons(
+    regularSeasonChampions.map((row) => ({ season: row.season, key: row.manager_key }))
   );
 
   const franchiseRows: SortRow[] = franchises.map((row) => {
@@ -131,6 +127,9 @@ export default async function History() {
           d: row.champion_team_name,
           href: franchiseHref(row.champion_key),
           sub: row.champion_manager ?? undefined,
+          subHref: row.champion_manager_key && row.champion_manager
+            ? managerHref(row.champion_manager_key)
+            : undefined,
         },
         regular: regular
           ? { v: regular.team_name, d: regular.team_name, href: franchiseHref(regular.franchise_key) }
@@ -158,7 +157,7 @@ export default async function History() {
       </div>
 
       <nav aria-label="Explore league history" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '22px 0 30px' }}>
-        <a className="btn btn-quiet" href="/history/rivalries">Rivalries →</a>
+        <a className="btn btn-quiet" href="/history/rivalries">Grudges →</a>
         <a className="btn btn-quiet" href="/history/drafts">Draft history →</a>
         <a className="btn btn-quiet" href="/history/records">Record book →</a>
       </nav>
