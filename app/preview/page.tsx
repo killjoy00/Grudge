@@ -72,12 +72,19 @@ export default async function PreviewPage() {
     <>
       <div className="page-hero">
         <div className="eyebrow">PR #57 · non-production</div>
-        <h1>My Grudge + League Wire</h1>
+        <h1>Feature review</h1>
         <p>
           This review surface exists only because Vercel Preview is currently missing Clerk.
           Production auth is unchanged and still fails closed.
         </p>
       </div>
+
+      <nav aria-label="Preview pages" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '0 0 20px' }}>
+        <a className="btn btn-quiet" href="/history">History →</a>
+        <a className="btn btn-quiet" href="/history/rivalries">Rivalries →</a>
+        <a className="btn btn-quiet" href="/history/drafts">Draft history →</a>
+        <a className="btn btn-quiet" href="/history/records">Record book →</a>
+      </nav>
 
       <div className="callout">
         <strong>{liveData ? 'Using live league data.' : 'Layout sample mode.'}</strong>{' '}
