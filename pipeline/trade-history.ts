@@ -3,7 +3,7 @@
  * deliberately conservative fallback.
  *
  * Historical mTransactions2 captures turned out to contain something the
- * original live-only investigation did not: completed TRADE_ACCEPT / 
+ * original live-only investigation did not: completed TRADE_ACCEPT /
  * TRADE_UPHOLD envelopes can carry the exact TRADE items, including player,
  * fromTeamId and toTeamId. Those items are authoritative and must win over a
  * weekly roster diff. A player can be traded twice between snapshots; diffing
@@ -62,8 +62,8 @@ export interface DetectedTradePlayer {
  *
  * `reciprocal` -- the completed items are unavailable. Weekly roster snapshots
  * show players moving both directions between the same two teams, after known
- * waiver/free-agent movement and itemized trades are removed. It is useful but
- * explicitly marked as reconstruction.
+ * itemized trades are removed. It is useful but explicitly marked as
+ * reconstruction.
  */
 export type TradeConfidence = 'ledger' | 'reciprocal';
 
@@ -163,6 +163,11 @@ function allocateTradeId(
   return count === 1 ? base : `${base}-${count}`;
 }
 
+function pairHasBothDirections(players: DetectedTradePlayer[], a: number, b: number) {
+  return players.some((p) => p.from_team_id === a && p.to_team_id === b)
+    && players.some((p) => p.from_team_id === b && p.to_team_id === a);
+}
+
 /**
  * Detect trades for one season.
  *
@@ -216,8 +221,12 @@ export function detectTrades(
   const weeks = [...byWeek.keys()].sort((a, b) => a - b);
   if (weeks.length === 0) return trades;
 
-  // Which players had a successful free-agent transaction in each scoring
-  // period. Those movements are never evidence of a trade.
+  // Free-agent movement is tracked as a warning for the fallback, not as an
+  // unconditional exclusion. A player can be added in period W, appear on the
+  // W snapshot, then be traded in W+1. Treating any W transaction as an
+  // explanation for his later W -> W+1 move hid Jaylen Warren's side of a real
+  // 2023 trade. When recent churn touches a reciprocal candidate, an otherwise
+  // unambiguous TRADE_ACCEPT is required as corroboration.
   const churn = new Map<number, Set<number>>();
   for (const t of transactions) {
     if (t.status && t.status !== 'EXECUTED') continue;
@@ -242,21 +251,19 @@ export function detectTrades(
   for (const week of weeks) {
     const current = byWeek.get(week)!;
     // A transaction stamped period W can be processed after week W's snapshot
-    // and only appear in W+1, so the window includes the previous period.
+    // and only appear in W+1, so evidence checks include the previous period.
     const inWindow = (index: Map<number, Set<number>>, id: number) => {
       for (let w = prevWeek; w <= week; w++) if (index.get(w)?.has(id)) return true;
       return false;
     };
 
-    // Group remaining unexplained moves by unordered team pair.
+    // Group endpoint ownership changes by unordered team pair. Known itemized
+    // trade players are removed completely: their endpoint move may be the net
+    // of multiple real trades and must never be reinterpreted.
     const pairs = new Map<string, DetectedTradePlayer[]>();
     for (const [playerId, to] of current) {
       const from = prev.get(playerId);
       if (from === undefined || from === to) continue;
-      if (inWindow(churn, playerId)) continue;
-      // Critical: a player explicitly traded inside this snapshot window may
-      // have moved more than once. The weekly endpoints are not allowed to
-      // reinterpret his net movement as another trade.
       if (inWindow(explicitMovesByPeriod, playerId)) continue;
       const key = from < to ? `${from}:${to}` : `${to}:${from}`;
       const list = pairs.get(key) ?? [];
@@ -264,24 +271,41 @@ export function detectTrades(
       pairs.set(key, list);
     }
 
-    for (const [key, players] of [...pairs].sort()) {
-      const [a, b] = key.split(':').map(Number) as [number, number];
-      // This is the non-negotiable fallback rule. A two-team player trade must
-      // show value moving both directions; one-way endpoint movement is not a
-      // trade record and is left unclaimed.
-      if (!(players.some((p) => p.from_team_id === a && p.to_team_id === b)
-          && players.some((p) => p.from_team_id === b && p.to_team_id === a))) {
-        continue;
-      }
+    const reciprocalKeys = [...pairs.entries()]
+      .filter(([key, players]) => {
+        const [a, b] = key.split(':').map(Number) as [number, number];
+        return pairHasBothDirections(players, a, b);
+      })
+      .map(([key]) => key);
 
-      // An empty accept can corroborate the date, but never licenses the trade
-      // or its contents. Attach it only when the match is unambiguous.
+    for (const key of reciprocalKeys.sort()) {
+      const players = pairs.get(key)!;
+      const [a, b] = key.split(':').map(Number) as [number, number];
+
+      // An empty accept can corroborate a reconstructed pair and its date, but
+      // never licenses one-way movement. It is usable only if exactly one
+      // candidate accept names either team AND that accept's team participates
+      // in exactly one reciprocal pair in this snapshot window.
       const candidates = accepts.filter(
         (t) => !usedAccepts.has(t.id)
           && t.scoringPeriodId >= prevWeek && t.scoringPeriodId <= week
           && (t.teamId === a || t.teamId === b)
       );
-      const accept = candidates.length === 1 ? candidates[0]! : null;
+      let accept: LedgerTransaction | null = null;
+      if (candidates.length === 1) {
+        const candidate = candidates[0]!;
+        const matchingPairs = reciprocalKeys.filter((pairKey) => {
+          const [x, y] = pairKey.split(':').map(Number) as [number, number];
+          return candidate.teamId === x || candidate.teamId === y;
+        });
+        if (matchingPairs.length === 1) accept = candidate;
+      }
+
+      const touchedRecentChurn = players.some((p) => inWindow(churn, p.espn_player_id));
+      // Cross-waiver claims can theoretically look like a reciprocal swap. If
+      // recent ADD/DROP activity touches the candidate, require an actual ESPN
+      // trade-accept shell as corroboration before publishing it.
+      if (touchedRecentChurn && !accept) continue;
       if (accept) usedAccepts.add(accept.id);
 
       players.sort((x, y) => x.espn_player_id - y.espn_player_id);
