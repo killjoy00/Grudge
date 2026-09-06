@@ -3,10 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
-    # Tuesday's append-only ESPN archive commit changes only data/. It should
-    # deploy through Vercel, but does not need to reinstall and retest unchanged
-    # application code. Pull requests remain fully tested even when they include
-    # data alongside code.
+    # Tuesday's append-only ESPN archive commit changes only data/. It does not
+    # need to reinstall and retest unchanged application code. The controlled
+    # Vercel deploy workflow will pick it up at the next release window.
+    # Pull requests remain fully tested even when they include data alongside
+    # code.
     paths-ignore:
       - 'data/**'
   pull_request:
