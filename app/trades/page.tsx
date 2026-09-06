@@ -1,125 +1,181 @@
 import { auth } from '@clerk/nextjs/server';
-import { getCachedTradeRecords, getCachedSeasonTrades } from '../../lib/cached-queries.ts';
-import { tradeSeasons, tradeVotes, votingOpen, type TradeCard, type VoteState } from '../../lib/trade-history-queries.ts';
-import { POSITIONS } from '../../pipeline/trade.ts';
+import { tradeSeasons, tradeVotes, votingOpen, type TradeCard, type VoteState }
+  from '../../lib/trade-history-queries.ts';
+import { getCachedSeasonTrades, getCachedTradeRecords } from '../../lib/cached-queries.ts';
+import { UNGRADED_POSITIONS, type SideValue } from '../../pipeline/trade-value.ts';
+import { getCurrentSeason } from '../../lib/queries.ts';
 import { SeasonPicker } from '../../components/SeasonPicker.tsx';
-import { TradeVote } from './TradeVote.tsx';
+import { EspnTeamLink } from '../../components/EspnLink.tsx';
+import { TradeVote } from '../../components/TradeVote.tsx';
+import { POSITIONS } from '../../pipeline/trade.ts';
 
 export const dynamic = 'force-dynamic';
 
-const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}`;
+const signed = (n: number) => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1));
 
-function PlayerList({ players }: { players: TradeCard['received'][number] }) {
-  if (!players.length) return <span className="note">No players recorded</span>;
-  return (
-    <ul className="trade-player-list">
-      {players.map((p) => (
-        <li key={p.espn_player_id}>
-          <strong>{p.full_name ?? `ESPN player #${p.espn_player_id}`}</strong>
-          <span className="tsub">{POSITIONS[p.default_position_id ?? 0] ?? '—'}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function SideGrade({ side, winner }: {
-  side: TradeCard['value']['a']; winner: number | null;
+function TradeSide({
+  card, teamId, accent, side, ahead,
+}: {
+  card: TradeCard; teamId: number; accent: string;
+  side: SideValue;
+  ahead: boolean;
 }) {
-  const won = winner === side.espn_team_id;
+  const players = card.received[teamId] ?? [];
   return (
-    <div className={`trade-grade ${won ? 'trade-winner' : ''}`}>
-      <strong>{signed(side.lineupImpact)}</strong>
-      <span>to their lineup</span>
-      <span className="tsub">
-        {side.valuedWeeks > 0 ? `${signed(side.playerValue)} over replacement` : '— over replacement'}
-      </span>
-      <span className="tsub">{side.startedPoints.toFixed(1)} actually started</span>
+    <div className={`trade-side${ahead ? ' ahead' : ''}`} style={{ borderTopColor: accent }}>
+      <div className="trade-side-head">
+        <a href={`/team/${teamId}`} className="tname">{card.teamNames[teamId] ?? `Team ${teamId}`}</a>
+        <EspnTeamLink teamId={teamId} season={card.trade.season} />
+      </div>
+      <div className="trade-got">got</div>
+      <ul className="trade-players">
+        {players.length === 0 && <li className="note">nothing this side of the ledger</li>}
+        {players.map((p) => {
+          const counted = !UNGRADED_POSITIONS.has(p.default_position_id ?? -1);
+          return (
+            <li key={p.espn_player_id} className={counted ? undefined : 'trade-uncounted'}>
+              <span className="trade-pos">
+                {POSITIONS[p.default_position_id ?? 0] ?? '\u2014'}
+              </span>
+              {p.full_name ?? `Player ${p.espn_player_id}`}
+              {!counted && <span className="trade-nocount"> not counted</span>}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="trade-points">
+        <span className={`trade-impact ${side.lineupImpact > 0 ? 'up' : side.lineupImpact < 0 ? 'down' : ''}`}>
+          {signed(side.lineupImpact)}
+        </span>
+        <span className="trade-impact-label">to their lineup</span>
+        <div className="note trade-secondary">
+          {/* A dash, not 0.0, when nothing was measured. An acquisition who
+              never made the lineup contributed nothing, which is a different
+              statement from one who scored exactly replacement level. */}
+          <span title={side.valuedWeeks === 0
+            ? 'Never in the best lineup, so there is nothing to measure against replacement.'
+            : `Measured over ${side.valuedWeeks} week${side.valuedWeeks === 1 ? '' : 's'} in the best lineup.`}>
+            {side.valuedWeeks === 0 ? '—' : signed(side.playerValue)} over replacement
+          </span>{' · '}
+          {side.startedPoints.toFixed(1)} of {side.rosteredPoints.toFixed(1)} started
+        </div>
+      </div>
     </div>
   );
 }
 
-function TradeArticle({ card, vote, signedIn }: {
-  card: TradeCard; vote?: VoteState; signedIn: boolean;
-}) {
-  const { trade, teamNames, received, value } = card;
-  const teamA = teamNames[trade.team_a] ?? `Team ${trade.team_a}`;
-  const teamB = teamNames[trade.team_b] ?? `Team ${trade.team_b}`;
-  const open = votingOpen(trade);
+function TradeArticle({
+  card, vote, signedIn,
+}: { card: TradeCard; vote: VoteState | undefined; signedIn: boolean }) {
+  const { trade, value, teamNames } = card;
+  const aName = teamNames[trade.team_a] ?? `Team ${trade.team_a}`;
+  const bName = teamNames[trade.team_b] ?? `Team ${trade.team_b}`;
+  const winnerName = value.winner === trade.team_a ? aName : bName;
+  // Either no week has been played since the trade, or the whole deal was
+  // kickers and defences. Both mean there is no verdict to give.
+  const ungraded = !value.graded;
+
   return (
     <article className="card trade-card">
-      <div className="trade-meta">
-        <span>{trade.season} · Week {trade.effective_week}</span>
-        {trade.confidence === 'reciprocal' && <span className="tag era">Reconstructed</span>}
-      </div>
+      <header className="trade-head">
+        <span className="eyebrow">
+          Week {trade.effective_week}
+          {trade.accepted_at &&
+            ` \u00b7 ${new Date(trade.accepted_at).toLocaleDateString('en-US',
+              { month: 'short', day: 'numeric' })}`}
+        </span>
+        {trade.confidence === 'reciprocal' && (
+          <span className="tag era" title="Reconstructed from reciprocal weekly roster movement because the completed ESPN item list did not survive.">
+            Reconstructed
+          </span>
+        )}
+        {trade.confidence === 'manual' && (
+          <span className="tag era" title="Entered by hand from the league's own records.">
+            From the record
+          </span>
+        )}
+        {ungraded ? (
+          <span className="tag">Not scored yet</span>
+        ) : value.mutual ? (
+          <span className="tag best">Both sides won</span>
+        ) : value.winner === null ? (
+          <span className="tag">Dead even</span>
+        ) : (
+          <span className="tag best">{winnerName} by {Math.abs(value.margin).toFixed(1)}</span>
+        )}
+      </header>
 
       <div className="trade-sides">
-        <section>
-          <h3>{teamA} received</h3>
-          <PlayerList players={received[trade.team_a] ?? []} />
-          {value.graded && <SideGrade side={value.a} winner={value.winner} />}
-        </section>
-        <div className="trade-for">FOR</div>
-        <section>
-          <h3>{teamB} received</h3>
-          <PlayerList players={received[trade.team_b] ?? []} />
-          {value.graded && <SideGrade side={value.b} winner={value.winner} />}
-        </section>
+        <TradeSide card={card} teamId={trade.team_a} accent="var(--accent)"
+                   side={value.a} ahead={value.winner === trade.team_a} />
+        <TradeSide card={card} teamId={trade.team_b} accent="var(--gold)"
+                   side={value.b} ahead={value.winner === trade.team_b} />
       </div>
 
-      {!value.graded ? (
-        <p className="note">Not enough completed scoring data to grade this trade yet.</p>
-      ) : value.mutual ? (
-        <p className="trade-verdict good-trade">Both teams improved their best lineups.</p>
-      ) : value.winner === null ? (
-        <p className="trade-verdict">Even by lineup impact.</p>
-      ) : (
-        <p className="trade-verdict">
-          <strong>{teamNames[value.winner] ?? `Team ${value.winner}`}</strong> won by {Math.abs(value.margin).toFixed(1)} lineup points.
-        </p>
-      )}
+      <p className="note trade-basis">
+        {ungraded
+          ? value.weeksScored === 0
+            ? 'No week has been played since this trade, so there is nothing to score yet.'
+            : 'Kickers and defences are left out of the scoring, and there was nothing else in this trade.'
+          : `Points added to each side's best possible lineup from week ${trade.effective_week} on, ` +
+            `against the roster they would have had without the trade. ` +
+            `${value.weeksScored} week${value.weeksScored === 1 ? '' : 's'} counted.`}
+      </p>
 
       <TradeVote
         season={trade.season}
         tradeId={trade.trade_id}
-        teamA={trade.team_a}
-        teamB={trade.team_b}
-        teamAName={teamA}
-        teamBName={teamB}
-        open={open}
+        sides={[[trade.team_a, aName], [trade.team_b, bName]]}
+        initial={vote?.mine ?? null}
+        tally={vote?.tally ?? {}}
         signedIn={signedIn}
-        initialMine={vote?.mine ?? null}
-        initialTally={vote?.tally ?? {}}
+        open={votingOpen(trade)}
+        closesAt={trade.voting_closes_at}
       />
     </article>
   );
 }
 
-export default async function TradesPage({ searchParams }: {
-  searchParams: Promise<{ season?: string }>;
-}) {
-  const params = await searchParams;
-  const seasons = await tradeSeasons();
-  const current = seasons[0] ?? new Date().getFullYear();
-  const requested = Number(params.season);
-  const season = Number.isInteger(requested) && seasons.includes(requested) ? requested : current;
+export default async function Trades({
+  searchParams,
+}: { searchParams: Promise<{ season?: string }> }) {
+  const sp = await searchParams;
+  const [seasons, current, { userId }] = await Promise.all([
+    tradeSeasons(), getCurrentSeason(), auth(),
+  ]);
+  const season = Number(sp.season) || current || seasons[0] || new Date().getUTCFullYear();
 
-  const [cards, records, { userId }] = await Promise.all([
+  const [cards, records] = await Promise.all([
     getCachedSeasonTrades(season),
     getCachedTradeRecords(),
-    auth(),
   ]);
   // Votes need a session and the member's identity; a signed-out visitor sees
   // the trades and the grades, just not the ballot.
-  const votes: Record<string, VoteState> = userId ? await tradeVotes(season) : {};
+  const votes: Record<string, VoteState> =
+    userId ? await tradeVotes(season).catch(() => ({})) : {};
 
   return (
     <>
-      <div className="page-hero">
-        <div className="eyebrow">Trade history</div>
+      <div className="page-hero compact-hero">
+        <div className="eyebrow">{season} season</div>
         <h1>Trades</h1>
-        <p>What each deal actually did to both teams&rsquo; best lineups.</p>
+        <p>
+          Every trade, who actually won it, and what the league thought at the time.
+        </p>
       </div>
+
+      {/* An accepted trade is not a trade yet. ESPN holds it in a review
+          window, and nothing here can see it until the players actually move
+          and the Tuesday run picks that up -- so the league will otherwise
+          wonder why a deal everyone just agreed to is missing. */}
+      {season === current && (
+        <p className="note trade-pending-note">
+          A trade appears here once ESPN actually moves the players. An accepted
+          deal sits in ESPN&rsquo;s review window first, and this page picks it up
+          on the following Tuesday &mdash; so a trade agreed this week shows up
+          next week.
+        </p>
+      )}
 
       {cards.length === 0 ? (
         <div className="callout">
@@ -218,24 +274,24 @@ export default async function TradesPage({ searchParams }: {
               good trade looks like. Kickers and defences are listed but not
               counted.</p>
 
-            <p><strong>Where these came from.</strong> For the recovered 2018–2025
-              history, completed ESPN transaction envelopes are the source of
-              truth whenever they preserve the players sent in both directions.
-              Some old accepted trades survive only as an empty transaction shell;
-              those are marked <span className="tag era">Reconstructed</span> and
-              are included only when consecutive weekly rosters show players
-              moving both directions between the same two teams. A one-way roster
-              change is never called a trade. That conservative rule matters when
-              somebody is traded twice between weekly snapshots: the exact ESPN
-              ledger wins instead of turning the two real deals into one fictional
-              net move.</p>
+            <p><strong>Where these came from.</strong> For 2018–2025, completed ESPN
+              transaction envelopes are the source of truth whenever the archive
+              preserves the players sent in both directions. Some accepted trades
+              survive only as an empty transaction shell; those are marked{' '}
+              <span className="tag era">Reconstructed</span> and are included only
+              when consecutive weekly rosters show players moving both directions
+              between the same two teams. A one-way roster change is never called
+              a trade. That matters when a player is traded twice between weekly
+              snapshots: the itemized ESPN ledger wins instead of collapsing two
+              real deals into a fictional net move. Nothing before 2018 has the
+              player-level weekly roster history needed to grade a trade.</p>
           </div>
         </details>
       </div>
 
       <SeasonPicker seasons={seasons} current={season} basePath="/trades"
                     heading="Seasons with trades"
-                    note="2018 is as far back as the player-level weekly roster archive goes." />
+                    note="2018 is as far back as the weekly roster data goes." />
     </>
   );
 }
