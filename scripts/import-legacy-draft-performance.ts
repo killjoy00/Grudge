@@ -74,8 +74,12 @@ await runTransaction(sql, [
   ),
 ]);
 
-const bySource = Object.groupBy(rows, (row) => String(row.source));
+const bySource = new Map<string, number>();
+for (const row of rows) {
+  const source = String(row.source);
+  bySource.set(source, (bySource.get(source) ?? 0) + 1);
+}
 console.log(
   `Imported ${rows.length} legacy draft player-seasons: `
-  + Object.entries(bySource).map(([source, mine]) => `${source}=${mine?.length ?? 0}`).join(', ')
+  + [...bySource.entries()].map(([source, count]) => `${source}=${count}`).join(', ')
 );
