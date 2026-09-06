@@ -21,7 +21,7 @@ export default async function History() {
       <div className="page-hero">
         <div className="eyebrow">The permanent record</div>
         <h1>League history</h1>
-        <p>One home for every season, permanent franchise and manager — with deeper record-book and rivalry views when you want them.</p>
+        <p>One home for every season, permanent franchise and manager — with deeper record-book, draft and rivalry views when you want them.</p>
       </div>
 
       <div className="stat-strip">
@@ -32,12 +32,17 @@ export default async function History() {
       </div>
 
       <h2>Explore</h2>
-      <p className="sub">The main archive stays on this page. These two deeper views answer questions that need their own room.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+      <p className="sub">The main archive stays on this page. These deeper views answer questions that need their own room.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
         <a className="card" href="/history/records" style={{ textDecoration: 'none' }}>
           <span className="eyebrow">Records</span><h3>Who owns the marks?</h3>
           <p className="note">Best seasons, scoring records, power champions, schedule luck and individual-week records.</p>
           <strong>Open the record book →</strong>
+        </a>
+        <a className="card" href="/history/drafts" style={{ textDecoration: 'none' }}>
+          <span className="eyebrow">Drafts</span><h3>Who won draft night?</h3>
+          <p className="note">Best and worst classes, steals, busts, repeat picks and every recovered draft board back to 2005.</p>
+          <strong>Open draft history →</strong>
         </a>
         <a className="card" href="/history/rivalries" style={{ textDecoration: 'none' }}>
           <span className="eyebrow">Rivalries</span><h3>Who owns whom?</h3>
