@@ -81,7 +81,7 @@ export default async function PreviewPage() {
 
       <nav aria-label="Preview pages" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '0 0 20px' }}>
         <a className="btn btn-quiet" href="/history">History →</a>
-        <a className="btn btn-quiet" href="/history/rivalries">Rivalries →</a>
+        <a className="btn btn-quiet" href="/history/rivalries">Grudges →</a>
         <a className="btn btn-quiet" href="/history/drafts">Draft history →</a>
         <a className="btn btn-quiet" href="/history/records">Record book →</a>
       </nav>
