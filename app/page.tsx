@@ -1,10 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
 import {
   getCurrentSeason, getPlayedSeasons, getWeekResults, getWeekAwards,
-  getBenchWatch, getComments, getStandings, getPlayoffWeek, getWeekMatchups,
+  getBenchWatch, getComments, getStandings, getWeekMatchups,
 } from '../lib/queries.ts';
 import { getCurrentIncompleteWeek } from '../lib/game-context.ts';
 import { getLeagueWire } from '../lib/league-wire.ts';
+import { getTrackedPlayoffWeek } from '../lib/tracked-game-queries.ts';
 import { Comments } from '../components/Comments.tsx';
 import { EspnMatchupLink, EspnTeamLink } from '../components/EspnLink.tsx';
 import { LeagueWire } from '../components/LeagueWire.tsx';
@@ -193,14 +194,11 @@ export default async function Home() {
 
   const season = currentSeason;
 
-  // Once the bracket starts, the regular-season week stops being the news.
-  // Nothing derived is computed for playoff weeks on purpose (they must not
-  // contaminate season records), so this reads the games straight from
-  // `matchups` and shows the bracket instead of a frozen week 14.
-  const playoffs = await getPlayoffWeek(season);
+  // Once the championship bracket starts, the regular-season week stops being
+  // the news. Consolation placement games are deliberately absent: only the
+  // five championship-bracket games are tracked after the regular season.
+  const playoffs = await getTrackedPlayoffWeek(season);
   if (playoffs) {
-    const champs = playoffs.games.filter((g) => g.playoff_tier === 'WINNERS_BRACKET');
-    const rest = playoffs.games.filter((g) => g.playoff_tier !== 'WINNERS_BRACKET');
     const board = (list: typeof playoffs.games) => (
       <div className="card">
         {list.map((g) => {
@@ -236,21 +234,11 @@ export default async function Home() {
       <>
         <div className="page-hero">
           <div className="eyebrow">{season} postseason</div>
-          <h1>Week {playoffs.week}: the bracket.</h1>
-          <p>Six teams got in. The rest of the league is watching.</p>
+          <h1>Week {playoffs.week}: the championship bracket.</h1>
+          <p>Six teams got in. Only the title bracket counts from here.</p>
         </div>
-        {champs.length > 0 && (
-          <>
-            <h2>Championship bracket</h2>
-            {board(champs)}
-          </>
-        )}
-        {rest.length > 0 && (
-          <>
-            <h2>Consolation</h2>
-            {board(rest)}
-          </>
-        )}
+        <h2>Championship bracket</h2>
+        {board(playoffs.games)}
         <div className="card">
           <p className="note">
             Awards, bench watch and the luck index are regular-season measures
