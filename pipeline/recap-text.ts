@@ -11,27 +11,27 @@
  * same treatment as the rest of the letter.
  */
 
-const SECTION_HEADING = /^(?:
-  THIS WEEK'S GAMES|
-  RECORD WATCH|
-  POWER RANKINGS|
-  LUCK REPORT|
-  STREAKS|
-  ALL-PLAY|
-  MOST DISPUTED PICK|
-  THE GRUDGE|
-  THIS WEEK IN GRUDGE MATCH HISTORY|
-  AWARDS|
-  STANDINGS|
-  PREDICTION LEADERS|
-  WAIVER PICKUPS|
-  10\+ POINT PICKUPS|
-  COMING UP — WEEK \d+
-)$/x;
+const SECTION_HEADINGS = new Set([
+  "THIS WEEK'S GAMES",
+  'RECORD WATCH',
+  'POWER RANKINGS',
+  'LUCK REPORT',
+  'STREAKS',
+  'ALL-PLAY',
+  'MOST DISPUTED PICK',
+  'THE GRUDGE',
+  'THIS WEEK IN GRUDGE MATCH HISTORY',
+  'AWARDS',
+  'STANDINGS',
+  'PREDICTION LEADERS',
+  'WAIVER PICKUPS',
+  '10+ POINT PICKUPS',
+]);
 
 const TITLE = /^UNC Grudge Match — (\d{4}) Week (\d+)$/;
 const FULL_SITE = /^Full site:\s*(\S+)$/;
 const MATCHUP_NOTE = /^  (Surprise:|Worst call:|Decided at )/;
+const COMING_UP = /^COMING UP — WEEK \d+$/;
 
 function startSection(lines: string[]) {
   while (lines.at(-1) === '') lines.pop();
@@ -54,7 +54,7 @@ export function formatRecapPlainText(input: string): string {
       continue;
     }
 
-    if (SECTION_HEADING.test(line)) {
+    if (SECTION_HEADINGS.has(line) || COMING_UP.test(line)) {
       startSection(output);
       output.push(line, '--------------------');
       continue;
