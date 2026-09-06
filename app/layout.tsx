@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Nav } from '../components/Nav.tsx';
 import { AuthButton } from '../components/AuthButton.tsx';
 import { LeagueMark } from '../components/LeagueMark.tsx';
+import { previewWithoutClerk } from '../lib/clerk-config.ts';
 
 export const metadata: Metadata = {
   title: 'UNC Grudge Match',
@@ -24,36 +25,43 @@ export const viewport: Viewport = {
 // to server-render per request and quietly disable the `revalidate` exports on
 // the league pages. The session is resolved client-side in <AuthButton />.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>
-          <header className="site">
-            <div className="headrow">
-              <a href="/" className="brand">
-                <LeagueMark />
-                <span className="brand-copy">
-                  <strong>Grudge Match</strong>
-                  <small>UNC fantasy football · est. 2005</small>
-                </span>
-              </a>
-              <div className="spacer" />
+  const previewNoAuth = previewWithoutClerk();
+  const shell = (
+    <html lang="en">
+      <body>
+        <header className="site">
+          <div className="headrow">
+            <a href="/" className="brand">
+              <LeagueMark />
+              <span className="brand-copy">
+                <strong>Grudge Match</strong>
+                <small>UNC fantasy football · est. 2005</small>
+              </span>
+            </a>
+            <div className="spacer" />
+            {previewNoAuth ? (
+              <div className="authcontrols">
+                <a href="/me">Preview My Grudge</a>
+              </div>
+            ) : (
               <AuthButton />
-            </div>
-            {/* The tab strip scrolls horizontally on a phone -- seven tabs
-                cannot fit in 375px. This wrapper exists solely to hang a
-                right-edge fade off, so it is visible that there is more. */}
-            <div className="tabs-wrap">
-              <Nav />
-            </div>
-          </header>
-          <main className="wrap">{children}</main>
-          <footer className="site-footer">
-            <span>UNC Grudge Match</span>
-            <span>Keep the receipts.</span>
-          </footer>
-        </body>
-      </html>
-    </ClerkProvider>
+            )}
+          </div>
+          {/* The tab strip scrolls horizontally on a phone -- seven tabs
+              cannot fit in 375px. This wrapper exists solely to hang a
+              right-edge fade off, so it is visible that there is more. */}
+          <div className="tabs-wrap">
+            <Nav />
+          </div>
+        </header>
+        <main className="wrap">{children}</main>
+        <footer className="site-footer">
+          <span>UNC Grudge Match</span>
+          <span>Keep the receipts.</span>
+        </footer>
+      </body>
+    </html>
   );
+
+  return previewNoAuth ? shell : <ClerkProvider>{shell}</ClerkProvider>;
 }

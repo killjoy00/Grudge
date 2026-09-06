@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { asPublic } from './db.ts';
+import { trackedMatchupSql } from './playoff-policy.ts';
 
 export interface HistorySeasonMetric {
   season: number;
@@ -63,20 +64,21 @@ export interface HistoryGameMoment {
 }
 
 function momentsQuery(targetJoin: string, targetWhere: string) {
+  const tracked = trackedMatchupSql('m');
   return `with sides as (
     select m.season, m.week, m.playoff_tier,
            m.home_team_id as espn_team_id, m.away_team_id as opponent_team_id,
            m.home_points as points_for, m.away_points as points_against,
            case m.winner when 'HOME' then 'W' when 'AWAY' then 'L' else 'T' end as result
       from public.matchups m
-     where m.is_final and m.home_points is not null and m.away_points is not null
+     where m.is_final and m.home_points is not null and m.away_points is not null and ${tracked}
     union all
     select m.season, m.week, m.playoff_tier,
            m.away_team_id, m.home_team_id,
            m.away_points, m.home_points,
            case m.winner when 'AWAY' then 'W' when 'HOME' then 'L' else 'T' end
       from public.matchups m
-     where m.is_final and m.home_points is not null and m.away_points is not null
+     where m.is_final and m.home_points is not null and m.away_points is not null and ${tracked}
   ), target as (
     select x.*, fs.franchise_key, fs.team_name, ofs.team_name as opponent_name
       from sides x

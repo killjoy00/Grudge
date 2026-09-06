@@ -19,7 +19,7 @@ export function Nav() {
         const active = href === '/'
           ? path === '/'
           : href === '/history'
-            ? path.startsWith('/history') || path.startsWith('/franchise/') || path.startsWith('/manager/') || path.startsWith('/rivalry/')
+            ? path.startsWith('/history') || path.startsWith('/franchise/') || path.startsWith('/manager/') || path.startsWith('/grudge/') || path.startsWith('/rivalry/')
             : path === href || path.startsWith(`${href}/`);
         return (
           <a key={href} href={href} className={active ? 'on' : ''}

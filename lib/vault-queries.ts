@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { asPublic } from './db.ts';
+import { trackedMatchupSql } from './playoff-policy.ts';
 
 export interface VaultSeasonSummary {
   season: number;
@@ -65,11 +66,14 @@ export interface VaultMomentRow {
 }
 
 export async function getVaultSeasons() {
+  const tracked = trackedMatchupSql('m');
   return asPublic<VaultSeasonSummary>(
     `select s.season,
             (select count(*)::int from public.teams t where t.season = s.season) as team_count,
-            (select count(*)::int from public.matchups m where m.season = s.season) as games,
-            (select count(*)::int from public.matchups m where m.season = s.season and m.is_final) as decided_games,
+            (select count(*)::int from public.matchups m
+              where m.season = s.season and ${tracked}) as games,
+            (select count(*)::int from public.matchups m
+              where m.season = s.season and m.is_final and ${tracked}) as decided_games,
             (select count(*)::int from public.draft_picks d where d.season = s.season) as draft_picks,
             (select count(*)::int from public.transactions x where x.season = s.season) as transactions,
             (select string_agg(distinct x.type, ', ' order by x.type)
@@ -82,6 +86,7 @@ export async function getVaultSeasons() {
 }
 
 export async function getVaultSeasonGames(season: number) {
+  const tracked = trackedMatchupSql('m');
   return asPublic<VaultGameRow>(
     `select m.season, m.week, m.espn_matchup_id,
             m.home_team_id, ht.name as home_name,
@@ -94,7 +99,7 @@ export async function getVaultSeasonGames(season: number) {
          on ht.season = m.season and ht.espn_team_id = m.home_team_id
        join public.teams at
          on at.season = m.season and at.espn_team_id = m.away_team_id
-      where m.season = $1
+      where m.season = $1 and ${tracked}
       order by m.week, m.espn_matchup_id`,
     [season]
   );
@@ -143,6 +148,7 @@ export async function getVaultSeasonTransactions(season: number) {
 }
 
 async function getVaultMoment(orderBy: string) {
+  const tracked = trackedMatchupSql('m');
   const rows = await asPublic<VaultMomentRow>(
     `select m.season, m.week, m.espn_matchup_id,
             case when m.winner = 'HOME' then ht.name else at.name end as winner_name,
@@ -155,7 +161,7 @@ async function getVaultMoment(orderBy: string) {
          on ht.season = m.season and ht.espn_team_id = m.home_team_id
        join public.teams at
          on at.season = m.season and at.espn_team_id = m.away_team_id
-      where m.season >= 2005 and m.is_final
+      where m.season >= 2005 and m.is_final and ${tracked}
         and m.winner in ('HOME', 'AWAY')
         and m.home_points is not null and m.away_points is not null
       order by ${orderBy}

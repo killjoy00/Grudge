@@ -25,6 +25,7 @@ export interface SortCell {
   d?: string;
   href?: string;
   sub?: string;
+  subHref?: string;
   note?: string;
   pill?: 'w' | 'l' | 'warn';
   /**
@@ -123,7 +124,11 @@ export default function SortableTable({
                 return (
                   <td key={column.key} className={column.numeric ? 'num' : undefined}>
                     {body}
-                    {cell?.sub && <span className="tsub block">{cell.sub}</span>}
+                    {cell?.sub && (
+                      cell.subHref
+                        ? <span className="tsub block"><a href={cell.subHref}>{cell.sub}</a></span>
+                        : <span className="tsub block">{cell.sub}</span>
+                    )}
                     {cell?.note && <span className="tsub block">{cell.note}</span>}
                   </td>
                 );

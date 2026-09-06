@@ -2,6 +2,7 @@ import 'server-only';
 
 import { asPublic } from './db.ts';
 import { canonicalEspnTeamIdSql } from './franchise-identity.ts';
+import { trackedMatchupSql } from './playoff-policy.ts';
 
 export interface IncompleteWeek {
   week: number;
@@ -94,6 +95,8 @@ export interface RivalryGame {
   away_points: string | null;
   winner: string;
   playoff_tier: string | null;
+  /** 1 = championship, 2 = semifinal, 3 = first round. Null in regular season. */
+  playoff_rounds_from_final: number | null;
 }
 
 export interface RivalryTeam {
@@ -102,16 +105,22 @@ export interface RivalryTeam {
 }
 
 /**
- * Every finalized meeting between two durable franchises, newest first.
+ * Every tracked meeting between two durable franchises, newest first.
  *
- * Raw ESPN team IDs are stable across the archive except for one verified
- * handoff: the current CTE franchise was team 7 in 2005 and team 10 from 2006
- * onward. Canonicalizing here makes the rivalry URL permanent while keeping
- * the historical team names beside each old game.
+ * Regular-season games and the championship playoff bracket count; consolation
+ * placement games do not. Raw ESPN team IDs are stable across the archive
+ * except for one verified handoff: the current CTE franchise was team 7 in
+ * 2005 and team 10 from 2006 onward. Canonicalizing here makes the rivalry URL
+ * permanent while keeping the historical team names beside each old game.
+ *
+ * Winner-bracket weeks are ranked backwards inside each season so rivalry
+ * pages can identify the highest-leverage meeting without hard-coding which
+ * calendar week happened to be the final in a given year.
  */
 export async function getRivalrySeries(teamA: number, teamB: number) {
   const homeFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.home_team_id');
   const awayFranchiseId = canonicalEspnTeamIdSql('m.season', 'm.away_team_id');
+  const tracked = trackedMatchupSql('m');
   const [teams, games] = await Promise.all([
     asPublic<RivalryTeam>(
       `select t.espn_team_id, t.name
@@ -122,19 +131,33 @@ export async function getRivalrySeries(teamA: number, teamB: number) {
       [teamA, teamB]
     ),
     asPublic<RivalryGame>(
-      `select m.season, m.week, m.espn_matchup_id,
+      `with playoff_weeks as (
+         select season, week,
+                dense_rank() over (partition by season order by week desc)::int
+                  as rounds_from_final
+           from (
+             select distinct season, week
+               from public.matchups
+              where playoff_tier = 'WINNERS_BRACKET'
+           ) x
+       )
+       select m.season, m.week, m.espn_matchup_id,
               ${homeFranchiseId}::int as home_team_id, ht.name as home_name,
               ${awayFranchiseId}::int as away_team_id, at.name as away_name,
               round(m.home_points, 2)::text as home_points,
               round(m.away_points, 2)::text as away_points,
               m.winner,
-              nullif(m.playoff_tier, 'NONE') as playoff_tier
+              nullif(m.playoff_tier, 'NONE') as playoff_tier,
+              pw.rounds_from_final as playoff_rounds_from_final
          from public.matchups m
          join public.teams ht
            on ht.season = m.season and ht.espn_team_id = m.home_team_id
          join public.teams at
            on at.season = m.season and at.espn_team_id = m.away_team_id
-        where m.is_final
+         left join playoff_weeks pw
+           on pw.season = m.season and pw.week = m.week
+          and m.playoff_tier = 'WINNERS_BRACKET'
+        where m.is_final and ${tracked}
           and ((${homeFranchiseId} = $1 and ${awayFranchiseId} = $2)
             or (${homeFranchiseId} = $2 and ${awayFranchiseId} = $1))
         order by m.season desc, m.week desc, m.espn_matchup_id desc`,
@@ -145,15 +168,12 @@ export async function getRivalrySeries(teamA: number, teamB: number) {
 }
 
 /**
- * Raw ESPN-era team-ID totals, INCLUDING playoffs.
- *
- * The history page has always described this bottom table as the raw ESPN feed
- * with playoff games included, but its old query read team_week_results -- a
- * derived table that intentionally stops at the regular season. Read matchups
- * directly here so the numbers finally match the label without contaminating
- * standings, luck, all-play, or power rankings.
+ * Raw ESPN-era team-ID totals, regular season plus championship playoffs.
+ * Consolation placement games are kept in the source archive but are not part
+ * of Grudge's tracked record.
  */
 export async function getEspnEraAllTime() {
+  const tracked = trackedMatchupSql('m');
   return asPublic<{
     espn_team_id: number; name: string; seasons: number; wins: number; losses: number;
     ties: number; points_for: string; best_season: number | null;
@@ -166,6 +186,7 @@ export async function getEspnEraAllTime() {
               case m.winner when 'TIE' then 1 else 0 end as ties
          from public.matchups m
         where m.is_final and m.home_team_id is not null and m.home_points is not null
+          and ${tracked}
        union all
        select m.season, m.away_team_id,
               m.away_points,
@@ -174,6 +195,7 @@ export async function getEspnEraAllTime() {
               case m.winner when 'TIE' then 1 else 0 end
          from public.matchups m
         where m.is_final and m.away_team_id is not null and m.away_points is not null
+          and ${tracked}
      ), totals as (
        select espn_team_id,
               count(distinct season)::int as seasons,

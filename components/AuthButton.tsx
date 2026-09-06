@@ -28,7 +28,7 @@ export function AuthButton() {
 
   return isSignedIn ? (
     <div className="authcontrols">
-      <a href="/me">Profile</a>
+      <a href="/me">My Grudge</a>
       <UserButton />
     </div>
   ) : (

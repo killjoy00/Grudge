@@ -12,7 +12,7 @@ import {
   getUnluckiestSeasons,
   type SeasonLuckRecordRow,
 } from '../../../lib/history-record-insights.ts';
-import { getTopPlayerWeeks, getTopScoringWeeks } from '../../../lib/queries.ts';
+import { getTrackedTopPlayerWeeks, getTrackedTopScoringWeeks } from '../../../lib/tracked-game-queries.ts';
 import { POSITIONS } from '../../../pipeline/trade.ts';
 
 export const dynamic = 'force-dynamic';
@@ -117,8 +117,8 @@ function LuckTable({ title, rows }: { title: string; rows: SeasonLuckRecordRow[]
 export default async function RecordsPage() {
   const [[seasons, games], topWeeks, topPlayers, powerChampions, luckiest, unluckiest, draftRecords] = await Promise.all([
     getCachedHistoryRecords(),
-    getTopScoringWeeks(10),
-    getTopPlayerWeeks(10),
+    getTrackedTopScoringWeeks(10),
+    getTrackedTopPlayerWeeks(10),
     getPowerRankingChampions(),
     getLuckiestSeasons(10),
     getUnluckiestSeasons(10),
@@ -165,7 +165,7 @@ export default async function RecordsPage() {
       <SeasonTable rows={missedPlayoffs} markLabel="Win %" value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
 
       <h2>Single-game team records</h2>
-      <p className="sub">Recovered team-level weekly scoreboards cover 2005 onward. Playoff and consolation games count.</p>
+      <p className="sub">Recovered team-level weekly scoreboards cover 2005 onward. Regular-season and championship-bracket games count; consolation placement games do not.</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
         <GameRecord label="Highest score" row={games.highestScore} detail={(row) => `${row.points_for} points`} />
         <GameRecord label="Lowest score" row={games.lowestScore} detail={(row) => `${row.points_for} points`} />
