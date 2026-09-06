@@ -9,15 +9,20 @@
  * authorization boundary.
  *
  * Vercel Preview is a special case: if its Preview environment has not been
- * assigned the Clerk variables yet, let the request reach the app so public
- * pages can still be reviewed. Production never fails open.
+ * assigned the Clerk variables yet, let requests reach an auth-free review
+ * surface instead of crashing middleware. Production never fails open.
  */
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { previewWithoutClerk } from './lib/clerk-config.ts';
 
 export default function middleware(request: NextRequest, event: NextFetchEvent) {
-  if (previewWithoutClerk()) return NextResponse.next();
+  if (previewWithoutClerk()) {
+    if (request.nextUrl.pathname === '/') {
+      return NextResponse.redirect(new URL('/preview', request.url));
+    }
+    return NextResponse.next();
+  }
   return clerkMiddleware()(request, event);
 }
 
