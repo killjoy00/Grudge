@@ -32,15 +32,18 @@ concurrency:
   group: test-recap
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   send:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -54,19 +57,25 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
           RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+          INPUT_TO: ${{ inputs.to }}
+          INPUT_SEASON: ${{ inputs.season }}
+          INPUT_WEEK: ${{ inputs.week }}
         run: |
           npm run recap -- \
-            --season='${{ inputs.season }}' \
-            --week='${{ inputs.week }}' \
-            --to='${{ inputs.to }}'
+            --season="$INPUT_SEASON" \
+            --week="$INPUT_WEEK" \
+            --to="$INPUT_TO"
 
       - name: Summary
         if: always()
+        env:
+          INPUT_SEASON: ${{ inputs.season }}
+          INPUT_WEEK: ${{ inputs.week }}
         run: |
           {
             echo "### Test recap"
             echo ""
-            echo "- Season/week: **${{ inputs.season }} week ${{ inputs.week }}**"
+            echo "- Season/week: **$INPUT_SEASON week $INPUT_WEEK**"
             echo "- Result: **${{ job.status }}**"
             echo "- One copy only. The league was not emailed and nothing was recorded."
           } >> "$GITHUB_STEP_SUMMARY"
