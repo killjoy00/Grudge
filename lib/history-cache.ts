@@ -62,6 +62,6 @@ export const getCachedRichChampions = unstable_cache(
 
 export const getCachedHistoryRecords = unstable_cache(
   async () => Promise.all([getAllSeasonRecords(), getTrackedGameRecords()]),
-  ['history-record-book-v2'],
+  ['history-record-book-v3'],
   { revalidate: 86400 }
 );
