@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 import { currentProfile } from '../../lib/db.ts';
-import { getMyGrudgeDashboard } from '../../lib/my-grudge.ts';
+import { previewWithoutClerk } from '../../lib/clerk-config.ts';
+import { getMyGrudgeDashboard, type MyGrudgeDashboard } from '../../lib/my-grudge.ts';
+import { getCurrentSeason, getTeams, type TeamRow } from '../../lib/queries.ts';
 import { ProfileForm } from '../../components/ProfileForm.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -15,32 +17,26 @@ function movement(rank: number, previous: number | null) {
   return `${change > 0 ? '↑' : '↓'} ${Math.abs(change)}`;
 }
 
-export default async function ProfilePage() {
-  await auth.protect();
-  const profile = await currentProfile();
+type PageProfile = {
+  display_name: string | null;
+  team_name: string | null;
+  espn_team_id: number | null;
+  is_admin: boolean;
+  recap_email_enabled: boolean;
+  email: string;
+};
 
-  if (!profile) {
-    return (
-      <>
-        <div className="page-hero compact-hero">
-          <div className="eyebrow">My Grudge</div>
-          <h1>Profile setup incomplete</h1>
-          <p>Your Clerk sign-in exists, but the league membership record does not.</p>
-        </div>
-        <div className="card">
-          <p>
-            You are signed in, but your league profile has not been created yet.
-            Ask the commissioner to confirm that your email is active in the league
-            roster and run Repair sync if the Clerk webhook did not finish.
-          </p>
-        </div>
-      </>
-    );
-  }
-
-  const dashboard = profile.espn_team_id === null
-    ? null
-    : await getMyGrudgeDashboard(profile.espn_team_id);
+function DashboardView({
+  profile,
+  dashboard,
+  previewMode,
+  previewTeams,
+}: {
+  profile: PageProfile;
+  dashboard: MyGrudgeDashboard | null;
+  previewMode: boolean;
+  previewTeams: TeamRow[];
+}) {
   const powerMove = dashboard?.power
     ? movement(dashboard.power.rank, dashboard.power.previous_rank)
     : null;
@@ -51,11 +47,30 @@ export default async function ProfilePage() {
         <div className="eyebrow">My Grudge</div>
         <h1>{profile.team_name ?? profile.display_name ?? 'Your team'}</h1>
         <p>
-          {profile.display_name || 'League member'}
-          {profile.is_admin ? ' · Commissioner' : ''}
+          {previewMode ? 'Preview mode' : profile.display_name || 'League member'}
+          {!previewMode && profile.is_admin ? ' · Commissioner' : ''}
           {dashboard ? ` · ${dashboard.season} season` : ''}
         </p>
       </div>
+
+      {previewMode && (
+        <div className="callout">
+          <strong>Preview without sign-in.</strong> Vercel Preview does not currently have the Clerk
+          variables, so this page is using public league data only. Choose any team below to inspect
+          the dashboard. Production authentication remains unchanged.
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+            {previewTeams.map((team) => (
+              <a
+                key={team.espn_team_id}
+                href={`/me?team=${team.espn_team_id}`}
+                className={team.espn_team_id === profile.espn_team_id ? 'btn' : 'btn btn-quiet'}
+              >
+                {team.name}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {dashboard ? (
         <>
@@ -97,7 +112,7 @@ export default async function ProfilePage() {
               </p>
             ) : dashboard.active.matchup_id === null ? (
               <p className="empty" style={{ margin: 0 }}>
-                Week {dashboard.active.week} is current, but no matchup is attached to your team yet.
+                Week {dashboard.active.week} is current, but no matchup is attached to this team yet.
               </p>
             ) : (
               <>
@@ -132,17 +147,24 @@ export default async function ProfilePage() {
                         dashboard.active.rivalry_ties
                       )}
                     </strong> across {dashboard.active.rivalry_games} meeting{dashboard.active.rivalry_games === 1 ? '' : 's'}.
-                    {dashboard.active.opponent_id !== null && (
+                    {dashboard.active.opponent_id !== null && profile.espn_team_id !== null && (
                       <> <a href={`/rivalry/${profile.espn_team_id}/${dashboard.active.opponent_id}`}>Full rivalry →</a></>
                     )}
                   </p>
                 )}
 
                 <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-                  <p className="note" style={{ margin: 0 }}>
-                    <strong>{dashboard.active.picks_made}/{dashboard.active.picks_total}</strong> picks made for week {dashboard.active.week}.
-                    {' '}{dashboard.active.locked ? 'The board is locked.' : 'You can still change them.'}
-                  </p>
+                  {dashboard.active.picks_made === null ? (
+                    <p className="note" style={{ margin: 0 }}>
+                      Prediction completion is hidden in this unauthenticated preview. Matchup,
+                      projections and rivalry context are still the real current-season data.
+                    </p>
+                  ) : (
+                    <p className="note" style={{ margin: 0 }}>
+                      <strong>{dashboard.active.picks_made}/{dashboard.active.picks_total}</strong> picks made for week {dashboard.active.week}.
+                      {' '}{dashboard.active.locked ? 'The board is locked.' : 'You can still change them.'}
+                    </p>
+                  )}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                     <a
                       href={`/matchup/${dashboard.season}/${dashboard.active.week}/${dashboard.active.matchup_id}`}
@@ -150,10 +172,14 @@ export default async function ProfilePage() {
                     >
                       Matchup preview
                     </a>
-                    <a href="/predictions" className="btn btn-quiet">
-                      {dashboard.active.locked ? 'Review picks' : 'Finish picks'}
-                    </a>
-                    <a href={`/team/${profile.espn_team_id}`} className="btn btn-quiet">Team page</a>
+                    {!previewMode && (
+                      <a href="/predictions" className="btn btn-quiet">
+                        {dashboard.active.locked ? 'Review picks' : 'Finish picks'}
+                      </a>
+                    )}
+                    {profile.espn_team_id !== null && (
+                      <a href={`/team/${profile.espn_team_id}`} className="btn btn-quiet">Team page</a>
+                    )}
                   </div>
                 </div>
               </>
@@ -187,20 +213,106 @@ export default async function ProfilePage() {
       ) : (
         <div className="card">
           <p className="note" style={{ margin: 0 }}>
-            Your league profile is active, but it is not attached to an ESPN team yet.
-            Once the team assignment is repaired, this page will show your season dashboard.
+            This league profile is active, but it is not attached to an ESPN team yet.
           </p>
         </div>
       )}
 
       <h2>Account settings</h2>
       <div className="card">
-        <ProfileForm
-          initialName={profile.display_name ?? ''}
-          initialRecapEnabled={profile.recap_email_enabled}
-        />
-        <p className="note profile-email">Recaps are sent to {profile.email}.</p>
+        {previewMode ? (
+          <p className="note" style={{ margin: 0 }}>
+            Account controls are disabled in this unauthenticated Preview fallback. Once Clerk is
+            assigned to Vercel Preview, this exact page uses the signed-in manager automatically.
+          </p>
+        ) : (
+          <>
+            <ProfileForm
+              initialName={profile.display_name ?? ''}
+              initialRecapEnabled={profile.recap_email_enabled}
+            />
+            <p className="note profile-email">Recaps are sent to {profile.email}.</p>
+          </>
+        )}
       </div>
     </>
+  );
+}
+
+export default async function ProfilePage({
+  searchParams,
+}: { searchParams: Promise<{ team?: string }> }) {
+  const sp = await searchParams;
+  const previewMode = previewWithoutClerk();
+
+  if (previewMode) {
+    const season = await getCurrentSeason();
+    const teams = await getTeams(season);
+    const requestedTeam = Number(sp.team);
+    const selected = teams.find((team) => team.espn_team_id === requestedTeam) ?? teams[0] ?? null;
+
+    if (!selected) {
+      return (
+        <>
+          <div className="page-hero compact-hero">
+            <div className="eyebrow">My Grudge</div>
+            <h1>No teams to preview</h1>
+            <p>The current season has no team rows loaded yet.</p>
+          </div>
+        </>
+      );
+    }
+
+    const dashboard = await getMyGrudgeDashboard(selected.espn_team_id, { includePicks: false });
+    return (
+      <DashboardView
+        previewMode
+        previewTeams={teams}
+        dashboard={dashboard}
+        profile={{
+          display_name: null,
+          team_name: selected.name,
+          espn_team_id: selected.espn_team_id,
+          is_admin: false,
+          recap_email_enabled: false,
+          email: '',
+        }}
+      />
+    );
+  }
+
+  await auth.protect();
+  const profile = await currentProfile();
+
+  if (!profile) {
+    return (
+      <>
+        <div className="page-hero compact-hero">
+          <div className="eyebrow">My Grudge</div>
+          <h1>Profile setup incomplete</h1>
+          <p>Your Clerk sign-in exists, but the league membership record does not.</p>
+        </div>
+        <div className="card">
+          <p>
+            You are signed in, but your league profile has not been created yet.
+            Ask the commissioner to confirm that your email is active in the league
+            roster and run Repair sync if the Clerk webhook did not finish.
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  const dashboard = profile.espn_team_id === null
+    ? null
+    : await getMyGrudgeDashboard(profile.espn_team_id);
+
+  return (
+    <DashboardView
+      previewMode={false}
+      previewTeams={[]}
+      profile={profile}
+      dashboard={dashboard}
+    />
   );
 }
