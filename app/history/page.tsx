@@ -13,7 +13,7 @@ const franchiseColumns: SortColumn[] = [
   { key: 'seasons', label: 'Seasons', numeric: true },
   { key: 'regular', label: 'Regular', numeric: true },
   { key: 'winPct', label: 'Win %', numeric: true },
-  { key: 'firsts', label: 'Reg. 1st', numeric: true, title: 'Sort by regular-season first-place finishes' },
+  { key: 'firsts', label: 'Reg. Champ.', numeric: true, title: 'Sort by regular-season championships' },
   { key: 'playoffs', label: 'Playoffs', numeric: true },
   { key: 'titles', label: 'Titles', numeric: true },
 ];
@@ -23,7 +23,7 @@ const managerColumns: SortColumn[] = [
   { key: 'seasons', label: 'Seasons', numeric: true },
   { key: 'regular', label: 'Regular', numeric: true },
   { key: 'winPct', label: 'Win %', numeric: true },
-  { key: 'firsts', label: 'Reg. 1st', numeric: true, title: 'Sort by regular-season first-place finishes' },
+  { key: 'firsts', label: 'Reg. Champ.', numeric: true, title: 'Sort by regular-season championships' },
   { key: 'playoffs', label: 'Playoffs', numeric: true },
   { key: 'titles', label: 'Titles', numeric: true },
 ];
@@ -117,11 +117,10 @@ export default async function History() {
 
   const archiveRows: SortRow[] = champions.map((row) => {
     const regular = regularBySeason.get(row.season);
-    const sourceMark = row.season <= 2017 ? '*' : row.season <= 2025 ? '_' : '';
     return {
       key: String(row.season),
       cells: {
-        season: { v: row.season, d: `${row.season}${sourceMark}`, href: seasonHref(row.season) },
+        season: { v: row.season, d: String(row.season), href: seasonHref(row.season) },
         champion: {
           v: row.champion_team_name,
           d: row.champion_team_name,
@@ -178,7 +177,7 @@ export default async function History() {
       <div className="card">
         <SortableTable columns={archiveColumns} rows={archiveRows} rank={false} />
         <p className="note" style={{ margin: '10px 2px 0' }}>
-          * 2005–2017 · _ 2018–2025
+          Source: 2005–2017 season results come from the commissioner archive; 2018–2025 season results come from ESPN&rsquo;s archived league records.
         </p>
       </div>
 

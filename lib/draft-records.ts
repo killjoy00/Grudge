@@ -104,7 +104,8 @@ with modern_weekly as (
     join public.players p using (espn_player_id)
     join public.team_franchise tf
       on tf.season = d.season and tf.espn_team_id = d.espn_team_id
-    left join production pr using (season, espn_player_id)
+    left join production pr
+      on pr.season = d.season and pr.espn_player_id = d.espn_player_id
     left join public.manager_franchise_seasons ms
       on ms.season = tf.season and ms.franchise_key = tf.franchise_key and ms.is_primary
     left join public.managers m using (manager_key)
