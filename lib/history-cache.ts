@@ -9,14 +9,13 @@ import {
   getFranchiseKeyPlayersByKey,
   getFranchiseManagersByKey,
   getFranchiseSeasonsByKey,
-  getGameRecords,
   getManagerProfile,
   getManagerSeasonsByKey,
   getRichChampions,
-  getSeasonHighlights,
   getSeasonManagers,
   getSeasonPlayoffGames,
 } from './history-queries.ts';
+import { getTrackedGameRecords, getTrackedSeasonHighlights } from './tracked-game-queries.ts';
 
 export const getCachedFranchiseByKey = unstable_cache(
   async (franchiseKey: string) => Promise.all([
@@ -49,9 +48,9 @@ export const getCachedHistorySeason = unstable_cache(
     getSeasonStandings(season),
     getSeasonManagers(season),
     getSeasonPlayoffGames(season),
-    getSeasonHighlights(season),
+    getTrackedSeasonHighlights(season),
   ]),
-  ['history-season-file'],
+  ['history-season-file-v2'],
   { revalidate: 86400 }
 );
 
@@ -62,7 +61,7 @@ export const getCachedRichChampions = unstable_cache(
 );
 
 export const getCachedHistoryRecords = unstable_cache(
-  async () => Promise.all([getAllSeasonRecords(), getGameRecords()]),
-  ['history-record-book'],
+  async () => Promise.all([getAllSeasonRecords(), getTrackedGameRecords()]),
+  ['history-record-book-v2'],
   { revalidate: 86400 }
 );
