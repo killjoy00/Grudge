@@ -21,7 +21,7 @@ function ClassTable({ title, rows }: { title: string; rows: DraftClassRow[] }) {
       <h3>{title}</h3>
       <div className="scroll"><table>
         <thead><tr><th>#</th><th>Draft</th><th>Manager</th><th className="num">Value</th><th className="num">Picks</th></tr></thead>
-        <tbody>{rows.slice(0, 5).map((row, index) => (
+        <tbody>{rows.slice(0, 10).map((row, index) => (
           <tr key={`${title}-${row.season}-${row.franchise_key}`}>
             <td>{index + 1}</td>
             <td>
@@ -44,7 +44,7 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
       <h3>{title}</h3>
       <div className="scroll"><table>
         <thead><tr><th>#</th><th>Player</th><th>Drafted by</th><th className="num">Value</th><th className="num">Points</th></tr></thead>
-        <tbody>{rows.slice(0, 5).map((row, index) => (
+        <tbody>{rows.slice(0, 10).map((row, index) => (
           <tr key={`${title}-${row.season}-${row.overall_pick}`}>
             <td>{index + 1}</td>
             <td>
@@ -61,17 +61,28 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
   );
 }
 
-export function DraftRecordsSection({ records }: { records: DraftRecords }) {
+export function DraftRecordsSection({ records, full = false }: { records: DraftRecords; full?: boolean }) {
   const firstRoundTotal = records.firstRoundPositions.reduce((sum, row) => sum + row.picks, 0);
-  const topRepeat = records.repeats[0];
+
+  if (!full) {
+    return (
+      <>
+        <h2>Draft history</h2>
+        <a className="card" href="/history/drafts" style={{ display: 'block', textDecoration: 'none' }}>
+          <span className="eyebrow">Draft ratings</span>
+          <h3>Best classes, steals, busts and 21 years of draft boards</h3>
+          <p className="note">
+            One combined draft room now holds the 2005–2025 boards, 2008–2025 performance grades,
+            franchise tendencies and links to every round-by-round ESPN draft.
+          </p>
+          <strong>Open draft history →</strong>
+        </a>
+      </>
+    );
+  }
 
   return (
     <>
-      <h2>Draft history</h2>
-      <p className="sub">
-        Every draft board survives back to 2005. Performance grades now cover 2008–2025 for QBs, RBs, WRs and TEs; kickers and defenses are excluded.
-      </p>
-
       <div className="stat-strip">
         <div><strong>2005–2025</strong><span>Draft boards on file</span></div>
         <div><strong>2008–2025</strong><span>Drafts with performance grades</span></div>
@@ -87,18 +98,22 @@ export function DraftRecordsSection({ records }: { records: DraftRecords }) {
         <strong>How the older grades work.</strong> For 2008–2017, the recovered ESPN season files still contain ESPN&rsquo;s exact full-season fantasy total for most drafted players. Players missing because they were cut, injured or suspended are gap-filled from nflverse weekly NFL stats scored under that season&rsquo;s archived Grudge rules. The reconstruction was checked against more than a thousand surviving ESPN totals: the typical error is about 0–1 point, with most of the residual coming from the old +1 bonus for 40+ yard touchdowns. 2005–2007 remain board-only because ESPN used an older player-ID namespace and identity coverage is not clean enough for a fair class ranking.
       </div>
 
+      <h2>Draft class ratings</h2>
+      <p className="sub">Average positional value across every graded QB, RB, WR and TE in the class. More positive means the draft beat its slot-by-slot expectations.</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14 }}>
         <ClassTable title="Best draft classes · 2008–2025" rows={records.bestClasses} />
         <ClassTable title="Roughest draft classes · 2008–2025" rows={records.worstClasses} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14, marginTop: 14 }}>
+      <h2>Individual picks</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14 }}>
         <PickTable title="Biggest steals" rows={records.steals} positive />
         <PickTable title="Biggest busts" rows={records.busts} positive={false} />
       </div>
 
+      <h2>Draft habits</h2>
       <h3>Players franchises kept coming back to</h3>
-      <p className="sub">This one uses the full 2005–2025 draft archive and needs no player-performance assumptions.</p>
+      <p className="sub">This uses the full 2005–2025 draft archive and needs no player-performance assumptions.</p>
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>Franchise</th><th>Player</th><th className="num">Times drafted</th><th>Seasons</th></tr></thead>
         <tbody>{records.repeats.map((row) => (
@@ -107,6 +122,18 @@ export function DraftRecordsSection({ records }: { records: DraftRecords }) {
             <td className="tname">{row.full_name ?? `ESPN player #${row.espn_player_id}`}</td>
             <td className="num"><strong>{row.times_drafted}</strong></td>
             <td>{row.seasons}</td>
+          </tr>
+        ))}</tbody>
+      </table></div></div>
+
+      <h3>First-round position history</h3>
+      <div className="card"><div className="scroll"><table>
+        <thead><tr><th>Position</th><th className="num">Picks</th><th className="num">Share</th></tr></thead>
+        <tbody>{records.firstRoundPositions.map((row) => (
+          <tr key={row.default_position_id ?? -1}>
+            <td className="tname">{POSITIONS[row.default_position_id ?? 0] ?? '—'}</td>
+            <td className="num">{row.picks}</td>
+            <td className="num">{(row.picks / Math.max(1, firstRoundTotal) * 100).toFixed(1)}%</td>
           </tr>
         ))}</tbody>
       </table></div></div>
