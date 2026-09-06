@@ -15,18 +15,26 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
+
+      # Do not let a known moderate-or-higher dependency vulnerability quietly
+      # re-enter the application after this maintenance cleanup.
+      - name: Dependency audit
+        run: npm audit --audit-level=moderate
 
       - name: Typecheck
         run: npx tsc --noEmit
@@ -53,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The suite spins up its own throwaway Postgres and applies the schema
       # straight out of docs/SCHEMA_PROPOSAL.md, so the document and the thing
@@ -81,8 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm

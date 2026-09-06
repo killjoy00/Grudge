@@ -8,6 +8,7 @@ import { loadRecap, type Query } from './recap-query.ts';
 import { renderWeeklyRecap, type WeeklyRecap } from './recap.ts';
 import { addPickupReport, loadRecapPickups } from './pickup-recap.ts';
 import { makeMatchupsEmailSafe } from './email-layout.ts';
+import { formatRecapPlainText } from './recap-text.ts';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -139,10 +140,14 @@ async function main() {
   }
   const siteUrl = process.env.RECAP_SITE_URL?.trim() || 'https://grudge.planitnow.us';
   const pickups = await loadRecapPickups(query, recap.season, recap.week);
-  const rendered = addPickupReport(
+  const rawRendered = addPickupReport(
     makeMatchupsEmailSafe(renderWeeklyRecap(recap, siteUrl), recap),
     pickups
   );
+  const rendered = {
+    ...rawRendered,
+    text: formatRecapPlainText(rawRendered.text),
+  };
 
   if (DRY_RUN) {
     console.log(rendered.subject);

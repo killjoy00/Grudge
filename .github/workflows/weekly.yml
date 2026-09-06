@@ -34,9 +34,9 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -56,9 +56,10 @@ jobs:
       - name: Fetch ESPN data and load
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          INPUT_SEASON: ${{ inputs.season }}
         run: |
-          if [ -n "${{ inputs.season }}" ]; then
-            npx tsx pipeline/run.ts --season=${{ inputs.season }}
+          if [ -n "$INPUT_SEASON" ]; then
+            npx tsx pipeline/run.ts --season="$INPUT_SEASON"
           else
             npx tsx pipeline/run.ts
           fi
@@ -178,9 +179,10 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
           RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+          INPUT_SEASON: ${{ inputs.season }}
         run: |
-          if [ -n "${{ inputs.season }}" ]; then
-            npm run recap -- --season=${{ inputs.season }} --skip-if-empty
+          if [ -n "$INPUT_SEASON" ]; then
+            npm run recap -- --season="$INPUT_SEASON" --skip-if-empty
           else
             npm run recap -- --skip-if-empty
           fi
