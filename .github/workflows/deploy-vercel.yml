@@ -7,14 +7,10 @@ name: Controlled Vercel deploy
 #   2. manually from the Actions tab; or
 #   3. when the vercel-deploy-request branch is pushed, which gives external
 #      automation (including ChatGPT via GitHub) a deliberate deploy trigger.
-#
-# GitHub cron is UTC-only, so both possible 08:00 Central UTC hours are
-# scheduled. The timezone guard below makes exactly one of them eligible after
-# daylight-saving changes.
 on:
   schedule:
-    - cron: '0 13 * * *'
-    - cron: '0 14 * * *'
+    - cron: '0 8 * * *'
+      timezone: 'America/Chicago'
   workflow_dispatch:
   push:
     branches:
@@ -42,7 +38,6 @@ jobs:
         id: gate
         env:
           EVENT_NAME: ${{ github.event_name }}
-          TZ: America/Chicago
         run: |
           set -euo pipefail
 
@@ -51,12 +46,6 @@ jobs:
 
           echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
           echo "marker_sha=${marker_sha:-none}" >> "$GITHUB_OUTPUT"
-
-          if [ "$EVENT_NAME" = "schedule" ] && [ "$(date +%H)" != "08" ]; then
-            echo "deploy=false" >> "$GITHUB_OUTPUT"
-            echo "reason=timezone guard: not 08:00 America/Chicago" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
 
           # Scheduled runs are change-aware: no code/data change means no Vercel
           # request and therefore no wasted deployment quota. Manual triggers are
