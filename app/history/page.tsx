@@ -2,8 +2,9 @@ import SortableTable, { type SortColumn, type SortRow } from '../../components/S
 import { getCachedRichChampions } from '../../lib/history-cache.ts';
 import { franchiseHref, managerHref, record, seasonHref, winRate } from '../../lib/history-format.ts';
 import { getCachedHistoryDirectory } from '../../lib/history-overview-cache.ts';
+import { historyRange } from '../../lib/history-range.ts';
 import { getSeasonManagers } from '../../lib/history-queries.ts';
-import { getCurrentSeason } from '../../lib/queries.ts';
+import { getCurrentSeason, getFranchiseHistory, getManagerHistory } from '../../lib/queries.ts';
 import { getCachedRegularSeasonChampions } from '../../lib/regular-season-history.ts';
 
 export const dynamic = 'force-dynamic';
@@ -55,16 +56,28 @@ function firstCell(seasons: number[] | undefined) {
   };
 }
 
-export default async function History() {
-  const currentSeason = await getCurrentSeason();
-  const [[franchises, managers], champions, regularSeasonChampions, currentSeasonManagers] = await Promise.all([
-    getCachedHistoryDirectory(),
+export default async function History({
+  searchParams,
+}: { searchParams: Promise<{ from?: string; to?: string }> }) {
+  const params = await searchParams;
+  const [currentSeason, champions, regularSeasonChampions] = await Promise.all([
+    getCurrentSeason(),
     getCachedRichChampions(),
     getCachedRegularSeasonChampions(),
-    getSeasonManagers(currentSeason),
   ]);
   const first = champions.at(-1)?.season ?? null;
   const last = champions[0]?.season ?? null;
+  const range = historyRange(params.from, params.to, first, last);
+  const hasRange = range !== null;
+  const rangeFrom = range?.from ?? first ?? 0;
+  const rangeTo = range?.to ?? last ?? rangeFrom;
+
+  const [[franchises, managers], currentSeasonManagers] = await Promise.all([
+    hasRange
+      ? Promise.all([getFranchiseHistory(rangeFrom, rangeTo), getManagerHistory(rangeFrom, rangeTo)])
+      : getCachedHistoryDirectory(),
+    getSeasonManagers(currentSeason),
+  ]);
   const regularBySeason = new Map(regularSeasonChampions.map((row) => [row.season, row]));
 
   const currentManagerKeys = new Set(currentSeasonManagers.map((row) => row.manager_key));
@@ -74,10 +87,14 @@ export default async function History() {
   }
 
   const franchiseFirsts = groupSeasons(
-    regularSeasonChampions.map((row) => ({ season: row.season, key: row.franchise_key }))
+    regularSeasonChampions
+      .filter((row) => !hasRange || (row.season >= rangeFrom && row.season <= rangeTo))
+      .map((row) => ({ season: row.season, key: row.franchise_key }))
   );
   const managerFirsts = groupSeasons(
-    regularSeasonChampions.map((row) => ({ season: row.season, key: row.manager_key }))
+    regularSeasonChampions
+      .filter((row) => !hasRange || (row.season >= rangeFrom && row.season <= rangeTo))
+      .map((row) => ({ season: row.season, key: row.manager_key }))
   );
 
   const franchiseRows: SortRow[] = franchises.map((row) => {
@@ -112,8 +129,14 @@ export default async function History() {
     };
   };
 
-  const currentManagerRows = managers.filter((row) => currentManagerKeys.has(row.manager_key)).map(managerRow);
-  const formerManagerRows = managers.filter((row) => !currentManagerKeys.has(row.manager_key)).map(managerRow);
+  // A historical slice should show everyone who managed during that slice;
+  // "current" versus "former" is only meaningful on the all-time directory.
+  const currentManagerRows = (hasRange
+    ? managers
+    : managers.filter((row) => currentManagerKeys.has(row.manager_key))).map(managerRow);
+  const formerManagerRows = hasRange
+    ? []
+    : managers.filter((row) => !currentManagerKeys.has(row.manager_key)).map(managerRow);
 
   const archiveRows: SortRow[] = champions.map((row) => {
     const regular = regularBySeason.get(row.season);
@@ -161,6 +184,29 @@ export default async function History() {
         <a className="btn btn-quiet" href="/history/records">Record book →</a>
       </nav>
 
+      <form className="card" method="get" style={{ marginBottom: 24 }}>
+        <strong style={{ fontSize: 14 }}>Filter franchise and manager records</strong>
+        <div style={{ display: 'flex', alignItems: 'end', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
+          <label>
+            <span className="tsub block">From</span>
+            <input name="from" type="number" min={first ?? undefined} max={last ?? undefined}
+                   defaultValue={params.from ?? ''} placeholder={String(first ?? '')} />
+          </label>
+          <label>
+            <span className="tsub block">Through</span>
+            <input name="to" type="number" min={first ?? undefined} max={last ?? undefined}
+                   defaultValue={params.to ?? ''} placeholder="Present" />
+          </label>
+          <button className="btn" type="submit">Apply years</button>
+          {hasRange && <a className="btn btn-quiet" href="/history">Full history</a>}
+        </div>
+        <p className="note" style={{ margin: '10px 0 0' }}>
+          {hasRange
+            ? `Showing ${rangeFrom}–${rangeTo} in the franchise and manager tables below. The season archive remains complete.`
+            : 'Defaults to full history. Leave “Through” blank for the latest completed season.'}
+        </p>
+      </form>
+
       <h2>Franchises</h2>
       <p className="sub">A franchise is the permanent league slot. Names and managers can change without resetting the record.</p>
       <div className="card">
@@ -168,7 +214,11 @@ export default async function History() {
       </div>
 
       <h2>Managers</h2>
-      <p className="sub">Career records follow the person across franchise changes. Current managers are kept together here.</p>
+      <p className="sub">
+        {hasRange
+          ? `Records for every manager active from ${rangeFrom} through ${rangeTo}, across franchise changes.`
+          : 'Career records follow the person across franchise changes. Current managers are kept together here.'}
+      </p>
       <div className="card">
         <SortableTable columns={managerColumns} rows={currentManagerRows} rank={false} />
       </div>

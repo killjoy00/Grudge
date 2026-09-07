@@ -237,8 +237,7 @@ export async function getAllTime() {
  * All-time records by durable franchise identity, spanning the transcribed
  * 2005-2017 seasons and the ESPN era in one table.
  */
-export async function getFranchiseHistory() {
-  return asPublic<{
+export interface FranchiseHistoryRow {
     franchise_key: string; current_name: string; espn_team_id: number | null;
     seasons: number; regular_wins: number; regular_losses: number; regular_ties: number;
     playoff_wins: number; playoff_losses: number; championships: number;
@@ -246,7 +245,38 @@ export async function getFranchiseHistory() {
     title_seasons: string | null;
     regular_points_for: string | null; regular_points_against: string | null;
     first_season: number; last_season: number;
-  }>(
+}
+
+export async function getFranchiseHistory(from?: number, to?: number) {
+  if (from !== undefined && to !== undefined) {
+    return asPublic<FranchiseHistoryRow>(
+      `select f.franchise_key, f.current_name,
+              max(fs.espn_team_id) filter (where fs.source = 'espn') as espn_team_id,
+              count(fs.season)::int as seasons,
+              sum(fs.regular_wins)::int as regular_wins,
+              sum(fs.regular_losses)::int as regular_losses,
+              sum(fs.regular_ties)::int as regular_ties,
+              sum(fs.playoff_wins)::int as playoff_wins,
+              sum(fs.playoff_losses)::int as playoff_losses,
+              count(*) filter (where fs.is_champion)::int as championships,
+              count(*) filter (where fs.is_runner_up)::int as runner_ups,
+              count(*) filter (where fs.final_place <= 4)::int as top_four,
+              count(*) filter (where fs.playoff_wins + fs.playoff_losses > 0)::int as playoff_appearances,
+              string_agg(fs.season::text, ' ' order by fs.season)
+                filter (where fs.is_champion) as title_seasons,
+              round(sum(fs.regular_points_for), 1)::text as regular_points_for,
+              round(sum(fs.regular_points_against), 1)::text as regular_points_against,
+              min(fs.season)::int as first_season,
+              max(fs.season)::int as last_season
+         from public.franchises f
+         join public.franchise_seasons fs using (franchise_key)
+        where fs.season between $1 and $2
+        group by f.franchise_key, f.current_name
+        order by championships desc, regular_wins desc, playoff_wins desc, current_name`,
+      [from, to]
+    );
+  }
+  return asPublic<FranchiseHistoryRow>(
     `select franchise_key, current_name, espn_team_id, seasons, regular_wins,
             regular_losses, regular_ties, playoff_wins, playoff_losses,
             championships, runner_ups, top_four, playoff_appearances, title_seasons,
@@ -259,15 +289,45 @@ export async function getFranchiseHistory() {
 }
 
 /** The same record attributed to people through explicit season mappings. */
-export async function getManagerHistory() {
-  return asPublic<{
+export interface ManagerHistoryRow {
     manager_key: string; display_name: string; seasons: number;
     regular_wins: number; regular_losses: number; regular_ties: number;
     playoff_wins: number; playoff_losses: number; championships: number;
     runner_ups: number; top_four: number; playoff_appearances: number;
     title_seasons: string | null;
     regular_points_for: string | null; first_season: number; last_season: number;
-  }>(
+}
+
+export async function getManagerHistory(from?: number, to?: number) {
+  if (from !== undefined && to !== undefined) {
+    return asPublic<ManagerHistoryRow>(
+      `select m.manager_key, m.display_name,
+              count(distinct ms.season)::int as seasons,
+              sum(fs.regular_wins)::int as regular_wins,
+              sum(fs.regular_losses)::int as regular_losses,
+              sum(fs.regular_ties)::int as regular_ties,
+              sum(fs.playoff_wins)::int as playoff_wins,
+              sum(fs.playoff_losses)::int as playoff_losses,
+              count(*) filter (where fs.is_champion)::int as championships,
+              count(*) filter (where fs.is_runner_up)::int as runner_ups,
+              count(*) filter (where fs.final_place <= 4)::int as top_four,
+              count(*) filter (where fs.playoff_wins + fs.playoff_losses > 0)::int as playoff_appearances,
+              string_agg(fs.season::text, ' ' order by fs.season)
+                filter (where fs.is_champion) as title_seasons,
+              round(sum(fs.regular_points_for), 1)::text as regular_points_for,
+              min(ms.season)::int as first_season,
+              max(ms.season)::int as last_season
+         from public.managers m
+         join public.manager_franchise_seasons ms using (manager_key)
+         join public.franchise_seasons fs
+           on fs.season = ms.season and fs.franchise_key = ms.franchise_key
+        where ms.season between $1 and $2
+        group by m.manager_key, m.display_name
+        order by championships desc, regular_wins desc, playoff_wins desc, display_name`,
+      [from, to]
+    );
+  }
+  return asPublic<ManagerHistoryRow>(
     `select manager_key, display_name, seasons, regular_wins, regular_losses,
             regular_ties, playoff_wins, playoff_losses, championships,
             runner_ups, top_four, playoff_appearances, title_seasons,

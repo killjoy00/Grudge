@@ -202,7 +202,7 @@ button:disabled { opacity: .52; cursor: not-allowed; }
 button.pick { flex: 1; min-height: 48px; text-align: left; }
 button.pick.on { color: white; background: var(--pick-on); border-color: var(--pick-on); }
 .pickrow { display: flex; gap: 8px; margin: 10px 0; }
-input[type="text"], input[type="email"], select, textarea {
+input[type="text"], input[type="email"], input[type="number"], select, textarea {
   width: 100%; padding: 10px 11px; color: var(--text); background: white;
   border: 1px solid var(--line-dark); border-radius: 2px; font: inherit; font-size: 15px;
 }

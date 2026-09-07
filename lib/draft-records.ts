@@ -29,6 +29,7 @@ export interface DraftPickValueRow {
   default_position_id: number | null;
   fantasy_points: string;
   performance_source: string;
+  active_weeks: number | null;
   production_score: string;
   draft_capital_score: string;
   value_delta: string;
@@ -76,6 +77,7 @@ export interface DraftRecords {
   worstClasses: DraftClassRow[];
   steals: DraftPickValueRow[];
   busts: DraftPickValueRow[];
+  productiveMisses: DraftPickValueRow[];
   repeats: RepeatDraftRow[];
   firstRoundPositions: FirstRoundPositionRow[];
   positionSummary: DraftPositionSummaryRow[];
@@ -104,6 +106,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
     worstClasses,
     steals,
     busts,
+    productiveMisses,
     repeats,
     firstRoundPositions,
     positionSummary,
@@ -135,7 +138,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
       select season, overall_pick, round, round_pick, franchise_key, team_name,
              manager_key, manager, espn_player_id::int, full_name, default_position_id,
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
-             production_score::text, draft_capital_score::text, value_delta::text
+             active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
        order by value_delta desc, fantasy_points desc, overall_pick desc
        limit 10`),
@@ -143,10 +146,20 @@ export async function getDraftRecords(): Promise<DraftRecords> {
       select season, overall_pick, round, round_pick, franchise_key, team_name,
              manager_key, manager, espn_player_id::int, full_name, default_position_id,
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
-             production_score::text, draft_capital_score::text, value_delta::text
+             active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
        order by value_delta asc, overall_pick asc, fantasy_points asc
        limit 10`),
+    asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
+      select season, overall_pick, round, round_pick, franchise_key, team_name,
+             manager_key, manager, espn_player_id::int, full_name, default_position_id,
+             round(fantasy_points, 1)::text as fantasy_points, performance_source,
+             active_weeks, production_score::text, draft_capital_score::text,
+             value_delta::text
+        from graded
+       where active_weeks >= 8
+       order by value_delta asc, overall_pick asc, fantasy_points asc
+       limit 5`),
     asPublic<RepeatDraftRow>(`
       select tf.franchise_key,
              coalesce(f.current_name, tf.team_name) as team_name,
@@ -298,6 +311,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
     worstClasses,
     steals,
     busts,
+    productiveMisses,
     repeats,
     firstRoundPositions,
     positionSummary,

@@ -53,6 +53,7 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
             <td>
               <span className="tname">{row.full_name ?? `ESPN player #${row.espn_player_id}`}</span>
               <span className="tsub block">{positionLabel(row.default_position_id)} · {row.season} R{row.round} P{row.round_pick} (#{row.overall_pick})</span>
+              {row.active_weeks !== null && <span className="tsub block">Scored in {row.active_weeks} weeks</span>}
             </td>
             <td><a href={franchiseHref(row.franchise_key)}>{row.team_name}</a>{row.manager_key && row.manager && <span className="tsub block"><a href={managerHref(row.manager_key)}>{row.manager}</a></span>}</td>
             <td className={`num ${positive ? 'up' : 'down'}`}><strong>{Number(row.value_delta) > 0 ? '+' : ''}{row.value_delta}</strong><span className="tsub block">value points</span></td>
@@ -114,6 +115,16 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14 }}>
         <PickTable title="Biggest steals" rows={records.steals} positive />
         <PickTable title="Biggest busts" rows={records.busts} positive={false} />
+      </div>
+
+      <h3>Biggest misses who stayed on the field</h3>
+      <p className="sub">
+        The five lowest-value modern-era picks who still scored in at least eight different weeks.
+        The main bust list grades the outcome, including injuries; this companion list highlights players
+        who had a sustained opportunity to produce. Weekly player evidence is not available before 2018.
+      </p>
+      <div style={{ maxWidth: 720 }}>
+        <PickTable title="Available-season misses · 2018–2025" rows={records.productiveMisses} positive={false} />
       </div>
 
       <h2>Draft habits</h2>
