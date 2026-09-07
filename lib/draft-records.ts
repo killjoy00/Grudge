@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { asPublic } from './db.ts';
+import { GRADED_DRAFT_CTE } from './draft-ranking.ts';
 
 export interface DraftClassRow {
   season: number;
@@ -10,7 +11,7 @@ export interface DraftClassRow {
   manager: string | null;
   graded_picks: number;
   avg_value_delta: string;
-  total_value_delta: number;
+  total_value_delta: string;
   fantasy_points: string;
 }
 
@@ -28,9 +29,9 @@ export interface DraftPickValueRow {
   default_position_id: number | null;
   fantasy_points: string;
   performance_source: string;
-  draft_pos_rank: number;
-  production_pos_rank: number;
-  value_delta: number;
+  production_score: string;
+  draft_capital_score: string;
+  value_delta: string;
 }
 
 export interface RepeatDraftRow {
@@ -97,64 +98,6 @@ export interface DraftRecords {
  * important than it would be in a raw-points leaderboard and keeps a QB's point
  * scale from being compared directly with a TE's.
  */
-const GRADED_CTE = `
-with modern_weekly as (
-  select r.season, r.week, r.espn_player_id,
-         max(r.applied_points)::numeric as points
-    from public.roster_entries r
-    join public.weeks w
-      on w.season = r.season and w.week = r.week and w.results_complete
-   where r.season between 2018 and 2025
-   group by r.season, r.week, r.espn_player_id
-), modern_production as (
-  select season, espn_player_id, sum(points)::numeric as fantasy_points,
-         'espn_weekly'::text as performance_source
-    from modern_weekly
-   group by season, espn_player_id
-), production as (
-  select season, espn_player_id, fantasy_points::numeric, source::text as performance_source
-    from public.legacy_draft_performance
-  union all
-  select season, espn_player_id, fantasy_points, performance_source
-    from modern_production
-), base as (
-  select d.season, d.overall_pick, d.round, d.round_pick,
-         d.espn_team_id, d.espn_player_id,
-         p.full_name, p.default_position_id,
-         coalesce(pr.fantasy_points, 0)::numeric as fantasy_points,
-         coalesce(pr.performance_source, 'missing')::text as performance_source,
-         tf.franchise_key, tf.team_name,
-         m.manager_key, m.display_name as manager
-    from public.draft_picks d
-    join public.players p using (espn_player_id)
-    join public.team_franchise tf
-      on tf.season = d.season and tf.espn_team_id = d.espn_team_id
-    left join production pr
-      on pr.season = d.season and pr.espn_player_id = d.espn_player_id
-    left join public.manager_franchise_seasons ms
-      on ms.season = tf.season and ms.franchise_key = tf.franchise_key and ms.is_primary
-    left join public.managers m using (manager_key)
-   where d.season between 2008 and 2025
-     and d.season <> 2020
-     and p.default_position_id in (1, 2, 3, 4)
-), ranked as (
-  select base.*,
-         row_number() over (
-           partition by season, default_position_id
-           order by overall_pick
-         )::int as draft_pos_rank,
-         rank() over (
-           partition by season, default_position_id
-           order by fantasy_points desc
-         )::int as production_pos_rank
-    from base
-), scored as (
-  select ranked.*,
-         (draft_pos_rank - production_pos_rank)::int as value_delta
-    from ranked
-)
-`;
-
 export async function getDraftRecords(): Promise<DraftRecords> {
   const [
     bestClasses,
@@ -166,42 +109,42 @@ export async function getDraftRecords(): Promise<DraftRecords> {
     positionSummary,
     franchisePositions,
   ] = await Promise.all([
-    asPublic<DraftClassRow>(`${GRADED_CTE}
+    asPublic<DraftClassRow>(`${GRADED_DRAFT_CTE}
       select season, franchise_key, team_name, manager_key, manager,
              count(*)::int as graded_picks,
              round(avg(value_delta)::numeric, 2)::text as avg_value_delta,
-             sum(value_delta)::int as total_value_delta,
+             round(sum(value_delta)::numeric, 2)::text as total_value_delta,
              round(sum(fantasy_points)::numeric, 1)::text as fantasy_points
-        from scored
+        from graded
        group by season, franchise_key, team_name, manager_key, manager
       having count(*) >= 8
        order by avg(value_delta) desc, sum(value_delta) desc, season asc
        limit 10`),
-    asPublic<DraftClassRow>(`${GRADED_CTE}
+    asPublic<DraftClassRow>(`${GRADED_DRAFT_CTE}
       select season, franchise_key, team_name, manager_key, manager,
              count(*)::int as graded_picks,
              round(avg(value_delta)::numeric, 2)::text as avg_value_delta,
-             sum(value_delta)::int as total_value_delta,
+             round(sum(value_delta)::numeric, 2)::text as total_value_delta,
              round(sum(fantasy_points)::numeric, 1)::text as fantasy_points
-        from scored
+        from graded
        group by season, franchise_key, team_name, manager_key, manager
       having count(*) >= 8
        order by avg(value_delta) asc, sum(value_delta) asc, season asc
        limit 10`),
-    asPublic<DraftPickValueRow>(`${GRADED_CTE}
+    asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
              manager_key, manager, espn_player_id::int, full_name, default_position_id,
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
-             draft_pos_rank, production_pos_rank, value_delta
-        from scored
+             production_score::text, draft_capital_score::text, value_delta::text
+        from graded
        order by value_delta desc, fantasy_points desc, overall_pick desc
        limit 10`),
-    asPublic<DraftPickValueRow>(`${GRADED_CTE}
+    asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
              manager_key, manager, espn_player_id::int, full_name, default_position_id,
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
-             draft_pos_rank, production_pos_rank, value_delta
-        from scored
+             production_score::text, draft_capital_score::text, value_delta::text
+        from graded
        order by value_delta asc, overall_pick asc, fantasy_points asc
        limit 10`),
     asPublic<RepeatDraftRow>(`
@@ -265,7 +208,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
         from pick_counts pc
         left join first_counts fc using (default_position_id)
        order by pc.picks desc, pc.default_position_id`),
-    asPublic<FranchiseDraftPositionRow>(`${GRADED_CTE},
+    asPublic<FranchiseDraftPositionRow>(`${GRADED_DRAFT_CTE},
       draft_base as (
         select d.season, d.overall_pick, tf.franchise_key,
                coalesce(f.current_name, tf.team_name) as team_name,
@@ -323,7 +266,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
                  partition by franchise_key
                  order by avg(value_delta) asc, count(*) desc, default_position_id
                ) as worst_rank
-          from scored
+          from graded
          group by franchise_key, default_position_id
         having count(*) >= 8
       )

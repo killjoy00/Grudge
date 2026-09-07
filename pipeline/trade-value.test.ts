@@ -203,6 +203,8 @@ test('a player with no known eligibility is left out rather than started anywher
      { espn_player_id: 20, from_team_id: 2, to_team_id: 1 }]);
   const v = valueTrade({ ...base, eligible: new Map() });
   assert.equal(v.a.lineupImpact, 0);
+  assert.equal(v.graded, false, 'missing lineup data is not reported as a dead-even trade');
+  assert.equal(v.winner, null);
 });
 
 test('no completed weeks yet means no verdict, not a tie', () => {
@@ -304,6 +306,21 @@ test('seasonContext drops the kicker and defence slots it finds in the data', ()
   assert.equal(ctx.eligible.has(2), false, 'kicker dropped');
   assert.equal(ctx.eligible.has(3), false, 'defence dropped');
   assert.equal(ctx.replacement.has(5), false, 'no replacement level for kickers');
+});
+
+test('seasonContext counts a traded player only once in an ownership-transition week', () => {
+  const row = (team: number) => ({
+    week: 1, espn_team_id: team, espn_player_id: 10,
+    lineup_slot_id: WR, is_starter: team === 2, applied_points: 14,
+  });
+  const ctx = seasonContext(
+    [row(1), row(2)],
+    [{ espn_player_id: 10, default_position_id: POS.wr, eligible_slots: [WR, FLEX] }],
+    2
+  );
+  assert.deepEqual(ctx.points, [
+    { week: 1, espn_player_id: 10, points: 14, started: true },
+  ]);
 });
 
 test('an acquisition who never reaches the lineup is measured over no weeks', () => {
