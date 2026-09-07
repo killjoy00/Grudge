@@ -206,6 +206,10 @@ export function valueTrade(input: TradeValueInput): TradeValue {
     const pos = input.position.get(m.espn_player_id);
     return pos === undefined || !UNGRADED_POSITIONS.has(pos);
   });
+  // A ledger item without lineup eligibility is preserved in the trade card,
+  // but it cannot enter either branch of the lineup counterfactual.  Do not
+  // turn a completely unmeasurable deal into an authoritative 0-0 verdict.
+  const measurableMoves = moves.filter((m) => input.eligible.get(m.espn_player_id)?.length);
 
   // Roster membership and scoring, indexed by week for the inner loop.
   const rosterBy = new Map<number, Map<number, Set<number>>>();
@@ -292,7 +296,7 @@ export function valueTrade(input: TradeValueInput): TradeValue {
   const margin = round1(a.lineupImpact - b.lineupImpact);
   // Nothing left to weigh: either no week has been played, or the whole deal
   // was kickers and defences. Neither is a tie, so neither gets a verdict.
-  const graded = scored.length > 0 && moves.length > 0;
+  const graded = scored.length > 0 && measurableMoves.length > 0;
   return {
     a, b, margin,
     winner: !graded ? null : margin > 0 ? team_a : margin < 0 ? team_b : null,
@@ -392,12 +396,30 @@ export function seasonContext(
     if (UNGRADED_POSITIONS.has(pos)) eligible.delete(playerId);
   }
 
-  const totals = new Map<number, { points: number; games: number }>();
+  // A player can occur on two ownership rows in a transaction week.  Scoring
+  // is player-week data, not player-roster data, so collapse those edges before
+  // computing PPG/replacement or exposing points to the counterfactual.
+  const playerWeeks = new Map<string, { week: number; playerId: number; points: number; started: boolean }>();
   for (const r of rosterRows) {
-    const acc = totals.get(r.espn_player_id) ?? { points: 0, games: 0 };
-    acc.points += r.applied_points;
+    const key = `${r.week}:${r.espn_player_id}`;
+    const previous = playerWeeks.get(key);
+    if (!previous) {
+      playerWeeks.set(key, {
+        week: r.week, playerId: r.espn_player_id, points: r.applied_points,
+        started: r.is_starter,
+      });
+    } else {
+      previous.points = Math.max(previous.points, r.applied_points);
+      previous.started ||= r.is_starter;
+    }
+  }
+
+  const totals = new Map<number, { points: number; games: number }>();
+  for (const r of playerWeeks.values()) {
+    const acc = totals.get(r.playerId) ?? { points: 0, games: 0 };
+    acc.points += r.points;
     acc.games += 1;
-    totals.set(r.espn_player_id, acc);
+    totals.set(r.playerId, acc);
   }
   const seasons: PlayerSeason[] = [];
   for (const [playerId, acc] of totals) {
@@ -420,9 +442,9 @@ export function seasonContext(
     })),
     // Points are per player per week regardless of who rostered him, which is
     // what the counterfactual needs: "what would he have scored for you".
-    points: rosterRows.map((r) => ({
-      week: r.week, espn_player_id: r.espn_player_id,
-      points: r.applied_points, started: r.is_starter,
+    points: [...playerWeeks.values()].map((r) => ({
+      week: r.week, espn_player_id: r.playerId,
+      points: r.points, started: r.started,
     })),
     weeks: [...new Set(rosterRows.map((r) => r.week))].sort((a, b) => a - b),
   };

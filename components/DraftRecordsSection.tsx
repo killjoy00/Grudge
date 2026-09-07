@@ -32,7 +32,7 @@ function ClassTable({ title, rows }: { title: string; rows: DraftClassRow[] }) {
               <span className="tsub block">{row.fantasy_points} drafted-player fantasy points</span>
             </td>
             <td>{row.manager_key && row.manager ? <a href={managerHref(row.manager_key)}>{row.manager}</a> : '—'}</td>
-            <td className="num"><strong>{signed(row.avg_value_delta)}</strong><span className="tsub block">avg positional slots</span></td>
+            <td className="num"><strong>{signed(row.avg_value_delta)}</strong><span className="tsub block">value points</span></td>
             <td className="num">{row.graded_picks}</td>
           </tr>
         ))}</tbody>
@@ -55,7 +55,7 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
               <span className="tsub block">{positionLabel(row.default_position_id)} · {row.season} R{row.round} P{row.round_pick} (#{row.overall_pick})</span>
             </td>
             <td><a href={franchiseHref(row.franchise_key)}>{row.team_name}</a>{row.manager_key && row.manager && <span className="tsub block"><a href={managerHref(row.manager_key)}>{row.manager}</a></span>}</td>
-            <td className={`num ${positive ? 'up' : 'down'}`}><strong>{row.value_delta > 0 ? '+' : ''}{row.value_delta}</strong><span className="tsub block">positional slots</span></td>
+            <td className={`num ${positive ? 'up' : 'down'}`}><strong>{Number(row.value_delta) > 0 ? '+' : ''}{row.value_delta}</strong><span className="tsub block">value points</span></td>
             <td className="num"><strong>{row.fantasy_points}</strong><span className="tsub block">{sourceLabel(row.performance_source)}</span></td>
           </tr>
         ))}</tbody>
@@ -96,7 +96,7 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
       </div>
 
       <div className="callout" style={{ marginBottom: 18 }}>
-        <strong>Draft value</strong> is position-adjusted hindsight, not raw fantasy points: within each season and position, we compare where a player was drafted with where his season production ranked. A +10 means he finished ten positional slots better than his draft capital implied; −10 means ten worse. This lets QBs, RBs, WRs and TEs share one scale without pretending their raw point totals are equivalent.
+        <strong>Draft value</strong> is position-adjusted hindsight, not raw fantasy points. Production is scored from 0–100 within each season and position, while draft capital is scored from 100 for the first overall pick to 0 for the last. Value is production minus capital: +40 means a player&rsquo;s positional production beat the cost of the pick by 40 percentile points. This gives QBs, RBs, WRs and TEs the same bounded scale and charges the actual overall pick spent.
       </div>
 
       <div className="callout" style={{ marginBottom: 18 }}>
@@ -104,7 +104,7 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
       </div>
 
       <h2>Draft class ratings</h2>
-      <p className="sub">Average positional value across every graded QB, RB, WR and TE in the class. More positive means the draft beat its slot-by-slot expectations.</p>
+      <p className="sub">Average production-over-draft-capital value across every graded QB, RB, WR and TE in the class. More positive means the class produced more than its actual picks cost.</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 14 }}>
         <ClassTable title="Best draft classes · 2008–2025" rows={records.bestClasses} />
         <ClassTable title="Roughest draft classes · 2008–2025" rows={records.worstClasses} />
