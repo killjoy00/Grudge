@@ -28,20 +28,23 @@ with modern_weekly as (
    group by r.season, r.week, r.espn_player_id
 ), modern_production as (
   select season, espn_player_id, sum(points)::numeric as fantasy_points,
+         count(*) filter (where points <> 0)::int as active_weeks,
          'espn_weekly'::text as performance_source
     from modern_weekly
    group by season, espn_player_id
 ), production as (
-  select season, espn_player_id, fantasy_points::numeric, source::text as performance_source
+  select season, espn_player_id, fantasy_points::numeric, null::int as active_weeks,
+         source::text as performance_source
     from public.legacy_draft_performance
   union all
-  select season, espn_player_id, fantasy_points, performance_source
+  select season, espn_player_id, fantasy_points, active_weeks, performance_source
     from modern_production
 ), base as (
   select d.season, d.overall_pick, d.round, d.round_pick,
          d.espn_team_id, d.espn_player_id,
          p.full_name, p.default_position_id,
          coalesce(pr.fantasy_points, 0)::numeric as fantasy_points,
+         pr.active_weeks,
          coalesce(pr.performance_source, 'missing')::text as performance_source,
          tf.franchise_key, tf.team_name,
          m.manager_key, m.display_name as manager

@@ -14,5 +14,6 @@ test('the database grade uses bounded percentiles and actual overall pick', () =
   assert.match(GRADED_DRAFT_CTE, /partition by season, default_position_id\s+order by fantasy_points/);
   assert.match(GRADED_DRAFT_CTE, /partition by season\s+order by overall_pick/);
   assert.match(GRADED_DRAFT_CTE, /production_score - draft_capital_score/);
+  assert.match(GRADED_DRAFT_CTE, /count\(\*\) filter \(where points <> 0\).*active_weeks/);
   assert.doesNotMatch(GRADED_DRAFT_CTE, /draft_pos_rank - production_pos_rank/);
 });
