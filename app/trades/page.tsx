@@ -14,6 +14,7 @@ import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
 import { TradeVote } from '../../components/TradeVote.tsx';
 import { POSITIONS } from '../../pipeline/trade.ts';
+import { espnPlayerHref } from '../../lib/player-data.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ function TradeSide({
               <span className="trade-pos">
                 {POSITIONS[p.default_position_id ?? 0] ?? '\u2014'}
               </span>
-              {p.full_name ?? `Player ${p.espn_player_id}`}
+              <a href={espnPlayerHref(p.espn_player_id, card.trade.season)}>{p.full_name ?? `Player ${p.espn_player_id}`}</a>
               {!counted && <span className="trade-nocount"> not counted</span>}
             </li>
           );

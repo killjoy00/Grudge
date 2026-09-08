@@ -32,6 +32,51 @@
   --radius: 4px;
 }
 
+/* Player ledger: filters fit a phone; wide statistics stay inside their table. */
+.player-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: end; }
+.player-filters .player-search { grid-column: span 2; }
+.player-filters label { min-width: 0; }
+.player-filters button, .player-filters .btn { min-height: 44px; text-align: center; }
+.player-results-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.player-results-heading h2 { margin-top: 12px; }
+.player-results { padding: 0 !important; overflow: hidden; }
+.player-table table { min-width: 770px; }
+.player-table th, .player-table td { padding: 13px 14px; }
+.player-table .player-name-cell { position: sticky; left: 0; z-index: 1; background: var(--paper); width: 210px; min-width: 175px; border-right: 1px solid var(--line); }
+.player-table thead .player-name-cell { z-index: 2; }
+.player-table th a { color: var(--link-ink); white-space: nowrap; }
+.player-points strong { color: var(--navy); font-size: 18px; }
+.player-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin: 20px 0; }
+.player-pagination span { color: var(--muted); font-size: 13px; }
+.player-methodology { margin-top: 24px; font-size: 14px; }
+.player-methodology summary, .player-raw-stats summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: var(--navy); font-weight: 750; }
+.player-back { display: inline-block; margin-bottom: 16px; }
+.player-sections { display: flex; flex-wrap: wrap; gap: 24px; margin: 24px 0; }
+.player-sections a { font-weight: 750; padding: 6px 0; }
+#game-log, #seasons, #grudge-history { scroll-margin-top: 150px; }
+.player-game-table { min-width: 630px; }
+.player-raw-stats { margin-top: 18px; }
+.player-raw-stats > details { border-top: 1px solid var(--line); }
+.player-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 20px; font-size: 13px; }
+.player-stat-grid > div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.player-stat-grid dt { text-transform: capitalize; color: var(--muted); }
+.player-stat-grid dd { margin: 0; font-variant-numeric: tabular-nums; }
+.player-timeline { list-style: none; padding: 8px 22px; }
+.player-timeline > li { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 22px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+.player-timeline > li:last-child { border-bottom: 0; }
+.player-event-date strong { display: block; color: var(--navy); font: 700 21px Georgia, serif; }
+.player-event-date span { color: var(--muted); font-size: 12px; }
+.player-event-link { display: inline-block; margin-top: 7px; font-size: 12px; }
+@media (max-width: 680px) {
+  .player-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .player-filters .player-period { grid-column: span 2; }
+  .player-filters select, .player-filters input { font-size: 16px; min-height: 44px; }
+  .player-table .player-name-cell { width: 145px; min-width: 145px; max-width: 145px; padding-left: 12px; }
+  .player-timeline > li { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; }
+  .player-results-heading { align-items: start; }
+  .player-results-heading .pill { margin-top: 15px; }
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; min-height: 100%; }
 body {

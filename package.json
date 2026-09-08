@@ -26,7 +26,9 @@
     "models:refresh": "tsx scripts/refresh-model-results.ts",
     "models:validate": "tsx scripts/validate-draft-model.ts",
     "history:trade-evidence": "node scripts/audit-legacy-trades.mjs",
-    "trade:correct": "tsx scripts/correct-trade.ts"
+    "trade:correct": "tsx scripts/correct-trade.ts",
+    "players:build-data": "python3 scripts/build-player-data.py",
+    "players:import": "node --import tsx scripts/import-player-data.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.8.3",
@@ -40,6 +42,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
+    "playwright": "1.63.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },

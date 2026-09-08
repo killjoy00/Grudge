@@ -1,6 +1,7 @@
 import { franchiseHref, managerHref } from '../lib/history-format.ts';
 import type { DraftClassRow, DraftPickValueRow, DraftRecords } from '../lib/draft-records.ts';
 import { POSITIONS } from '../pipeline/trade.ts';
+import { espnPlayerHref } from '../lib/player-data.ts';
 
 const signed = (value: number | string) => {
   const n = Number(value);
@@ -52,7 +53,7 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
           <tr key={`${title}-${row.season}-${row.overall_pick}`}>
             <td>{index + 1}</td>
             <td>
-              <span className="tname">{row.full_name ?? `ESPN player #${row.espn_player_id}`}</span>
+              <a className="tname" href={espnPlayerHref(row.espn_player_id, row.season)}>{row.full_name ?? `ESPN player #${row.espn_player_id}`}</a>
               <span className="tsub block">{positionLabel(row.default_position_id)} · {row.season} R{row.round} P{row.round_pick} (#{row.overall_pick})</span>
               {row.active_weeks !== null && <span className="tsub block">Scored in {row.active_weeks} weeks</span>}
             </td>

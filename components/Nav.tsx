@@ -8,6 +8,7 @@ const TABS = [
   ['/odds', 'Odds'],
   ['/predictions', 'Predictions'],
   ['/trades', 'Trades'],
+  ['/players', 'Players'],
   ['/history', 'History'],
 ];
 

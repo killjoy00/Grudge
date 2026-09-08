@@ -46,6 +46,9 @@ jobs:
       - name: Pipeline tests
         run: npm test
 
+      - name: Validate player data and coverage
+        run: node --import tsx scripts/import-player-data.ts --dry-run
+
       # Database reads are deferred until request time, so CI can always verify
       # the production build without holding a live application credential.
       # This is intentional: a transient Neon outage must not block deployment
@@ -76,6 +79,31 @@ jobs:
         run: |
           export PGBIN=$(ls -d /usr/lib/postgresql/*/bin | tail -1)
           ./tests/rls/run.sh
+
+  players-ui:
+    name: Players mobile and desktop
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build public preview
+        env:
+          VERCEL_ENV: preview
+        run: npm run build
+      - name: Test real page queries against PostgreSQL fixtures
+        run: node tests/players/verify-ui.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: player-browser-checks
+          path: test-results/players/
+          retention-days: 14
 
   # Proves admin gating with a real non-admin Clerk session against the actual
   # API routes -- not by checking that the UI hides a link. Needs live Clerk and

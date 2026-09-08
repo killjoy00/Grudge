@@ -6,6 +6,8 @@
 .vercel/
 next-env.d.ts
 node_modules/
+test-results/
+__pycache__/
 
 # Personal Claude Code overrides; the shared allowlist lives in settings.json.
 .claude/settings.local.json

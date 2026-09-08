@@ -1,0 +1,20 @@
+{
+  "notes": "Reviewed name variants in ESPN archives and the nflverse/dynastyprocess identity registries. These only normalize names; a unique season/position match or corroborating modern provider ID is still required.",
+  "aliases": {
+    "Domanick Davis": "Domanick Williams",
+    "Wesley Welker": "Wes Welker",
+    "Maurice Drew": "Maurice Jones-Drew",
+    "Roy E. Williams": "Roy Williams",
+    "Chad Ochocinco": "Chad Johnson",
+    "Daniel Herron": "Dan Herron",
+    "Robby Anderson": "Robbie Chosen",
+    "Robbie Anderson": "Robbie Chosen",
+    "Chosen Anderson": "Robbie Chosen",
+    "Robert Kelley": "Rob Kelley",
+    "Jonathan Hilliman": "Jon Hilliman",
+    "Michael Badgley": "Mike Badgley",
+    "William Fuller V": "Will Fuller",
+    "Zonovan Knight": "Bam Knight",
+    "Hollywood Brown": "Marquise Brown"
+  }
+}
