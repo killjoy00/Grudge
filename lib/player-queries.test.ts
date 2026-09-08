@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { modelDatabase, execute } from '../tests/models/database.ts';
-import { playerFilters, currentNflSeason, type PlayerRow, type PlayerHistoryEvent } from './player-data.ts';
+import { playerFilters, currentNflSeason, playerHref, decodePlayerKey, type PlayerRow, type PlayerHistoryEvent } from './player-data.ts';
 import { playerListQuery, PLAYER_HISTORY_SQL, PLAYER_CONTRIBUTIONS_SQL } from './player-queries.ts';
 import { playerRegistryStatements, playerSeasonStatements, validatePlayerSeason, type PlayerSeasonArtifact } from '../pipeline/player-import.ts';
 
@@ -35,6 +35,16 @@ test('player filters default to the NFL season and normalize safe, inclusive wee
   assert.deepEqual(playerFilters({season:'2024',position:'WR',from:'6',to:'3',sort:'points; drop table players'},2026),
     {season:2024,position:'WR',period:'REG',from:3,to:6,q:'',sort:'points',direction:'desc',page:1});
   assert.equal(playerFilters({},2026).season, 2026);
+});
+
+test('a linked player key survives the round trip through the route segment', () => {
+  const segment = (key: string) => playerHref(key, 2024).slice('/players/'.length).split('?')[0]!;
+  for (const key of ['gsis:00-0036900', 'archive:2024:4046692', 'archive:2011:-16007']) {
+    assert.notEqual(segment(key), key, 'the colon is percent-encoded in the path');
+    assert.equal(decodePlayerKey(segment(key)), key);
+    assert.equal(decodePlayerKey(key), key, 'a segment Next already decoded is unchanged');
+  }
+  assert.equal(decodePlayerKey('gsis:100%'), 'gsis:100%', 'an undecodable segment is passed through');
 });
 
 test('SQL filters weeks, includes unrostered players, keeps zero distinct from absent and withholds incomplete totals', async () => {

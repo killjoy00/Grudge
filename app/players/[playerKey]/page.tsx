@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { asPublic } from '../../../lib/db.ts';
 import { PLAYER_CAREER_SQL, PLAYER_HISTORY_SQL, PLAYER_CONTRIBUTIONS_SQL } from '../../../lib/player-queries.ts';
-import { displayNumber, playerFilters, playerHref, PLAYER_STATS, statColumns,
+import { decodePlayerKey, displayNumber, playerFilters, playerHref, PLAYER_STATS, statColumns,
   type PlayerProfile, type PlayerGame, type PlayerRow, type PlayerHistoryEvent, type PlayerImport } from '../../../lib/player-data.ts';
 import { PlayerFilters } from '../../../components/PlayerFilters.tsx';
 import { PlayerCoverage } from '../../../components/PlayerCoverage.tsx';
@@ -29,7 +29,7 @@ function TimelineEvent({event: e}: {event: PlayerHistoryEvent}) {
 }
 
 export default async function PlayerPage({params, searchParams}: Props) {
-  const {playerKey} = await params;
+  const playerKey = decodePlayerKey((await params).playerKey);
   const archived = /^archive:(\d{4}):(-?\d+)$/.exec(playerKey);
   if (archived) {
     const [resolved] = await asPublic<{player_key: string}>(

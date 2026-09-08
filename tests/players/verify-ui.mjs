@@ -18,10 +18,10 @@ try {
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:3018/players',{waitUntil:'networkidle'});
   assert.match(await page.locator('h2').first().innerText(),/All players/);
-  await page.getByLabel('Season',{exact:true}).selectOption('2024');
-  await page.getByLabel('Position',{exact:true}).selectOption('WR');
-  await page.getByLabel('From week').selectOption('3');
-  await page.getByLabel('Through week').selectOption('6');
+  await page.getByRole('combobox',{name:'Season',exact:true}).selectOption('2024');
+  await page.getByRole('combobox',{name:'Position',exact:true}).selectOption('WR');
+  await page.getByRole('combobox',{name:'From week',exact:true}).selectOption('3');
+  await page.getByRole('combobox',{name:'Through week',exact:true}).selectOption('6');
   await page.getByRole('button',{name:'Show players',exact:true}).click();
   await page.waitForLoadState('networkidle');
   const first=page.locator('.player-table tbody tr').first();
@@ -35,7 +35,7 @@ try {
   await page.goto('http://127.0.0.1:3018/players/espn/3139477?season=2024',{waitUntil:'networkidle'});
   const history=await page.locator('.player-timeline').innerText();
   assert.match(history,/Michael Chepul/); assert.match(history,/Jonathan Crisp/);
-  await page.getByLabel('Schedule',{exact:true}).selectOption('POST');
+  await page.getByRole('combobox',{name:'Schedule',exact:true}).selectOption('POST');
   await page.getByRole('button',{name:'Show season',exact:true}).click(); await page.waitForLoadState('networkidle');
   assert.equal(await page.locator('.player-game-table tbody tr').count(),3);
   await page.goto('http://127.0.0.1:3018/players?season=2005&q=Tomlinson',{waitUntil:'networkidle'});
