@@ -3,10 +3,9 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 
 import { asPublic } from './db.ts';
-import { seasonContext, type SeasonPlayerRow, type SeasonRosterRow } from '../pipeline/trade-value.ts';
+import { publishedTrades } from './published-trades.ts';
 import {
   franchiseProductionRecords,
-  valueTradeProduction,
   type FranchiseProductionRecord,
   type TradeProductionValue,
 } from '../pipeline/trade-production.ts';
@@ -19,80 +18,23 @@ interface TradeLite {
   team_b: number;
 }
 
-interface TradeMoveRow {
-  trade_id: string;
-  espn_player_id: number;
-  from_team_id: number;
-  to_team_id: number;
-}
-
-async function contextFor(season: number) {
-  const [rosterRows, playerRows, teams] = await Promise.all([
-    asPublic<{
-      week: number; espn_team_id: number; espn_player_id: number;
-      lineup_slot_id: number; is_starter: boolean; applied_points: string | null;
-    }>(
-      `select r.week, r.espn_team_id, r.espn_player_id, r.lineup_slot_id,
-              r.is_starter, r.applied_points
-         from public.roster_entries r
-         join public.weeks w
-           on w.season = r.season and w.week = r.week and w.results_complete
-        where r.season = $1`,
-      [season]
-    ),
-    asPublic<SeasonPlayerRow>(
-      `select distinct p.espn_player_id, p.default_position_id, p.eligible_slots
-         from public.players p
-         join public.roster_entries r using (espn_player_id)
-        where r.season = $1`,
-      [season]
-    ),
-    asPublic<{ n: number }>('select count(*)::int as n from public.teams where season = $1', [season]),
-  ]);
-
-  const rows: SeasonRosterRow[] = rosterRows.map((r) => ({
-    week: r.week,
-    espn_team_id: r.espn_team_id,
-    espn_player_id: r.espn_player_id,
-    lineup_slot_id: r.lineup_slot_id,
-    is_starter: r.is_starter,
-    applied_points: Number(r.applied_points ?? 0),
-  }));
-  return seasonContext(rows, playerRows, teams[0]?.n || 10);
-}
-
 async function seasonProductionRaw(season: number) {
-  const [trades, moves, context] = await Promise.all([
-    asPublic<TradeLite>(
-      `select season, trade_id, effective_week, team_a, team_b
-         from public.trades where season = $1
-        order by effective_week, trade_id`,
-      [season]
-    ),
-    asPublic<TradeMoveRow>(
-      `select trade_id, espn_player_id, from_team_id, to_team_id
-         from public.trade_players where season = $1`,
-      [season]
-    ),
-    contextFor(season),
-  ]);
-
-  const values: Record<string, TradeProductionValue> = {};
-  for (const trade of trades) {
-    values[trade.trade_id] = valueTradeProduction({
-      effective_week: trade.effective_week,
-      team_a: trade.team_a,
-      team_b: trade.team_b,
-      moves: moves.filter((move) => move.trade_id === trade.trade_id),
-      ...context,
-    });
-  }
+  const trades = await asPublic<TradeLite>(
+    `select season, trade_id, effective_week, team_a, team_b from public.trades
+     where season = $1 and evidence_status = 'active' order by effective_week, trade_id`, [season]);
+  const values: Record<string, TradeProductionValue> = Object.fromEntries(
+    (await publishedTrades(season)).map((r) => [r.trade_id, r.production]));
+  for (const t of trades) values[t.trade_id] ??= {
+    a: { espn_team_id: t.team_a, value: 0, playerWeeks: 0, received: [] },
+    b: { espn_team_id: t.team_b, value: 0, playerWeeks: 0, received: [] },
+    margin: 0, winner: null, graded: false, gradingReason: 'not_published',
+  };
   return { trades, values };
 }
 
 export const getTradeProductionForSeason = unstable_cache(
   async (season: number) => (await seasonProductionRaw(season)).values,
-  ['trade-production-season-v1'],
+  ['trade-production-season-v3'],
   { revalidate: 3600 }
 );
 
@@ -100,7 +42,7 @@ export const getAllTimeTradeProductionRecords = unstable_cache(
   async (): Promise<FranchiseProductionRecord[]> => {
     const trades = await asPublic<TradeLite>(
       `select season, trade_id, effective_week, team_a, team_b
-         from public.trades order by season, effective_week, trade_id`
+         from public.trades where evidence_status = 'active' order by season, effective_week, trade_id`
     );
     if (trades.length === 0) return [];
 
@@ -137,7 +79,7 @@ export const getAllTimeTradeProductionRecords = unstable_cache(
       (tradeId) => seasonOf.get(tradeId) ?? 0
     );
   },
-  ['trade-production-all-time-v1'],
+  ['trade-production-all-time-v3'],
   { revalidate: 3600 }
 );
 

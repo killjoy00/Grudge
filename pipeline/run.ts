@@ -33,6 +33,8 @@ import {
   transactionRows,
 } from './normalize.ts';
 import { detectTrades } from './trade-history.ts';
+import { tradeWriteStatements } from './trade-identity.ts';
+import { observedPlayerWeeks, scoreStatements, digest } from './player-week.ts';
 import { connect, runTransaction, upsertChunked, stmt, type Stmt } from './db.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -308,6 +310,10 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
     ['espn_player_id', 'full_name', 'default_position_id', 'pro_team_id', 'eligible_slots'],
     players as unknown as Record<string, unknown>[], ['espn_player_id']));
   summary.players = players.length;
+  statements.push(...upsertChunked('public.player_season_profiles',
+    ['season', 'espn_player_id', 'full_name', 'position_id', 'eligible_slots'],
+    players.map((p) => ({ season, espn_player_id: p.espn_player_id, full_name: p.full_name,
+      position_id: p.default_position_id, eligible_slots: p.eligible_slots })), ['season', 'espn_player_id']));
 
   statements.push(...upsertChunked('public.roster_entries',
     ['season', 'week', 'espn_team_id', 'espn_player_id', 'lineup_slot_id', 'is_starter', 'applied_points', 'projected_points', 'acquisition_type', 'injury_status'],
@@ -344,56 +350,15 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
     items, ['espn_transaction_id', 'item_index']));
   summary.transaction_items = items.length;
 
-  // Trades, reconstructed. ESPN sends a TRADE_ACCEPT with an empty items array
-  // and no way to resolve the proposal it references, so the contents come
-  // from diffing consecutive weekly rosters against the add/drop ledger --
-  // see pipeline/trade-history.ts for why that is sound.
-  //
-  // Recomputed from scratch every run rather than appended to. Trade ids are
-  // deterministic, so a re-detection updates in place; a trade that stops
-  // being detected was wrong, and deleting it (votes included) is the point.
+  // Preserve stable records, corrections and votes; disappearing evidence is
+  // marked for review, never deleted. All mutations share this transaction.
   const trades = detectTrades(season, entries, league.transactions ?? []);
-  statements.push(stmt(
-    `delete from public.trades where season = $1 and trade_id <> all($2::text[])`,
-    [season, trades.map((t) => t.trade_id)]
-  ));
-  if (trades.length) {
-    statements.push(...upsertChunked('public.trades',
-      ['season', 'trade_id', 'effective_week', 'team_a', 'team_b', 'espn_transaction_id', 'accepted_at', 'confidence'],
-      trades.map(({ players: _players, ...row }) => row) as unknown as Record<string, unknown>[],
-      ['season', 'trade_id']));
-    // Open voting on trades seen for the first time IN THE SEASON BEING
-    // PLAYED, and only those.
-    //
-    // Separate from the upsert above because that upsert runs every week:
-    // including the column there would push the deadline forward on every run
-    // and voting would never close.
-    //
-    // Restricted to the current season because a vote is a snap judgement on a
-    // trade whose result nobody knows yet. Re-running the 2021 backfill must
-    // not open a week of voting on a trade whose season finished years ago,
-    // and the is_current flag -- not the calendar -- is what decides which
-    // season that is.
-    statements.push(stmt(
-      `update public.trades t
-          set voting_closes_at = now() + public.trade_voting_window()
-        where t.season = $1 and t.voting_closes_at is null
-          and exists (select 1 from public.seasons s
-                       where s.season = t.season and s.is_current)`,
-      [season]
-    ));
-    const tradePlayers = trades.flatMap((t) =>
-      t.players.map((p) => ({ season, trade_id: t.trade_id, ...p })));
-    // Replaced wholesale rather than upserted: a player the previous detection
-    // put in a trade and this one does not must not linger, and there is no
-    // user-owned data here to preserve. Same transaction, so no reader ever
-    // sees the gap.
-    statements.push(stmt('delete from public.trade_players where season = $1', [season]));
-    statements.push(...upsertChunked('public.trade_players',
-      ['season', 'trade_id', 'espn_player_id', 'from_team_id', 'to_team_id'],
-      tradePlayers as unknown as Record<string, unknown>[],
-      ['season', 'trade_id', 'espn_player_id']));
-  }
+  statements.push(...tradeWriteStatements(season, trades));
+  const scores = observedPlayerWeeks(entries.filter((e) => completedWeeks(league).includes(e.week)),
+    new Map(players.filter((p) => p.default_position_id !== null)
+      .map((p) => [p.espn_player_id, p.default_position_id!])), digest(s.settings_raw));
+  statements.push(...scoreStatements(scores));
+  summary.player_week_scores = scores.length;
   summary.trades = trades.length;
 
   return { statements, summary };

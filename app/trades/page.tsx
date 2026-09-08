@@ -52,7 +52,7 @@ function TradeSide({
       </ul>
       <div className="trade-points">
         <span className={`trade-impact ${side.lineupImpact > 0 ? 'up' : side.lineupImpact < 0 ? 'down' : ''}`}>
-          {signed(side.lineupImpact)}
+          {card.value.graded ? signed(side.lineupImpact) : '—'}
         </span>
         <span className="trade-impact-label">team fit · lineup impact</span>
         <div className="note trade-secondary">
@@ -64,7 +64,9 @@ function TradeSide({
           >
             {production?.playerWeeks ? signed(production.value) : '—'} player value
           </span>{' · '}
-          {side.startedPoints.toFixed(1)} of {side.rosteredPoints.toFixed(1)} acquired points started
+          {card.value.graded
+            ? `${side.startedPoints.toFixed(1)} of ${side.rosteredPoints.toFixed(1)} acquired points started`
+            : 'Team fit awaits complete lineup evidence'}
         </div>
       </div>
     </div>
@@ -107,7 +109,7 @@ function TradeArticle({
           </span>
         )}
         {ungraded ? (
-          <span className="tag">Team fit: not scored yet</span>
+          <span className="tag">Team fit: {value.gradingReason === 'incomplete_data' ? 'incomplete data' : 'ungraded'}</span>
         ) : value.mutual ? (
           <span className="tag best">Team fit: both improved</span>
         ) : value.winner === null ? (
@@ -124,20 +126,27 @@ function TradeArticle({
 
       <div className="trade-sides">
         <TradeSide card={card} teamId={trade.team_a} accent="var(--accent)"
-                   side={value.a} production={production?.a} ahead={value.winner === trade.team_a} />
+                   side={value.a} production={production?.graded ? production.a : undefined} ahead={value.winner === trade.team_a} />
         <TradeSide card={card} teamId={trade.team_b} accent="var(--gold)"
-                   side={value.b} production={production?.b} ahead={value.winner === trade.team_b} />
+                   side={value.b} production={production?.graded ? production.b : undefined} ahead={value.winner === trade.team_b} />
       </div>
 
       <p className="note trade-basis">
         {ungraded
-          ? value.weeksScored === 0
-            ? 'No week has been played since this trade, so there is nothing to score yet.'
-            : 'Kickers and defences are left out of the scoring, and there was nothing else in this trade.'
-          : `Team fit measures points added to each side's best possible lineup from week ${trade.effective_week} on. ` +
+          ? value.gradingReason === 'not_published'
+            ? 'This trade is awaiting a validated model refresh. It has no grade or tie verdict.'
+            : value.gradingReason === 'incomplete_data'
+            ? 'Some scoring, ownership or lineup eligibility is missing. This trade has no team-fit verdict and does not count as a tie.'
+            : value.gradingReason === 'excluded_positions'
+              ? 'Kickers and defences are left out of the scoring, and there was nothing else in this trade.'
+              : 'No completed tracked game is available since this trade, so there is nothing to score yet.'
+          : `Team fit measures points added to each side's best possible lineup in tracked games from week ${trade.effective_week} on. ` +
             `Player value separately measures the acquired players' actual production above their positional replacement baselines, ` +
-            `whether or not someone else on that roster was even better.`}
+            `whether or not someone else on that roster was even better. Postseason placement and consolation games are excluded.`}
       </p>
+      {production?.gradingReason === 'incomplete_data' && <p className="note">
+        Player value is ungraded because some acquired-player scoring or position evidence is missing.
+      </p>}
 
       <TradeVote
         season={trade.season}
@@ -301,7 +310,7 @@ export default async function Trades({
             <p><strong>Where these came from.</strong> For 2018–2025, completed ESPN transaction envelopes are the source of truth whenever the archive
               preserves the players sent in both directions. Some accepted trades survive only as an empty transaction shell; those are marked{' '}
               <span className="tag era">Reconstructed</span> and are included only when consecutive weekly rosters show players moving both directions
-              between the same two teams. A one-way roster change is never called a trade. Nothing before 2018 has the player-level weekly roster history
+              between the same two teams. A one-way roster change is never called a trade. The 2005–2017 archives preserve 366 draft-to-final ownership changes, but no trade packages or dates. Those are research leads, not confirmed trades. Nothing before 2018 has the player-level weekly roster history
               needed to grade a trade.</p>
           </div>
         </details>

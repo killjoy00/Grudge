@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  valueTrade, seasonContext,
+  valueTrade, seasonContext, franchiseTradeRecords,
   type TradeValueInput, type PlayerWeekPoints,
 } from './trade-value.ts';
 
@@ -219,6 +219,55 @@ test('no completed weeks yet means no verdict, not a tie', () => {
   assert.equal(v.winner, null);
   assert.equal(v.weeksScored, 0);
   assert.equal(v.mutual, false);
+});
+
+test('partial eligibility and missing scoring cannot produce a verdict or an all-time tie', () => {
+  const base = scenario([{ id: 10, pos: POS.wr, ppw: 10 }, { id: 20, pos: POS.wr, ppw: 30 }],
+    { 1: [20], 2: [10] }, [
+      { espn_player_id: 10, from_team_id: 1, to_team_id: 2 },
+      { espn_player_id: 20, from_team_id: 2, to_team_id: 1 },
+    ]);
+  for (const input of [
+    { ...base, eligible: new Map([[20, [WR]]]) },
+    { ...base, points: base.points.filter((p) => p.espn_player_id !== 10) },
+    { ...base, points: base.points.map((p) => ({ ...p, points: null })) },
+  ]) {
+    const value = valueTrade(input);
+    assert.equal(value.graded, false);
+    assert.equal(value.gradingReason, 'incomplete_data');
+    assert.equal(value.winner, null);
+    const records = franchiseTradeRecords([{ trade_id: 'one', value }],
+      (_season, id) => ({ key: String(id), name: String(id) }), () => 2025);
+    assert.ok(records.every((r) => r.trades === 1 && r.even === 0 && r.net === 0));
+  }
+});
+
+test('an excluded game earns no credit, but its ownership evidence remains available', () => {
+  const base = scenario([{ id: 10, pos: POS.wr, ppw: 10 }, { id: 20, pos: POS.wr, ppw: 30 }],
+    { 1: [20], 2: [10] }, [
+      { espn_player_id: 10, from_team_id: 1, to_team_id: 2 },
+      { espn_player_id: 20, from_team_id: 2, to_team_id: 1 },
+    ], { weeks: [1] });
+  const value = valueTrade({ ...base, rosters: base.rosters.map((r) => ({
+    ...r, tracked: r.espn_team_id === 1,
+  })) });
+  assert.equal(value.a.lineupImpact, 20, 'the counterfactual still knows who owns the player given up');
+  assert.equal(value.b.lineupImpact, 0, 'a consolation team earns no lineup impact');
+  assert.equal(value.graded, true);
+  assert.equal(valueTrade({ ...base, rosters: base.rosters.map((r) => ({ ...r, tracked: false })) }).graded, false);
+});
+
+test('excluded weeks do not set replacement levels and null scores stay unknown', () => {
+  const rows = [
+    { week: 1, espn_team_id: 1, espn_player_id: 10, lineup_slot_id: WR, is_starter: true, applied_points: 10, tracked: true },
+    { week: 2, espn_team_id: 1, espn_player_id: 10, lineup_slot_id: WR, is_starter: true, applied_points: 999, tracked: false },
+    { week: 3, espn_team_id: 1, espn_player_id: 10, lineup_slot_id: WR, is_starter: true, applied_points: null, tracked: true },
+  ];
+  const players = [{ espn_player_id: 10, default_position_id: POS.wr, eligible_slots: [WR] }];
+  const ctx = seasonContext(rows, players, 1);
+  assert.equal(ctx.replacement.get(POS.wr), 10);
+  assert.equal(ctx.points.find((p) => p.week === 3)?.points, null);
+  assert.equal(ctx.rosters.find((r) => r.week === 2)?.tracked, false);
 });
 
 test('weeks before the trade are never scored', () => {

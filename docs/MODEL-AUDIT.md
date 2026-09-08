@@ -2,6 +2,8 @@
 
 Reviewed against the checked-in league history through the 2025 season.
 
+The draft and trade decisions below describe the earlier model. They are superseded by [model evidence and version 2026.3](MODEL-EVIDENCE.md). The power-ranking decision remains in effect.
+
 ## Power rankings
 
 The current 40/30/20/10 blend was compared with four common alternatives at

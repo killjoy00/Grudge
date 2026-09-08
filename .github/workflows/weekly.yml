@@ -130,6 +130,21 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/ownership.ts
 
+      - name: Restore NFL source cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/grudge-draft-sources
+          key: nfl-draft-sources-${{ hashFiles('scripts/build-draft-performance.py', 'data/**/league.json.gz') }}
+          restore-keys: nfl-draft-sources-
+
+      - name: Build complete regular-season player scoring
+        run: npm run models:build-data
+
+      - name: Publish validated model results
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run models:refresh
+
       # Only reached if every data step above succeeded. The archive is
       # append-only history: raw payloads exactly as ESPN served them. Vercel is
       # intentionally not touched here; the controlled deploy workflow picks up

@@ -1,0 +1,653 @@
+{
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv",
+      "sha256": "a02b7dc2364a8b8de2bd3c91147b1dce46033f627a382161c409b29c5e7defd2"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2008.csv",
+      "sha256": "1b0c72f0540f21c8d63f0f86717b821dd05bc97081480764db56ad74cd889856"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2009.csv",
+      "sha256": "4f2dbdef657aa2c961595b2a2c832e0fb2a7c13e41c301380900faff266c3477"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2010.csv",
+      "sha256": "76f33d484781a3bc1852aa8aab5003874ab219dcb6c67a7e2e881be9822c9d13"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2011.csv",
+      "sha256": "c1720e9e5ed59b7def9486ae650ea73ee80dda1fd2ab97d50c5fb4f6565dbeaa"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2012.csv",
+      "sha256": "5c8885d93ec529efa9d729cec1ef255f438ee27a59eba6e156a360fa0045b56b"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2013.csv",
+      "sha256": "f7329a8f15084c9c23d841f14eb117fcc630d6c82913501f3c60f2d8f4e651a4"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2014.csv",
+      "sha256": "a389b10d94eb8e6b9a153223d381aab821b0eff4cd73967835a21032192abc61"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2015.csv",
+      "sha256": "21052baa3b3291a92faf3e6827891295010dca8cc5cefd5a909984b9d7b64664"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2016.csv",
+      "sha256": "eb0264c65d1ef593196afcd4ba24e9f2e9b7942923bf6f4bb4639684e2c4d470"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2017.csv",
+      "sha256": "592b0916065987b0b3afb0480162f03350d16b12250dc42b0f194e2ab1378563"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2018.csv",
+      "sha256": "c53021bcfc9f89d30edd6f1fe145a1d7d6ce469efeec75974fe9f0adac568642"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2019.csv",
+      "sha256": "a05558126b1209b80fe11a8f18938cb35816370bf9990975a87de49e9eed7376"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2021.csv",
+      "sha256": "41915fb49238902ad1f129ebf0405b11a1e710454ae0fe8f7b3e4f9145875f48"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2022.csv",
+      "sha256": "ad426c3fe5bf1cc30c3f137fdfe96d054e19d400879ee4413129da49fa7b54be"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2023.csv",
+      "sha256": "f19cb71a5de0dce7fd09376026237c9ee9d5a93fe13815a2ea3ec2d37204cb17"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2024.csv",
+      "sha256": "3ddc45a84f759aa348ce465ae001752c530575455717657cdfe1f8abfcdb4759"
+    },
+    {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2025.csv",
+      "sha256": "e5e0615b3d96a3eaebfaee91e55afb4a4e7fe0caf057454177bcd7d6ad4bcfc2"
+    }
+  ],
+  "archives": [
+    {
+      "path": "data/history/2008/league.json.gz",
+      "sha256": "69f3fbbbf2506b3361d8becd198e319170ca7688bddb8f593b1ee060785ea83e"
+    },
+    {
+      "path": "data/history/2009/league.json.gz",
+      "sha256": "8ef7a4d4a88296ce4998a0b586dc572a37ae404f26a9d5f81fdc3c4b44590238"
+    },
+    {
+      "path": "data/history/2010/league.json.gz",
+      "sha256": "5ce97ab8599c2ae91fe628a2b030ccc6629171f48f0a15284d9b05ce99b0b154"
+    },
+    {
+      "path": "data/history/2011/league.json.gz",
+      "sha256": "b63462deffd425db427734a591e6e468e150e51b1a203a09cbc184e5cf5a7080"
+    },
+    {
+      "path": "data/history/2012/league.json.gz",
+      "sha256": "42e56213770f26883104df987b1e9840ff3fcd22551a48778e51d905a8eb30a0"
+    },
+    {
+      "path": "data/history/2013/league.json.gz",
+      "sha256": "32cd54e142aae3797613abb2ff53e7a7ebf590083f9a4ade5702d61314be61aa"
+    },
+    {
+      "path": "data/history/2014/league.json.gz",
+      "sha256": "5419deff437e9d91e5364198973076953420a36ebc19c59c62bbab52f80fb333"
+    },
+    {
+      "path": "data/history/2015/league.json.gz",
+      "sha256": "f9c82e529671e28ae458c59284c5e7531d63b226f60080db10fd27e13e880f05"
+    },
+    {
+      "path": "data/history/2016/league.json.gz",
+      "sha256": "61823c53006b56f7f58cc56a3ff1f11121e086a5ced2bbf79ef239687f485a66"
+    },
+    {
+      "path": "data/history/2017/league.json.gz",
+      "sha256": "8f3356a2d37419211187be2dd43fdd06d3eb12e9e3da11de36727b9e79c3083b"
+    },
+    {
+      "path": "data/history/2018/league.json.gz",
+      "sha256": "9af11fa87b05ab9f12902aecf0d37805bd2c23eff2fb5086846cb36ded4300df"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp01.json.gz",
+      "sha256": "f06253c54fa1685fa1b28b947f53e8bb73f328b3147de76dc910417f50d6ae8d"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp02.json.gz",
+      "sha256": "2c11815b48bc164e5c14a7a324c61522cf9a16b83808162ca3f3488e088bd592"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp03.json.gz",
+      "sha256": "ac4f4686a076e7b4a1f42458e2e0c651804514ca3a76ad6ab2533803ea07ac13"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp04.json.gz",
+      "sha256": "9d7bbc0881b14e75be505c35fc80ac2e2425dc0a5cf82f59fe0d7c257c64cf27"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp05.json.gz",
+      "sha256": "03a01057246c9361ea619592a08f4d53ae7de08eb8cdcb256447cd226d350dc9"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp06.json.gz",
+      "sha256": "b8d3b5f3f9f14e482bdaf7c9777a7ecbce2910d1ddf58a53a8a79ab0b6af0e40"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp07.json.gz",
+      "sha256": "5d12a9c1c9869d77841f4ca89ed9a40bf9b024b2fb247ef9ea766240d374c38c"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp08.json.gz",
+      "sha256": "8b99e5191c9260e9f2ef5d927c47b029e82767b6072e6dcc8bdd8b17b6842ce4"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp09.json.gz",
+      "sha256": "1b6885912f29763a60e8dd1ca42d56f4c7f5ed53de34673857ca726d6e2e3a2f"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp10.json.gz",
+      "sha256": "8bae30dfd329aa563552858afdf6ad2b524e56d11fcfea40346472f2714b70d2"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp11.json.gz",
+      "sha256": "a383f95ea1b2e0dc17784b7ef316f4500ad289853c556259cf35313c59721846"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp12.json.gz",
+      "sha256": "5e5b64759ffc1400cb278de14d2b7782371b4eef5544cf80f4997ae75bef5e7b"
+    },
+    {
+      "path": "data/history/2018/boxscores/sp13.json.gz",
+      "sha256": "e102b8663ae80c45f213547f45b20048ec1662055950eae043c78d3f60d7b512"
+    },
+    {
+      "path": "data/history/2019/league.json.gz",
+      "sha256": "6c87a82fe2552fee31b8f47b31b853160d970fc0ad197ed5ba5b8f7c71c05875"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp01.json.gz",
+      "sha256": "4c275ea6df5df2cee243e7cb15b280587fef34d37b2f59bf14d9c90273f337b8"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp02.json.gz",
+      "sha256": "f8240cff783b28fc84c6e520cd73056ed1a2c406144e35f87ef7320046db96f3"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp03.json.gz",
+      "sha256": "bb3301c60ab931763cb3f61a27527728b6af384b6ddec312ccab804edcd8ac37"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp04.json.gz",
+      "sha256": "013e1070edb96d478b96763141c348ce071a2fac469cb24ef4f179570463caab"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp05.json.gz",
+      "sha256": "806e2d5a4b64067d227bbe8a433be4e3b603b88fed9af9692a10b06c9edbe54b"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp06.json.gz",
+      "sha256": "ed9fe37fa4c3ebb14b75e226387dc9f0ce50bd825767a66457ae1ae581eedde4"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp07.json.gz",
+      "sha256": "1263e7ff77e109dd4d2813a20d34074ada1deded8065eb8803ff7298e81ed27a"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp08.json.gz",
+      "sha256": "c951c500b179963306f8b3553240bfe49a7dabd96dc4c7da00794eb4a6e994e7"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp09.json.gz",
+      "sha256": "fdd8d002902d8bd2dfa26997fbb40be6a7fe323c181dec013325ce90fd77100a"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp10.json.gz",
+      "sha256": "fab01a24db32128adf22e5346b15dce0d98f151ba938379ea1b367603f595b73"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp11.json.gz",
+      "sha256": "7a672f116bb4e8ccac0195d04599946d5b85b304fc9fa550f9e70efe5c088da6"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp12.json.gz",
+      "sha256": "09dd427109d4b10b119589eececc651f115e8455915c6ef1af38edb9d956e1c5"
+    },
+    {
+      "path": "data/history/2019/boxscores/sp13.json.gz",
+      "sha256": "99ab52b9c32b95ee1b4b2cd27eb19abc6cd7e7ffd1fdbd14dac0331800cf6e92"
+    },
+    {
+      "path": "data/history/2021/league.json.gz",
+      "sha256": "594b26b38a078f5c00c560f131681503ca21a999d40a590f7b0b5eb09dd7ca91"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp01.json.gz",
+      "sha256": "f9ebb77ac9a3093ace552d4e780eff61406db1d90e8b06a9e05ce19fc6f27ddd"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp02.json.gz",
+      "sha256": "5ba7213a0b95f8bfee5e474d2c4f6dafa21d767f5ee312611ac6f3de30cb73ce"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp03.json.gz",
+      "sha256": "656c5d33ca531f44dd1eb44b372392abf7240e8318c5ab8aaa4b3efc1c1b07d6"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp04.json.gz",
+      "sha256": "260481607fd80d28c70754060ab414af02a7f72376db0ee044af180ea991e1e0"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp05.json.gz",
+      "sha256": "5ee8233d2794d3ef093d774801cea9defdeaa02ce842cc5e75d85d3bfb1eb3fb"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp06.json.gz",
+      "sha256": "92715f4a8af564deb3e584d86d7925e76c345406ad7c14267cd796454df51b05"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp07.json.gz",
+      "sha256": "570a6d1968299f2cede951ce3d8e7ae0dca7e0f90b03da06637881d8df5b1201"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp08.json.gz",
+      "sha256": "9cdf047c0909d290573af35218191a3c4a33e1552bf485c946ee3cfd1ecbe550"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp09.json.gz",
+      "sha256": "5009ff9ea06b3d0de6c4955d133570defd1483aa921892b088df85459665da63"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp10.json.gz",
+      "sha256": "76941e45b5987014a74b2ad53fa56e5422d053f4d2a0e3c9c1e907205ed9a9bf"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp11.json.gz",
+      "sha256": "4a9dc6a4c11d12c0f04b9c36f862bcb550ce983c9f433c7e17199ef00c89fb54"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp12.json.gz",
+      "sha256": "7cabe599050ff43c1bce6a70861595fcfb33b257f7fe9f69dff4dcf3fa26a58f"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp13.json.gz",
+      "sha256": "aaad509380ff7ab4337cad2fcce91f699d0ec4db41172aca0e66c465c05a2912"
+    },
+    {
+      "path": "data/history/2021/boxscores/sp14.json.gz",
+      "sha256": "d7436841ada5ad23b8f9258896eca28cf7247caab4c61b27d6069b2d0b1c1d6a"
+    },
+    {
+      "path": "data/history/2022/league.json.gz",
+      "sha256": "135ab582d2549c7e703dc21076f00a23bb029f185086b1de9ff65ceaa781d15a"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp01.json.gz",
+      "sha256": "6cf71c23615c9a7c4793323e4200dd43bae06fc60fd0ae6ba889a8b8ddf3666d"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp02.json.gz",
+      "sha256": "4e388a0a66ca85ffff3e6ec04ba82b4cd8804d60e06c422fd6007b68c39db36f"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp03.json.gz",
+      "sha256": "379242c82b22f1aba356e880c1a992435ad49005348f204f3354c072bc3f7259"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp04.json.gz",
+      "sha256": "d9c599326944e675f39c8c508ecd4e55c5a99b767ef78f511d476131d0393028"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp05.json.gz",
+      "sha256": "24cc4b4492a329676431e7c1cfc4832b83346c053269b3a4d9c49cd87273e638"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp06.json.gz",
+      "sha256": "fef4fbc7c8716e58aff8b01932e5dbf58c502991b8b9196e29b0eaa303b5cf35"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp07.json.gz",
+      "sha256": "9875214f483fa63b9a40709aaa1d69247adfeb170567be98fe7df5e55a788a3a"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp08.json.gz",
+      "sha256": "1c37cda405d443f3063e78ebf3673dbcf9674f0f228bbdc647445ed709fb45a1"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp09.json.gz",
+      "sha256": "80c22123506f3dcfd0c6f67930245b4e7772113963a02dce56c5e139b280a5fa"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp10.json.gz",
+      "sha256": "6870257dfa74a4fb624427aaa0c7888749e30f21ffce7d28eb656615c9067239"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp11.json.gz",
+      "sha256": "e44dbacaab7a2236cac92f6180ddcd8cb2f8ce5201d02986f7bd237f424ce9d3"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp12.json.gz",
+      "sha256": "a1e3dff1d5c9fba9bf424c6206f6d72be697e89ec38db6f11fec8974f5d9960c"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp13.json.gz",
+      "sha256": "00285bcd9b14a8b5a8c05283d8216136a1a7c9493b656d731fd80b987c93ae8e"
+    },
+    {
+      "path": "data/history/2022/boxscores/sp14.json.gz",
+      "sha256": "10d71d7fcd9ec1740cbb60153f657203e137ffa5d53a016bc240b269ccc5e932"
+    },
+    {
+      "path": "data/history/2023/league.json.gz",
+      "sha256": "25bd79dadd90264e0344359f1584e5b5047d768235ad36a06ab9e5d2ede477b2"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp01.json.gz",
+      "sha256": "3d68d59276bcb5060f4a924f02d6e644feb8fc0218b4626a0182987e87ba9288"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp02.json.gz",
+      "sha256": "10d570e792d2df4cc1bee3ec1fb64dbffa579f4a9731ae5a09d4d3d510f7cda3"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp03.json.gz",
+      "sha256": "5ebc42f2d73da8c0e12a77f1329d709df8c4b9d8e7d821e591a9397dda0649e8"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp04.json.gz",
+      "sha256": "142e2bc401afd7f8cecb99f2aef728f684751c33c94659cf946a279334f1a1fc"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp05.json.gz",
+      "sha256": "67d240a1f908a2560ae37af7928205852b4c78da85efd8cb35c29ffcb4a8bec4"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp06.json.gz",
+      "sha256": "3d32ee7363663634f21e6248cda3ec7df1a66de1d22a9a3fbe247f889d8e9195"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp07.json.gz",
+      "sha256": "f6eddc183b454b03e6f5356d09f3277f87f1377aaf387519e0cb0118a5c4904c"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp08.json.gz",
+      "sha256": "7bce95710effed71d599553dca2650d95674398dfc412e165a8b7674757bf9d1"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp09.json.gz",
+      "sha256": "cd169d926e62ddf4f0f127c284dc49c48a149bfbb318e8e33b297aa7a46d64f0"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp10.json.gz",
+      "sha256": "1eab56925db4877667d212f3b5eb098285c911bcefb6baa03ef1dccae5fb2c07"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp11.json.gz",
+      "sha256": "05129b03a5cfdf73fa390929e393666f84f99c4c761904e2e71b620c2bd96e82"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp12.json.gz",
+      "sha256": "6f3e67fce5dbff6b0be2e21adc76c6396e0141e0c87dafd9d05197889c2caa97"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp13.json.gz",
+      "sha256": "7f3b6420ee4d2c87bede2ba7d5b113ab1a3c316411af014d964fddd9280bc08a"
+    },
+    {
+      "path": "data/history/2023/boxscores/sp14.json.gz",
+      "sha256": "6e7a07aa2b5b0b7f445cb3e9d673107fe77fa434acc486eff4bec37dd56dc95d"
+    },
+    {
+      "path": "data/history/2024/league.json.gz",
+      "sha256": "684efdd7e893386f6eae18ae96d547b27017d2635aa4c5cc33bea7f4cdfe6b32"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp01.json.gz",
+      "sha256": "0d3ee7be0537658e5c5ac6a0f3df5eacb2cfabff71ec59212833ed5ac66ec752"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp02.json.gz",
+      "sha256": "8b74138716ddd8aca6fa3b73908acf35a88405709164d24ecaa49941b3ab18f9"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp03.json.gz",
+      "sha256": "828c2e25893c740bb8fa6e8c215f5d5ddc09049ff2703f7f9cc0046338282784"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp04.json.gz",
+      "sha256": "5dbec10a4fa7a8775a42e7e728e01c22ebc2c359520467d02e532489a5e1eb93"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp05.json.gz",
+      "sha256": "28b03126f2c032820c3b18ae380c65c89d3be02052cea56ce8f3b30a6bacc423"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp06.json.gz",
+      "sha256": "b9d938d501461c1a0596cdb52407bffc5ca57483fd71875ab0ad13fbe6fc78f9"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp07.json.gz",
+      "sha256": "31fb6c3f46cb56019b5e592b1521f7c3702c02a8c9694b94e92526f525f3c294"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp08.json.gz",
+      "sha256": "431ec7e589f9d8719f693d972e175078a0f2416ca4ba0dbaefd8ea194b73f570"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp09.json.gz",
+      "sha256": "894c71b778421465972b4bc2f55612e042bdf00abfb8e02f1e9762bfdc98e63e"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp10.json.gz",
+      "sha256": "6c0b7d5438014956dfe7022446ffe73743114795ce9bdcdd83cb4595473a699e"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp11.json.gz",
+      "sha256": "700cddd8a0fcdbc3f0094758e1c0d2b143400cd31e79e4811e913993b1ffb9d9"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp12.json.gz",
+      "sha256": "f68beae0b5b788cbc88672234da05a7cd7ce548922797687d6cf51628a06839e"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp13.json.gz",
+      "sha256": "bd8186bee9790c12b46f824bedaae3357f957546f3f3896d856a2a19d3b2a0e1"
+    },
+    {
+      "path": "data/history/2024/boxscores/sp14.json.gz",
+      "sha256": "427219e59f0efb7a20ecd5925d93fbe74ff14b1cc101e82063cbb92471ba4c14"
+    },
+    {
+      "path": "data/history/2025/league.json.gz",
+      "sha256": "df9e7334a42929f0299ccad01d3e0a60a4b525de54cba8967b3bf48b96428585"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp01.json.gz",
+      "sha256": "15e7fe4646ee0e3325e1860616d935c0d198a4f35f5c86478dfb2f043ff4a180"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp02.json.gz",
+      "sha256": "20155c44350338c12b9bb7c34c80b47ac581c33403ddc6ea0349963e1ffed0c7"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp03.json.gz",
+      "sha256": "a5b676cba75109df4e910bef144dbf54000900c9d441dc186b4dad2674f1b6e9"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp04.json.gz",
+      "sha256": "3629ec5adcbaedf10a6aa17c92c0d5f992f6f0c26a70ee80a9bbb4ea3e950219"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp05.json.gz",
+      "sha256": "38b9ee0339153bc09fe3474ed580187e478ecdbee76c2bd1bfd8fc9c3c957c4f"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp06.json.gz",
+      "sha256": "924923a36661ace2188c2d3fc35514b00814339bf93408f46ec730092c9df877"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp07.json.gz",
+      "sha256": "bf93fef10d19653b5379923fc5d0f6c73fe99a4e70cf655a566729cc76ab06d9"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp08.json.gz",
+      "sha256": "33562fbab39820937ddee1f0477c72e36d96096f2765e86b29e1c45472bee8f9"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp09.json.gz",
+      "sha256": "3fda75ceec96ae4edcd8e9be77d02686850504c8f27e07f5cd0903bc389c24ec"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp10.json.gz",
+      "sha256": "98840c599daf2da5809b0f5b4d745919a4e8a0d928922f9286accb978c0a6ab9"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp11.json.gz",
+      "sha256": "0cfd8e9a7763a18859da1f82c3556a7c52cb7f1b1c091c419554988670667cda"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp12.json.gz",
+      "sha256": "73897c4a53a96ff9393fdc9921ab8ab668adc2886e79588b18a2ac372c067ab2"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp13.json.gz",
+      "sha256": "e3f8b2dfa87b43da9917eb8a69c9b24b208ad2109a4b6b0345ae7dc436796404"
+    },
+    {
+      "path": "data/history/2025/boxscores/sp14.json.gz",
+      "sha256": "b9e5bdbfbcf4a3e6d7c7b0577f0acda22f7193e638e85614c485eb2cc8564531"
+    }
+  ],
+  "checks": [
+    {
+      "season": 2008,
+      "graded_picks": 145,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2009,
+      "graded_picks": 149,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2010,
+      "graded_picks": 150,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2011,
+      "graded_picks": 147,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2012,
+      "graded_picks": 148,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2013,
+      "graded_picks": 149,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2014,
+      "graded_picks": 150,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2015,
+      "graded_picks": 150,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2016,
+      "graded_picks": 150,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2017,
+      "graded_picks": 150,
+      "verified_player_weeks": 0,
+      "mean_absolute_error": null,
+      "max_absolute_error": null
+    },
+    {
+      "season": 2018,
+      "graded_picks": 150,
+      "verified_player_weeks": 1658,
+      "mean_absolute_error": 0.073,
+      "max_absolute_error": 2.0
+    },
+    {
+      "season": 2019,
+      "graded_picks": 148,
+      "verified_player_weeks": 1628,
+      "mean_absolute_error": 0.0688,
+      "max_absolute_error": 2.0
+    },
+    {
+      "season": 2021,
+      "graded_picks": 150,
+      "verified_player_weeks": 1761,
+      "mean_absolute_error": 0.0693,
+      "max_absolute_error": 2.0
+    },
+    {
+      "season": 2022,
+      "graded_picks": 140,
+      "verified_player_weeks": 1690,
+      "mean_absolute_error": 0.0562,
+      "max_absolute_error": 2.0
+    },
+    {
+      "season": 2023,
+      "graded_picks": 138,
+      "verified_player_weeks": 1728,
+      "mean_absolute_error": 0.0613,
+      "max_absolute_error": 2.0
+    },
+    {
+      "season": 2024,
+      "graded_picks": 138,
+      "verified_player_weeks": 1702,
+      "mean_absolute_error": 0.0734,
+      "max_absolute_error": 2.0
+    },
+    {
+      "season": 2025,
+      "graded_picks": 139,
+      "verified_player_weeks": 1689,
+      "mean_absolute_error": 0.0542,
+      "max_absolute_error": 2.0
+    }
+  ],
+  "identity_overrides_sha256": "d525942c2297d953f5e00ef08c55e24e739336b4ba6d25c3e2b61c6d42b0eaff",
+  "limitation": "NFL reconstruction omits the 40+ yard touchdown bonus flags; ESPN weekly scores override reconstructed points wherever available."
+}

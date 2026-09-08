@@ -39,7 +39,7 @@ test('a swap between two teams across a week boundary is reconstructed', () => {
   const trades = detectTrades(2026, entries, []);
   assert.equal(trades.length, 1);
   const t = trades[0]!;
-  assert.equal(t.trade_id, '2026-w2-3v5');
+  assert.match(t.trade_id, /^2026-[a-f0-9]{24}$/);
   assert.equal(t.confidence, 'reciprocal');
   assert.deepEqual(
     t.players.map((p) => [p.espn_player_id, p.from_team_id, p.to_team_id]),
@@ -153,7 +153,8 @@ test('two separate pairs trading in the same week are two reconstructed trades',
     ...own(2, 1, 20), ...own(2, 2, 10), ...own(2, 3, 40), ...own(2, 4, 30),
   ];
   const trades = detectTrades(2026, entries, []);
-  assert.deepEqual(trades.map((t) => t.trade_id), ['2026-w2-1v2', '2026-w2-3v4']);
+  assert.deepEqual(trades.map((t) => [t.team_a, t.team_b]), [[1, 2], [3, 4]]);
+  assert.equal(new Set(trades.map((t) => t.trade_id)).size, 2);
 });
 
 test('an empty TRADE_ACCEPT can corroborate a reciprocal reconstruction but not license it', () => {
@@ -199,4 +200,13 @@ test('trade ids are stable across roster input order', () => {
   const a = detectTrades(2026, entries, []);
   const b = detectTrades(2026, [...entries].reverse(), []);
   assert.deepEqual(a.map((t) => t.trade_id), b.map((t) => t.trade_id));
+});
+
+
+test('an earlier same-week trade does not rename existing trades', () => {
+  const original = completedTrade('later', 3, [[10, 1, 2], [20, 2, 1]]);
+  const earlier = completedTrade('earlier', 3, [[30, 1, 2], [40, 2, 1]]);
+  const only = detectTrades(2025, [], [original])[0]!;
+  const both = detectTrades(2025, [], [earlier, original]);
+  assert.equal(both.find((t) => t.espn_transaction_id === 'later')!.trade_id, only.trade_id);
 });

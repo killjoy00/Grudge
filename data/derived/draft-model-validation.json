@@ -1,0 +1,58 @@
+{
+  "model_version": "2026.3",
+  "target": "Regular-season production above replacement, normalized by average league starter production.",
+  "evaluation": "Expanding chronological holdouts; at least three prior seasons. Fixed log-pick kernel bandwidth 0.35.",
+  "held_out_seasons": [
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "pick_expectation": {
+    "n": 2047,
+    "mae": 13.5229,
+    "rmse": 18.9556
+  },
+  "constant_prior_seasons_baseline": {
+    "n": 2047,
+    "mae": 16.5245,
+    "rmse": 21.7593
+  },
+  "position_residuals": [
+    {
+      "position": 1,
+      "n": 238,
+      "mean_value": 2.7367
+    },
+    {
+      "position": 2,
+      "n": 751,
+      "mean_value": 0.6994
+    },
+    {
+      "position": 3,
+      "n": 838,
+      "mean_value": -0.2359
+    },
+    {
+      "position": 4,
+      "n": 220,
+      "mean_value": -0.454
+    }
+  ],
+  "limits": [
+    "Historical draft return is highly variable; these are descriptive grades, not preseason projections.",
+    "Published all-time grades use other completed seasons, including later ones; only this validation uses strictly prior seasons.",
+    "The comparison evaluates expected return, not causal draft skill or championship prediction."
+  ]
+}

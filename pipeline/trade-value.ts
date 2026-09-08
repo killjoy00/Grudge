@@ -57,6 +57,7 @@
 import { bestLineup, expandSlots, type LineupPlayer } from './lineup.ts';
 import { starterDemand, replacementLevels, type PlayerSeason } from './trade.ts';
 import { capacityFromStarters } from './trade-assemble.ts';
+import { classifyScoreCopies } from './scoring-evidence.ts';
 
 /**
  * Positions left out of grading entirely: kicker (5) and team defence (16).
@@ -77,13 +78,15 @@ export interface RosterWeekRow {
   week: number;
   espn_team_id: number;
   espn_player_id: number;
+  /** False for placement/consolation games; ownership still informs the counterfactual. */
+  tracked?: boolean;
 }
 
 /** What a player scored in a given week, wherever he was rostered. */
 export interface PlayerWeekPoints {
   week: number;
   espn_player_id: number;
-  points: number;
+  points: number | null;
   /** Whether the team that rostered him actually started him. */
   started: boolean;
 }
@@ -111,6 +114,8 @@ export interface TradeValueInput {
   replacement: Map<number, number>;
   /** Weeks to score, ascending. Callers pass completed weeks only. */
   weeks: number[];
+  /** Scheduled tracked games expose a missing entire roster snapshot. */
+  trackedGames?: { week: number; team_id: number }[];
 }
 
 export interface SideValue {
@@ -156,16 +161,18 @@ export interface TradeValue {
    * those is one.
    */
   graded: boolean;
+  gradingReason: TradeGradingReason;
 }
+
+export type TradeGradingReason = 'not_played' | 'excluded_positions' | 'incomplete_data' | 'not_published' | null;
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /**
  * The best lineup a set of players could have produced in one week.
  *
- * A player with no scoring row that week is passed in at zero rather than
- * dropped, so both branches of the counterfactual see the same roster size and
- * the solver -- not this function -- decides he does not start.
+ * Missing scores can be used internally to build a partial explanation, but
+ * the caller's coverage gate suppresses every verdict built from one.
  */
 function weekBest(
   playerIds: Iterable<number>,
@@ -210,10 +217,15 @@ export function valueTrade(input: TradeValueInput): TradeValue {
   // but it cannot enter either branch of the lineup counterfactual.  Do not
   // turn a completely unmeasurable deal into an authoritative 0-0 verdict.
   const measurableMoves = moves.filter((m) => input.eligible.get(m.espn_player_id)?.length);
+  let incomplete = moves.some((m) => !input.position.has(m.espn_player_id)
+    || !input.eligible.get(m.espn_player_id)?.some((s) => slots.includes(s)));
 
   // Roster membership and scoring, indexed by week for the inner loop.
   const rosterBy = new Map<number, Map<number, Set<number>>>();
+  const trackedTeams = new Set<string>();
+  for (const g of input.trackedGames ?? []) trackedTeams.add(`${g.week}:${g.team_id}`);
   for (const r of input.rosters) {
+    if (!input.trackedGames && r.tracked !== false) trackedTeams.add(`${r.week}:${r.espn_team_id}`);
     let byTeam = rosterBy.get(r.week);
     if (!byTeam) rosterBy.set(r.week, (byTeam = new Map()));
     let set = byTeam.get(r.espn_team_id);
@@ -223,6 +235,7 @@ export function valueTrade(input: TradeValueInput): TradeValue {
   const pointsBy = new Map<number, Map<number, number>>();
   const startedBy = new Map<number, Set<number>>();
   for (const p of input.points) {
+    if (p.points === null || !Number.isFinite(p.points)) continue;
     let week = pointsBy.get(p.week);
     if (!week) pointsBy.set(p.week, (week = new Map()));
     week.set(p.espn_player_id, p.points);
@@ -233,7 +246,8 @@ export function valueTrade(input: TradeValueInput): TradeValue {
     }
   }
 
-  const scored = weeks.filter((w) => w >= input.effective_week && rosterBy.has(w));
+  const scored = weeks.filter((w) => w >= input.effective_week &&
+    (trackedTeams.has(`${w}:${team_a}`) || trackedTeams.has(`${w}:${team_b}`)));
 
   const sideFor = (teamId: number, otherId: number): SideValue => {
     const received = moves.filter((m) => m.to_team_id === teamId).map((m) => m.espn_player_id);
@@ -246,9 +260,11 @@ export function valueTrade(input: TradeValueInput): TradeValue {
     let startedPoints = 0;
 
     for (const week of scored) {
-      const byTeam = rosterBy.get(week)!;
+      if (!trackedTeams.has(`${week}:${teamId}`)) continue;
+      const byTeam = rosterBy.get(week) ?? new Map<number, Set<number>>();
       const mine = byTeam.get(teamId);
-      if (!mine) continue; // team not in this week's snapshot at all
+      if (!mine) { incomplete = true; continue; }
+      if (!byTeam.has(otherId)) incomplete = true;
       const theirs = byTeam.get(otherId) ?? new Set<number>();
       const weekPoints = pointsBy.get(week) ?? new Map<number, number>();
       const started = startedBy.get(week);
@@ -259,6 +275,16 @@ export function valueTrade(input: TradeValueInput): TradeValue {
       const counterfactual = new Set(mine);
       for (const id of received) counterfactual.delete(id);
       for (const id of gaveUp) if (theirs.has(id)) counterfactual.add(id);
+
+      // A missing score/eligibility is not an injury, a bye, or a real zero.
+      // Validate both complete candidate lineups, not just the acquisitions.
+      const candidates = new Set([...mine, ...counterfactual]);
+      for (const id of candidates) {
+        const pos = input.position.get(id);
+        if (pos !== undefined && UNGRADED_POSITIONS.has(pos)) continue;
+        if (pos === undefined || !eligible.get(id)?.some((s) => slots.includes(s))
+          || !weekPoints.has(id)) incomplete = true;
+      }
 
       const best = weekBest(mine, weekPoints, eligible, slots);
       lineupImpact += best.total - weekBest(counterfactual, weekPoints, eligible, slots).total;
@@ -296,13 +322,16 @@ export function valueTrade(input: TradeValueInput): TradeValue {
   const margin = round1(a.lineupImpact - b.lineupImpact);
   // Nothing left to weigh: either no week has been played, or the whole deal
   // was kickers and defences. Neither is a tie, so neither gets a verdict.
-  const graded = scored.length > 0 && measurableMoves.length > 0;
+  const gradingReason: TradeGradingReason = scored.length === 0 ? 'not_played'
+    : moves.length === 0 ? 'excluded_positions'
+    : incomplete || measurableMoves.length !== moves.length ? 'incomplete_data' : null;
+  const graded = gradingReason === null;
   return {
     a, b, margin,
     winner: !graded ? null : margin > 0 ? team_a : margin < 0 ? team_b : null,
     weeksScored: scored.length,
     mutual: graded && a.lineupImpact > 0 && b.lineupImpact > 0,
-    graded,
+    graded, gradingReason,
   };
 }
 
@@ -315,7 +344,8 @@ export interface SeasonRosterRow {
   espn_player_id: number;
   lineup_slot_id: number;
   is_starter: boolean;
-  applied_points: number;
+  applied_points: number | null;
+  tracked?: boolean;
 }
 
 export interface SeasonPlayerRow {
@@ -332,6 +362,7 @@ export interface SeasonContext {
   rosters: RosterWeekRow[];
   points: PlayerWeekPoints[];
   weeks: number[];
+  trackedGames?: { week: number; team_id: number }[];
 }
 
 /**
@@ -347,7 +378,9 @@ export interface SeasonContext {
 export function seasonContext(
   rosterRows: SeasonRosterRow[],
   playerRows: SeasonPlayerRow[],
-  teamCount: number
+  teamCount: number,
+  canonical?: { points: PlayerWeekPoints[]; weeks: number[]; regularWeeks: number;
+    trackedGames: { week: number; team_id: number }[] }
 ): SeasonContext {
   const eligible = new Map<number, number[]>();
   const position = new Map<number, number>();
@@ -356,7 +389,7 @@ export function seasonContext(
     if (p.default_position_id !== null) position.set(p.espn_player_id, p.default_position_id);
   }
 
-  const starters = rosterRows.filter((r) => r.is_starter);
+  const starters = rosterRows.filter((r) => r.is_starter && r.tracked !== false);
   const capacity = capacityFromStarters(starters);
 
   // Which positions were seen filling each slot, and how often. This is what
@@ -399,23 +432,30 @@ export function seasonContext(
   // A player can occur on two ownership rows in a transaction week.  Scoring
   // is player-week data, not player-roster data, so collapse those edges before
   // computing PPG/replacement or exposing points to the counterfactual.
-  const playerWeeks = new Map<string, { week: number; playerId: number; points: number; started: boolean }>();
+  const playerWeeks = new Map<string, { week: number; playerId: number; points: number | null; samples: (number | null)[]; started: boolean; tracked: boolean }>();
   for (const r of rosterRows) {
     const key = `${r.week}:${r.espn_player_id}`;
     const previous = playerWeeks.get(key);
     if (!previous) {
       playerWeeks.set(key, {
         week: r.week, playerId: r.espn_player_id, points: r.applied_points,
-        started: r.is_starter,
+        samples: [r.applied_points],
+        started: r.is_starter, tracked: r.tracked !== false,
       });
     } else {
-      previous.points = Math.max(previous.points, r.applied_points);
+      previous.samples.push(r.applied_points);
+      previous.points = classifyScoreCopies(previous.samples).points;
       previous.started ||= r.is_starter;
+      previous.tracked ||= r.tracked !== false;
     }
   }
 
   const totals = new Map<number, { points: number; games: number }>();
-  for (const r of playerWeeks.values()) {
+  const replacementRows = canonical ? canonical.points.map((p) => ({
+    playerId: p.espn_player_id, points: p.points, tracked: p.week <= canonical.regularWeeks,
+  })) : [...playerWeeks.values()];
+  for (const r of replacementRows) {
+    if (!r.tracked || r.points === null || !Number.isFinite(r.points)) continue;
     const acc = totals.get(r.playerId) ?? { points: 0, games: 0 };
     acc.points += r.points;
     acc.games += 1;
@@ -434,19 +474,26 @@ export function seasonContext(
   }
   const demand = starterDemand(capacity, slotElig, observedFill, teamCount);
   const replacement = replacementLevels(seasons, demand);
+  if (canonical) for (const p of canonical.points) {
+    if (p.week > canonical.regularWeeks || (p.points !== null && Number.isFinite(p.points))) continue;
+    const pos = position.get(p.espn_player_id);
+    if (pos !== undefined) replacement.delete(pos);
+  }
 
   return {
     eligible, slots, position, replacement,
     rosters: rosterRows.map((r) => ({
       week: r.week, espn_team_id: r.espn_team_id, espn_player_id: r.espn_player_id,
+      tracked: r.tracked,
     })),
     // Points are per player per week regardless of who rostered him, which is
     // what the counterfactual needs: "what would he have scored for you".
-    points: [...playerWeeks.values()].map((r) => ({
+    points: canonical?.points ?? [...playerWeeks.values()].map((r) => ({
       week: r.week, espn_player_id: r.playerId,
       points: r.points, started: r.started,
     })),
-    weeks: [...new Set(rosterRows.map((r) => r.week))].sort((a, b) => a - b),
+    weeks: canonical?.weeks ?? [...new Set(rosterRows.map((r) => r.week))].sort((a, b) => a - b),
+    trackedGames: canonical?.trackedGames,
   };
 }
 
@@ -498,7 +545,7 @@ export function franchiseTradeRecords(
       // Names change; callers pass current ones, so the newest wins.
       row.name = f.name;
       row.trades += 1;
-      if (value.weeksScored === 0) continue;
+      if (!value.graded) continue;
       row.gained = round1(row.gained + self.lineupImpact);
       row.given = round1(row.given + other.lineupImpact);
       row.net = round1(row.net + self.lineupImpact - other.lineupImpact);

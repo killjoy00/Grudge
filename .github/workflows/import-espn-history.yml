@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: import-espn-history
+  group: weekly-pipeline
   cancel-in-progress: false
 
 permissions:

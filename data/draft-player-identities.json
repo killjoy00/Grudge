@@ -1,0 +1,14 @@
+{
+  "description": "Historical ESPN IDs absent from the upstream crosswalk. ESPN athlete profiles establish name/position; nflverse weekly files establish GSIS identity. Namesakes are matched by position.",
+  "players": [
+    {"espn_id": 2844, "name": "Kenny Watson", "position": "RB", "gsis_id": "00-0019808"},
+    {"espn_id": 2178, "name": "Jerry Porter", "position": "WR", "gsis_id": "00-0019703"},
+    {"espn_id": 2898, "name": "Drew Bennett", "position": "WR", "gsis_id": "00-0019976"},
+    {"espn_id": 5551, "name": "Chris Perry", "position": "RB", "gsis_id": "00-0022926"},
+    {"espn_id": 8497, "name": "Chris Henry", "position": "WR", "gsis_id": "00-0023518"},
+    {"espn_id": 4551, "name": "Chris Brown", "position": "RB", "gsis_id": "00-0022092"},
+    {"espn_id": 3734, "name": "Ronald Curry", "position": "WR", "gsis_id": "00-0021337"}
+  ],
+  "espn_source_template": "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/athletes/{espn_id}?lang=en&region=us",
+  "nfl_source_template": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{year}.csv"
+}

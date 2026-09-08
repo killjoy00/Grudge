@@ -1,0 +1,6010 @@
+{
+  "method": "Compare same-season draft ownership with the final roster. These are investigation leads, not trade records.",
+  "limitations": [
+    "No transaction packages or weekly ownership history survives in these archives.",
+    "A final owner change can be a waiver claim, several transactions, or a trade. Reciprocal endpoint changes do not prove one deal.",
+    "No effective dates, trade winners or grades can be inferred from these snapshots."
+  ],
+  "seasons": [
+    {
+      "season": 2005,
+      "source": "data/history/2005/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 1951644,
+          "name": "Domanick Davis",
+          "position_id": 2,
+          "overall_pick": 19,
+          "round": 3,
+          "from_team": 2,
+          "to_team": 1,
+          "from_name": "Team 2",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 1867798,
+          "name": "Jerome Bettis",
+          "position_id": 2,
+          "overall_pick": 90,
+          "round": 12,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 1,
+          "from_name": "Team 2",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 1921498,
+          "name": "T.J. Houshmandzadeh",
+          "position_id": 3,
+          "overall_pick": 113,
+          "round": 15,
+          "from_team": 1,
+          "to_team": 2,
+          "from_name": "Durham Bubbs",
+          "to_name": "Team 2"
+        },
+        {
+          "espn_player_id": 13137,
+          "name": "Kevan Barlow",
+          "position_id": 2,
+          "overall_pick": 53,
+          "round": 7,
+          "from_team": 5,
+          "to_team": 2,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Team 2"
+        },
+        {
+          "espn_player_id": 1952139,
+          "name": "Donte' Stallworth",
+          "position_id": 3,
+          "overall_pick": 128,
+          "round": 16,
+          "from_team": 1,
+          "to_team": 3,
+          "from_name": "Durham Bubbs",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 1868077,
+          "name": "Eric Moulds",
+          "position_id": 3,
+          "overall_pick": 98,
+          "round": 13,
+          "from_team": 8,
+          "to_team": 3,
+          "from_name": "Death by Glass Ingestion",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 13093,
+          "name": "Reuben Droughns",
+          "position_id": 2,
+          "overall_pick": 107,
+          "round": 14,
+          "from_team": 6,
+          "to_team": 3,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 3,
+          "from_name": "Team 2",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 1954520,
+          "name": "Byron Leftwich",
+          "position_id": 1,
+          "overall_pick": 118,
+          "round": 15,
+          "from_team": 6,
+          "to_team": 3,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 13103,
+          "name": "Michael Bennett",
+          "position_id": 2,
+          "overall_pick": 117,
+          "round": 15,
+          "from_team": 5,
+          "to_team": 3,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 4,
+          "from_name": "Team 2",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 13034,
+          "name": "Drew Brees",
+          "position_id": 1,
+          "overall_pick": 86,
+          "round": 11,
+          "from_team": 6,
+          "to_team": 5,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 5,
+          "from_name": "Team 2",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 1952785,
+          "name": "DeShaun Foster",
+          "position_id": 2,
+          "overall_pick": 50,
+          "round": 7,
+          "from_team": 8,
+          "to_team": 5,
+          "from_name": "Death by Glass Ingestion",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 6,
+          "from_name": "Team 2",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 1941683,
+          "name": "Tatum Bell",
+          "position_id": 2,
+          "overall_pick": 36,
+          "round": 5,
+          "from_team": 4,
+          "to_team": 6,
+          "from_name": "The Penguins",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 1964729,
+          "name": "Jeff Reed",
+          "position_id": 5,
+          "overall_pick": 106,
+          "round": 14,
+          "from_team": 3,
+          "to_team": 6,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 6,
+          "from_name": "Team 2",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 7,
+          "from_name": "Team 2",
+          "to_name": "Mario and Manny Fan Club"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 8,
+          "from_name": "Team 2",
+          "to_name": "Death by Glass Ingestion"
+        },
+        {
+          "espn_player_id": 1966098,
+          "name": "Chris Brown",
+          "position_id": 2,
+          "overall_pick": 51,
+          "round": 7,
+          "from_team": 2,
+          "to_team": 8,
+          "from_name": "Team 2",
+          "to_name": "Death by Glass Ingestion"
+        },
+        {
+          "espn_player_id": 1867828,
+          "name": "Trent Green",
+          "position_id": 1,
+          "overall_pick": 35,
+          "round": 5,
+          "from_team": 2,
+          "to_team": 8,
+          "from_name": "Team 2",
+          "to_name": "Death by Glass Ingestion"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 126,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 8,
+          "from_name": "Team 2",
+          "to_name": "Death by Glass Ingestion"
+        },
+        {
+          "espn_player_id": 1867458,
+          "name": "Jason Elam",
+          "position_id": 5,
+          "overall_pick": 112,
+          "round": 14,
+          "from_team": 1,
+          "to_team": 8,
+          "from_name": "Durham Bubbs",
+          "to_name": "Death by Glass Ingestion"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 2,
+          "moves": [
+            {
+              "espn_player_id": 1951644,
+              "name": "Domanick Davis",
+              "position_id": 2,
+              "overall_pick": 19,
+              "round": 3,
+              "from_team": 2,
+              "to_team": 1,
+              "from_name": "Team 2",
+              "to_name": "Durham Bubbs"
+            },
+            {
+              "espn_player_id": 0,
+              "name": null,
+              "position_id": null,
+              "overall_pick": 126,
+              "round": 16,
+              "from_team": 2,
+              "to_team": 1,
+              "from_name": "Team 2",
+              "to_name": "Durham Bubbs"
+            },
+            {
+              "espn_player_id": 1921498,
+              "name": "T.J. Houshmandzadeh",
+              "position_id": 3,
+              "overall_pick": 113,
+              "round": 15,
+              "from_team": 1,
+              "to_team": 2,
+              "from_name": "Durham Bubbs",
+              "to_name": "Team 2"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 3,
+          "moves": [
+            {
+              "espn_player_id": 1867798,
+              "name": "Jerome Bettis",
+              "position_id": 2,
+              "overall_pick": 90,
+              "round": 12,
+              "from_team": 3,
+              "to_team": 1,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "Durham Bubbs"
+            },
+            {
+              "espn_player_id": 1952139,
+              "name": "Donte' Stallworth",
+              "position_id": 3,
+              "overall_pick": 128,
+              "round": 16,
+              "from_team": 1,
+              "to_team": 3,
+              "from_name": "Durham Bubbs",
+              "to_name": "Your Worst Nightmares"
+            }
+          ]
+        },
+        {
+          "team_a": 2,
+          "team_b": 5,
+          "moves": [
+            {
+              "espn_player_id": 13137,
+              "name": "Kevan Barlow",
+              "position_id": 2,
+              "overall_pick": 53,
+              "round": 7,
+              "from_team": 5,
+              "to_team": 2,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "Team 2"
+            },
+            {
+              "espn_player_id": 0,
+              "name": null,
+              "position_id": null,
+              "overall_pick": 126,
+              "round": 16,
+              "from_team": 2,
+              "to_team": 5,
+              "from_name": "Team 2",
+              "to_name": "The Penthouse Panda Bear"
+            }
+          ]
+        },
+        {
+          "team_a": 3,
+          "team_b": 6,
+          "moves": [
+            {
+              "espn_player_id": 13093,
+              "name": "Reuben Droughns",
+              "position_id": 2,
+              "overall_pick": 107,
+              "round": 14,
+              "from_team": 6,
+              "to_team": 3,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "Your Worst Nightmares"
+            },
+            {
+              "espn_player_id": 1954520,
+              "name": "Byron Leftwich",
+              "position_id": 1,
+              "overall_pick": 118,
+              "round": 15,
+              "from_team": 6,
+              "to_team": 3,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "Your Worst Nightmares"
+            },
+            {
+              "espn_player_id": 1964729,
+              "name": "Jeff Reed",
+              "position_id": 5,
+              "overall_pick": 106,
+              "round": 14,
+              "from_team": 3,
+              "to_team": 6,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "P RIVERS NAS NAS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2006,
+      "source": "data/history/2006/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 2,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Team 2"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 2,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Team 2"
+        },
+        {
+          "espn_player_id": 1869753,
+          "name": "Marty Booker",
+          "position_id": 3,
+          "overall_pick": 141,
+          "round": 15,
+          "from_team": 4,
+          "to_team": 2,
+          "from_name": "The Penguins",
+          "to_name": "Team 2"
+        },
+        {
+          "espn_player_id": 1868603,
+          "name": "Jon Kitna",
+          "position_id": 1,
+          "overall_pick": 116,
+          "round": 12,
+          "from_team": 10,
+          "to_team": 3,
+          "from_name": "Boston Baked Beans",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 4,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 4,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 1946516,
+          "name": "Javon Walker",
+          "position_id": 3,
+          "overall_pick": 56,
+          "round": 6,
+          "from_team": 10,
+          "to_team": 4,
+          "from_name": "Boston Baked Beans",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 1867968,
+          "name": "John Kasay",
+          "position_id": 5,
+          "overall_pick": 136,
+          "round": 14,
+          "from_team": 10,
+          "to_team": 4,
+          "from_name": "Boston Baked Beans",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 4,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 1868568,
+          "name": "Derrick Mason",
+          "position_id": 3,
+          "overall_pick": 61,
+          "round": 7,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 6,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 6,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 1870523,
+          "name": "Tom Brady",
+          "position_id": 1,
+          "overall_pick": 18,
+          "round": 2,
+          "from_team": 11,
+          "to_team": 6,
+          "from_name": "Bong Suckin' Boys",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 8,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 8,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 8,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 8,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 1940728,
+          "name": "Jason Witten",
+          "position_id": 4,
+          "overall_pick": 67,
+          "round": 7,
+          "from_team": 2,
+          "to_team": 8,
+          "from_name": "Team 2",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 8,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 8,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 9,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "King Ding A Lings"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 9,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "King Ding A Lings"
+        },
+        {
+          "espn_player_id": 1868265,
+          "name": "Joe Horn",
+          "position_id": 3,
+          "overall_pick": 51,
+          "round": 6,
+          "from_team": 6,
+          "to_team": 9,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "King Ding A Lings"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 9,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "King Ding A Lings"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 9,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "King Ding A Lings"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 10,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 10,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 10,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 1868409,
+          "name": "Corey Dillon",
+          "position_id": 2,
+          "overall_pick": 80,
+          "round": 8,
+          "from_team": 4,
+          "to_team": 10,
+          "from_name": "The Penguins",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 13525,
+          "name": "Lawrence Tynes",
+          "position_id": 5,
+          "overall_pick": 152,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 10,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 10,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 1952596,
+          "name": "Randy McMichael",
+          "position_id": 4,
+          "overall_pick": 118,
+          "round": 12,
+          "from_team": 11,
+          "to_team": 10,
+          "from_name": "Bong Suckin' Boys",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Bong Suckin' Boys"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Bong Suckin' Boys"
+        },
+        {
+          "espn_player_id": 1869438,
+          "name": "Ahman Green",
+          "position_id": 2,
+          "overall_pick": 84,
+          "round": 9,
+          "from_team": 9,
+          "to_team": 11,
+          "from_name": "King Ding A Lings",
+          "to_name": "Bong Suckin' Boys"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Bong Suckin' Boys"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Bong Suckin' Boys"
+        },
+        {
+          "espn_player_id": 0,
+          "name": null,
+          "position_id": null,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Bong Suckin' Boys"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 3,
+          "team_b": 10,
+          "moves": [
+            {
+              "espn_player_id": 1868603,
+              "name": "Jon Kitna",
+              "position_id": 1,
+              "overall_pick": 116,
+              "round": 12,
+              "from_team": 10,
+              "to_team": 3,
+              "from_name": "Boston Baked Beans",
+              "to_name": "Your Worst Nightmares"
+            },
+            {
+              "espn_player_id": 0,
+              "name": null,
+              "position_id": null,
+              "overall_pick": 159,
+              "round": 16,
+              "from_team": 3,
+              "to_team": 10,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "Boston Baked Beans"
+            },
+            {
+              "espn_player_id": 0,
+              "name": null,
+              "position_id": null,
+              "overall_pick": 159,
+              "round": 16,
+              "from_team": 3,
+              "to_team": 10,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "Boston Baked Beans"
+            },
+            {
+              "espn_player_id": 0,
+              "name": null,
+              "position_id": null,
+              "overall_pick": 159,
+              "round": 16,
+              "from_team": 3,
+              "to_team": 10,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "Boston Baked Beans"
+            },
+            {
+              "espn_player_id": 0,
+              "name": null,
+              "position_id": null,
+              "overall_pick": 159,
+              "round": 16,
+              "from_team": 3,
+              "to_team": 10,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "Boston Baked Beans"
+            }
+          ]
+        },
+        {
+          "team_a": 4,
+          "team_b": 10,
+          "moves": [
+            {
+              "espn_player_id": 1946516,
+              "name": "Javon Walker",
+              "position_id": 3,
+              "overall_pick": 56,
+              "round": 6,
+              "from_team": 10,
+              "to_team": 4,
+              "from_name": "Boston Baked Beans",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 1867968,
+              "name": "John Kasay",
+              "position_id": 5,
+              "overall_pick": 136,
+              "round": 14,
+              "from_team": 10,
+              "to_team": 4,
+              "from_name": "Boston Baked Beans",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 1868409,
+              "name": "Corey Dillon",
+              "position_id": 2,
+              "overall_pick": 80,
+              "round": 8,
+              "from_team": 4,
+              "to_team": 10,
+              "from_name": "The Penguins",
+              "to_name": "Boston Baked Beans"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "source": "data/history/2007/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 3504,
+          "name": "Shayne Graham",
+          "position_id": 5,
+          "overall_pick": 144,
+          "round": 15,
+          "from_team": 8,
+          "to_team": 1,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Durham Bubbs"
+        },
+        {
+          "espn_player_id": 1485,
+          "name": "Joe Jurevicius",
+          "position_id": 3,
+          "overall_pick": 139,
+          "round": 14,
+          "from_team": 10,
+          "to_team": 3,
+          "from_name": "Boston Baked Beans",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": -16016,
+          "name": "Vikings D/ST",
+          "position_id": 16,
+          "overall_pick": 140,
+          "round": 14,
+          "from_team": 1,
+          "to_team": 3,
+          "from_name": "Durham Bubbs",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 10522,
+          "name": "James Jones",
+          "position_id": 3,
+          "overall_pick": 141,
+          "round": 15,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "Durham Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 1175,
+          "name": "Warrick Dunn",
+          "position_id": 2,
+          "overall_pick": 108,
+          "round": 11,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 9665,
+          "name": "Jerious Norwood",
+          "position_id": 2,
+          "overall_pick": 42,
+          "round": 5,
+          "from_team": 10,
+          "to_team": 6,
+          "from_name": "Boston Baked Beans",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 2142,
+          "name": "Ron Dayne",
+          "position_id": 2,
+          "overall_pick": 142,
+          "round": 15,
+          "from_team": 10,
+          "to_team": 6,
+          "from_name": "Boston Baked Beans",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 1753,
+          "name": "Donovan McNabb",
+          "position_id": 1,
+          "overall_pick": 40,
+          "round": 4,
+          "from_team": 1,
+          "to_team": 6,
+          "from_name": "Durham Bubbs",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 2583,
+          "name": "Alge Crumpler",
+          "position_id": 4,
+          "overall_pick": 68,
+          "round": 7,
+          "from_team": 3,
+          "to_team": 6,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 5529,
+          "name": "Philip Rivers",
+          "position_id": 1,
+          "overall_pick": 85,
+          "round": 9,
+          "from_team": 9,
+          "to_team": 6,
+          "from_name": "99% Domination",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 3541,
+          "name": "Donte' Stallworth",
+          "position_id": 3,
+          "overall_pick": 89,
+          "round": 9,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "Baltimore Stars",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 5538,
+          "name": "Lee Evans",
+          "position_id": 3,
+          "overall_pick": 46,
+          "round": 5,
+          "from_team": 4,
+          "to_team": 9,
+          "from_name": "The Penguins",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": 112,
+          "name": "Brett Favre",
+          "position_id": 1,
+          "overall_pick": 152,
+          "round": 16,
+          "from_team": 11,
+          "to_team": 9,
+          "from_name": "Baltimore Stars",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": 2597,
+          "name": "LaMont Jordan",
+          "position_id": 2,
+          "overall_pick": 60,
+          "round": 6,
+          "from_team": 1,
+          "to_team": 9,
+          "from_name": "Durham Bubbs",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": 4551,
+          "name": "Chris Brown",
+          "position_id": 2,
+          "overall_pick": 123,
+          "round": 13,
+          "from_team": 5,
+          "to_team": 9,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": -16030,
+          "name": "Jaguars D/ST",
+          "position_id": 16,
+          "overall_pick": 137,
+          "round": 14,
+          "from_team": 8,
+          "to_team": 10,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 9613,
+          "name": "DeAngelo Williams",
+          "position_id": 2,
+          "overall_pick": 61,
+          "round": 7,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "Durham Bubbs",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 5682,
+          "name": "D.J. Hackett",
+          "position_id": 3,
+          "overall_pick": 121,
+          "round": 13,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "Durham Bubbs",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 1263,
+          "name": "Derrick Mason",
+          "position_id": 3,
+          "overall_pick": 138,
+          "round": 14,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Baltimore Stars"
+        }
+      ],
+      "reciprocal_end_state_leads": []
+    },
+    {
+      "season": 2008,
+      "source": "data/history/2008/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 5880,
+          "name": "Willie Parker",
+          "position_id": 2,
+          "overall_pick": 22,
+          "round": 3,
+          "from_team": 2,
+          "to_team": 1,
+          "from_name": "Run and Hide",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 658,
+          "name": "Isaac Bruce",
+          "position_id": 3,
+          "overall_pick": 101,
+          "round": 11,
+          "from_team": 9,
+          "to_team": 1,
+          "from_name": "99% Domination",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": -16011,
+          "name": "Colts D/ST",
+          "position_id": 16,
+          "overall_pick": 152,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 11289,
+          "name": "Ray Rice",
+          "position_id": 2,
+          "overall_pick": 160,
+          "round": 16,
+          "from_team": 9,
+          "to_team": 2,
+          "from_name": "99% Domination",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": -16010,
+          "name": "Titans D/ST",
+          "position_id": 16,
+          "overall_pick": 135,
+          "round": 14,
+          "from_team": 11,
+          "to_team": 2,
+          "from_name": "Big Gay Al",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 11278,
+          "name": "Matt Forte",
+          "position_id": 2,
+          "overall_pick": 76,
+          "round": 8,
+          "from_team": 1,
+          "to_team": 2,
+          "from_name": "New York Bubbs",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": -16006,
+          "name": "Cowboys D/ST",
+          "position_id": 16,
+          "overall_pick": 140,
+          "round": 14,
+          "from_team": 9,
+          "to_team": 3,
+          "from_name": "99% Domination",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 1263,
+          "name": "Derrick Mason",
+          "position_id": 3,
+          "overall_pick": 113,
+          "round": 12,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 5566,
+          "name": "Tatum Bell",
+          "position_id": 2,
+          "overall_pick": 162,
+          "round": 17,
+          "from_team": 2,
+          "to_team": 5,
+          "from_name": "Run and Hide",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 3784,
+          "name": "Chester Taylor",
+          "position_id": 2,
+          "overall_pick": 112,
+          "round": 12,
+          "from_team": 3,
+          "to_team": 6,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 9592,
+          "name": "Vernon Davis",
+          "position_id": 4,
+          "overall_pick": 142,
+          "round": 15,
+          "from_team": 2,
+          "to_team": 8,
+          "from_name": "Run and Hide",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 1755,
+          "name": "Edgerrin James",
+          "position_id": 2,
+          "overall_pick": 38,
+          "round": 4,
+          "from_team": 5,
+          "to_team": 9,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": 9647,
+          "name": "Tony Scheffler",
+          "position_id": 4,
+          "overall_pick": 97,
+          "round": 10,
+          "from_team": 8,
+          "to_team": 9,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": 1097,
+          "name": "Adam Vinatieri",
+          "position_id": 5,
+          "overall_pick": 149,
+          "round": 15,
+          "from_team": 3,
+          "to_team": 9,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": -16003,
+          "name": "Bears D/ST",
+          "position_id": 16,
+          "overall_pick": 104,
+          "round": 11,
+          "from_team": 8,
+          "to_team": 9,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "99% Domination"
+        },
+        {
+          "espn_player_id": 4399,
+          "name": "Jeff Reed",
+          "position_id": 5,
+          "overall_pick": 163,
+          "round": 17,
+          "from_team": 5,
+          "to_team": 10,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 1756,
+          "name": "Ricky Williams",
+          "position_id": 2,
+          "overall_pick": 96,
+          "round": 10,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "New York Bubbs",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 9235,
+          "name": "Rob Bironas",
+          "position_id": 5,
+          "overall_pick": 165,
+          "round": 17,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "New York Bubbs",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 5534,
+          "name": "Reggie Williams",
+          "position_id": 3,
+          "overall_pick": 125,
+          "round": 13,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "New York Bubbs",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 2571,
+          "name": "Deuce McAllister",
+          "position_id": 2,
+          "overall_pick": 128,
+          "round": 13,
+          "from_team": 4,
+          "to_team": 11,
+          "from_name": "The Penguins",
+          "to_name": "Big Gay Al"
+        },
+        {
+          "espn_player_id": 1432,
+          "name": "Ahman Green",
+          "position_id": 2,
+          "overall_pick": 131,
+          "round": 14,
+          "from_team": 10,
+          "to_team": 11,
+          "from_name": "Boston Baked Beans",
+          "to_name": "Big Gay Al"
+        },
+        {
+          "espn_player_id": 10453,
+          "name": "Ted Ginn Jr.",
+          "position_id": 3,
+          "overall_pick": 103,
+          "round": 11,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Big Gay Al"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 2,
+          "moves": [
+            {
+              "espn_player_id": 5880,
+              "name": "Willie Parker",
+              "position_id": 2,
+              "overall_pick": 22,
+              "round": 3,
+              "from_team": 2,
+              "to_team": 1,
+              "from_name": "Run and Hide",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 11278,
+              "name": "Matt Forte",
+              "position_id": 2,
+              "overall_pick": 76,
+              "round": 8,
+              "from_team": 1,
+              "to_team": 2,
+              "from_name": "New York Bubbs",
+              "to_name": "Run and Hide"
+            }
+          ]
+        },
+        {
+          "team_a": 3,
+          "team_b": 9,
+          "moves": [
+            {
+              "espn_player_id": -16006,
+              "name": "Cowboys D/ST",
+              "position_id": 16,
+              "overall_pick": 140,
+              "round": 14,
+              "from_team": 9,
+              "to_team": 3,
+              "from_name": "99% Domination",
+              "to_name": "Your Worst Nightmares"
+            },
+            {
+              "espn_player_id": 1097,
+              "name": "Adam Vinatieri",
+              "position_id": 5,
+              "overall_pick": 149,
+              "round": 15,
+              "from_team": 3,
+              "to_team": 9,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "99% Domination"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "source": "data/history/2009/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 5532,
+          "name": "Roy E. Williams",
+          "position_id": 3,
+          "overall_pick": 47,
+          "round": 5,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Make It Wayne",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 2622,
+          "name": "Steve Smith",
+          "position_id": 3,
+          "overall_pick": 22,
+          "round": 3,
+          "from_team": 6,
+          "to_team": 1,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 10495,
+          "name": "Steve Smith",
+          "position_id": 3,
+          "overall_pick": 146,
+          "round": 15,
+          "from_team": 10,
+          "to_team": 1,
+          "from_name": "Boston Baked Beans",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 1716,
+          "name": "David Akers",
+          "position_id": 5,
+          "overall_pick": 153,
+          "round": 16,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 3784,
+          "name": "Chester Taylor",
+          "position_id": 2,
+          "overall_pick": 114,
+          "round": 12,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Make It Wayne",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 5741,
+          "name": "Patrick Crayton",
+          "position_id": 3,
+          "overall_pick": 121,
+          "round": 13,
+          "from_team": 1,
+          "to_team": 3,
+          "from_name": "New York Bubbs",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": -16024,
+          "name": "Chargers D/ST",
+          "position_id": 16,
+          "overall_pick": 151,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 3,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 9307,
+          "name": "Nate Washington",
+          "position_id": 3,
+          "overall_pick": 169,
+          "round": 17,
+          "from_team": 3,
+          "to_team": 4,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 5760,
+          "name": "Derrick Ward",
+          "position_id": 2,
+          "overall_pick": 70,
+          "round": 7,
+          "from_team": 5,
+          "to_team": 4,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 9588,
+          "name": "Reggie Bush",
+          "position_id": 2,
+          "overall_pick": 66,
+          "round": 7,
+          "from_team": 10,
+          "to_team": 5,
+          "from_name": "Boston Baked Beans",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11267,
+          "name": "Donnie Avery",
+          "position_id": 3,
+          "overall_pick": 106,
+          "round": 11,
+          "from_team": 10,
+          "to_team": 5,
+          "from_name": "Boston Baked Beans",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 4713,
+          "name": "Kevin Walter",
+          "position_id": 3,
+          "overall_pick": 80,
+          "round": 8,
+          "from_team": 1,
+          "to_team": 5,
+          "from_name": "New York Bubbs",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 1056,
+          "name": "Terrell Owens",
+          "position_id": 3,
+          "overall_pick": 40,
+          "round": 4,
+          "from_team": 1,
+          "to_team": 6,
+          "from_name": "New York Bubbs",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 8420,
+          "name": "Cadillac Williams",
+          "position_id": 2,
+          "overall_pick": 101,
+          "round": 11,
+          "from_team": 1,
+          "to_team": 6,
+          "from_name": "New York Bubbs",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 10482,
+          "name": "Zach Miller",
+          "position_id": 4,
+          "overall_pick": 131,
+          "round": 14,
+          "from_team": 5,
+          "to_team": 6,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 1757,
+          "name": "Torry Holt",
+          "position_id": 3,
+          "overall_pick": 75,
+          "round": 8,
+          "from_team": 10,
+          "to_team": 6,
+          "from_name": "Boston Baked Beans",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 10195,
+          "name": "Fred Jackson",
+          "position_id": 2,
+          "overall_pick": 90,
+          "round": 9,
+          "from_team": 5,
+          "to_team": 6,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 2600,
+          "name": "Chris Chambers",
+          "position_id": 3,
+          "overall_pick": 122,
+          "round": 13,
+          "from_team": 6,
+          "to_team": 8,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 43,
+          "name": "John Carney",
+          "position_id": 5,
+          "overall_pick": 170,
+          "round": 17,
+          "from_team": 5,
+          "to_team": 9,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "S. Raleigh Silly Nannies"
+        },
+        {
+          "espn_player_id": 4529,
+          "name": "Nate Burleson",
+          "position_id": 3,
+          "overall_pick": 154,
+          "round": 16,
+          "from_team": 11,
+          "to_team": 10,
+          "from_name": "Make It Wayne",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 8419,
+          "name": "Cedric Benson",
+          "position_id": 2,
+          "overall_pick": 81,
+          "round": 9,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "New York Bubbs",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 1328,
+          "name": "Ryan Longwell",
+          "position_id": 5,
+          "overall_pick": 134,
+          "round": 14,
+          "from_team": 11,
+          "to_team": 10,
+          "from_name": "Make It Wayne",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 9705,
+          "name": "Brandon Marshall",
+          "position_id": 3,
+          "overall_pick": 44,
+          "round": 5,
+          "from_team": 8,
+          "to_team": 10,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Boston Baked Beans"
+        },
+        {
+          "espn_player_id": 5568,
+          "name": "Julius Jones",
+          "position_id": 2,
+          "overall_pick": 120,
+          "round": 12,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "New York Bubbs",
+          "to_name": "Make It Wayne"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 5532,
+              "name": "Roy E. Williams",
+              "position_id": 3,
+              "overall_pick": 47,
+              "round": 5,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Make It Wayne",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 3784,
+              "name": "Chester Taylor",
+              "position_id": 2,
+              "overall_pick": 114,
+              "round": 12,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Make It Wayne",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 5568,
+              "name": "Julius Jones",
+              "position_id": 2,
+              "overall_pick": 120,
+              "round": 12,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "New York Bubbs",
+              "to_name": "Make It Wayne"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 6,
+          "moves": [
+            {
+              "espn_player_id": 2622,
+              "name": "Steve Smith",
+              "position_id": 3,
+              "overall_pick": 22,
+              "round": 3,
+              "from_team": 6,
+              "to_team": 1,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 1056,
+              "name": "Terrell Owens",
+              "position_id": 3,
+              "overall_pick": 40,
+              "round": 4,
+              "from_team": 1,
+              "to_team": 6,
+              "from_name": "New York Bubbs",
+              "to_name": "P RIVERS NAS NAS"
+            },
+            {
+              "espn_player_id": 8420,
+              "name": "Cadillac Williams",
+              "position_id": 2,
+              "overall_pick": 101,
+              "round": 11,
+              "from_team": 1,
+              "to_team": 6,
+              "from_name": "New York Bubbs",
+              "to_name": "P RIVERS NAS NAS"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 10,
+          "moves": [
+            {
+              "espn_player_id": 10495,
+              "name": "Steve Smith",
+              "position_id": 3,
+              "overall_pick": 146,
+              "round": 15,
+              "from_team": 10,
+              "to_team": 1,
+              "from_name": "Boston Baked Beans",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 8419,
+              "name": "Cedric Benson",
+              "position_id": 2,
+              "overall_pick": 81,
+              "round": 9,
+              "from_team": 1,
+              "to_team": 10,
+              "from_name": "New York Bubbs",
+              "to_name": "Boston Baked Beans"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "source": "data/history/2010/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 1433,
+          "name": "Randy Moss",
+          "position_id": 3,
+          "overall_pick": 10,
+          "round": 1,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 2138,
+          "name": "Thomas Jones",
+          "position_id": 2,
+          "overall_pick": 91,
+          "round": 10,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 5538,
+          "name": "Lee Evans",
+          "position_id": 3,
+          "overall_pick": 87,
+          "round": 9,
+          "from_team": 2,
+          "to_team": 1,
+          "from_name": "Run and Hide",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 12556,
+          "name": "Kenny Britt",
+          "position_id": 3,
+          "overall_pick": 104,
+          "round": 11,
+          "from_team": 1,
+          "to_team": 2,
+          "from_name": "New York Bubbs",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 3636,
+          "name": "David Garrard",
+          "position_id": 1,
+          "overall_pick": 143,
+          "round": 15,
+          "from_team": 8,
+          "to_team": 2,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 11383,
+          "name": "Tim Hightower",
+          "position_id": 2,
+          "overall_pick": 106,
+          "round": 11,
+          "from_team": 11,
+          "to_team": 2,
+          "from_name": "Make It Wayne",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 12497,
+          "name": "Arian Foster",
+          "position_id": 2,
+          "overall_pick": 77,
+          "round": 8,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "New York Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 12678,
+          "name": "Johnny Knox",
+          "position_id": 3,
+          "overall_pick": 84,
+          "round": 9,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "New York Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 6016,
+          "name": "Malcom Floyd",
+          "position_id": 3,
+          "overall_pick": 124,
+          "round": 13,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "New York Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 11256,
+          "name": "Felix Jones",
+          "position_id": 2,
+          "overall_pick": 57,
+          "round": 6,
+          "from_team": 1,
+          "to_team": 5,
+          "from_name": "New York Bubbs",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 2622,
+          "name": "Steve Smith",
+          "position_id": 3,
+          "overall_pick": 32,
+          "round": 4,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11247,
+          "name": "Jonathan Stewart",
+          "position_id": 2,
+          "overall_pick": 39,
+          "round": 4,
+          "from_team": 10,
+          "to_team": 5,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11467,
+          "name": "Justin Forsett",
+          "position_id": 2,
+          "overall_pick": 55,
+          "round": 6,
+          "from_team": 11,
+          "to_team": 6,
+          "from_name": "Make It Wayne",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 2300,
+          "name": "Neil Rackers",
+          "position_id": 5,
+          "overall_pick": 162,
+          "round": 17,
+          "from_team": 10,
+          "to_team": 6,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": -16033,
+          "name": "Ravens D/ST",
+          "position_id": 16,
+          "overall_pick": 115,
+          "round": 12,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "Make It Wayne",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 12503,
+          "name": "Rashad Jennings",
+          "position_id": 2,
+          "overall_pick": 146,
+          "round": 15,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "Make It Wayne",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 8420,
+          "name": "Cadillac Williams",
+          "position_id": 2,
+          "overall_pick": 102,
+          "round": 11,
+          "from_team": 10,
+          "to_team": 9,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 4529,
+          "name": "Nate Burleson",
+          "position_id": 3,
+          "overall_pick": 165,
+          "round": 17,
+          "from_team": 6,
+          "to_team": 9,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 1753,
+          "name": "Donovan McNabb",
+          "position_id": 1,
+          "overall_pick": 109,
+          "round": 11,
+          "from_team": 3,
+          "to_team": 9,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 9684,
+          "name": "Owen Daniels",
+          "position_id": 4,
+          "overall_pick": 81,
+          "round": 9,
+          "from_team": 5,
+          "to_team": 9,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 9588,
+          "name": "Reggie Bush",
+          "position_id": 2,
+          "overall_pick": 69,
+          "round": 7,
+          "from_team": 3,
+          "to_team": 10,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 12731,
+          "name": "Ryan Succop",
+          "position_id": 5,
+          "overall_pick": 164,
+          "round": 17,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "New York Bubbs",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 10456,
+          "name": "Marshawn Lynch",
+          "position_id": 2,
+          "overall_pick": 133,
+          "round": 14,
+          "from_team": 9,
+          "to_team": 11,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "Make It Wayne"
+        },
+        {
+          "espn_player_id": -16018,
+          "name": "Saints D/ST",
+          "position_id": 16,
+          "overall_pick": 168,
+          "round": 17,
+          "from_team": 9,
+          "to_team": 11,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "Make It Wayne"
+        },
+        {
+          "espn_player_id": 10195,
+          "name": "Fred Jackson",
+          "position_id": 2,
+          "overall_pick": 83,
+          "round": 9,
+          "from_team": 8,
+          "to_team": 11,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Make It Wayne"
+        },
+        {
+          "espn_player_id": 12489,
+          "name": "Donald Brown",
+          "position_id": 2,
+          "overall_pick": 99,
+          "round": 10,
+          "from_team": 10,
+          "to_team": 11,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "Make It Wayne"
+        },
+        {
+          "espn_player_id": 3619,
+          "name": "Brian Westbrook",
+          "position_id": 2,
+          "overall_pick": 169,
+          "round": 17,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Make It Wayne"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 4,
+          "moves": [
+            {
+              "espn_player_id": 1433,
+              "name": "Randy Moss",
+              "position_id": 3,
+              "overall_pick": 10,
+              "round": 1,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 2138,
+              "name": "Thomas Jones",
+              "position_id": 2,
+              "overall_pick": 91,
+              "round": 10,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 12497,
+              "name": "Arian Foster",
+              "position_id": 2,
+              "overall_pick": 77,
+              "round": 8,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "New York Bubbs",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 12678,
+              "name": "Johnny Knox",
+              "position_id": 3,
+              "overall_pick": 84,
+              "round": 9,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "New York Bubbs",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 6016,
+              "name": "Malcom Floyd",
+              "position_id": 3,
+              "overall_pick": 124,
+              "round": 13,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "New York Bubbs",
+              "to_name": "The Penguins"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 2,
+          "moves": [
+            {
+              "espn_player_id": 5538,
+              "name": "Lee Evans",
+              "position_id": 3,
+              "overall_pick": 87,
+              "round": 9,
+              "from_team": 2,
+              "to_team": 1,
+              "from_name": "Run and Hide",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 12556,
+              "name": "Kenny Britt",
+              "position_id": 3,
+              "overall_pick": 104,
+              "round": 11,
+              "from_team": 1,
+              "to_team": 2,
+              "from_name": "New York Bubbs",
+              "to_name": "Run and Hide"
+            }
+          ]
+        },
+        {
+          "team_a": 8,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": -16033,
+              "name": "Ravens D/ST",
+              "position_id": 16,
+              "overall_pick": 115,
+              "round": 12,
+              "from_team": 11,
+              "to_team": 8,
+              "from_name": "Make It Wayne",
+              "to_name": "Brightleaf Yuppies"
+            },
+            {
+              "espn_player_id": 12503,
+              "name": "Rashad Jennings",
+              "position_id": 2,
+              "overall_pick": 146,
+              "round": 15,
+              "from_team": 11,
+              "to_team": 8,
+              "from_name": "Make It Wayne",
+              "to_name": "Brightleaf Yuppies"
+            },
+            {
+              "espn_player_id": 10195,
+              "name": "Fred Jackson",
+              "position_id": 2,
+              "overall_pick": 83,
+              "round": 9,
+              "from_team": 8,
+              "to_team": 11,
+              "from_name": "Brightleaf Yuppies",
+              "to_name": "Make It Wayne"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "source": "data/history/2011/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 14192,
+          "name": "Roy Helu",
+          "position_id": 2,
+          "overall_pick": 155,
+          "round": 16,
+          "from_team": 8,
+          "to_team": 1,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": -16017,
+          "name": "Patriots D/ST",
+          "position_id": 16,
+          "overall_pick": 146,
+          "round": 15,
+          "from_team": 8,
+          "to_team": 1,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 13203,
+          "name": "C.J. Spiller",
+          "position_id": 2,
+          "overall_pick": 99,
+          "round": 10,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 9731,
+          "name": "Jerome Harrison",
+          "position_id": 2,
+          "overall_pick": 128,
+          "round": 13,
+          "from_team": 5,
+          "to_team": 2,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 9597,
+          "name": "Jay Cutler",
+          "position_id": 1,
+          "overall_pick": 122,
+          "round": 13,
+          "from_team": 4,
+          "to_team": 3,
+          "from_name": "The Penguins",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 13363,
+          "name": "Jacoby Ford",
+          "position_id": 3,
+          "overall_pick": 113,
+          "round": 12,
+          "from_team": 5,
+          "to_team": 3,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 11439,
+          "name": "Pierre Garcon",
+          "position_id": 3,
+          "overall_pick": 81,
+          "round": 9,
+          "from_team": 6,
+          "to_team": 4,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 13210,
+          "name": "Ben Tate",
+          "position_id": 2,
+          "overall_pick": 133,
+          "round": 14,
+          "from_team": 5,
+          "to_team": 4,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 9588,
+          "name": "Reggie Bush",
+          "position_id": 2,
+          "overall_pick": 88,
+          "round": 9,
+          "from_team": 5,
+          "to_team": 4,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": -16021,
+          "name": "Eagles D/ST",
+          "position_id": 16,
+          "overall_pick": 117,
+          "round": 12,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "New York Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 9611,
+          "name": "Santonio Holmes",
+          "position_id": 3,
+          "overall_pick": 51,
+          "round": 6,
+          "from_team": 3,
+          "to_team": 5,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 2564,
+          "name": "Santana Moss",
+          "position_id": 3,
+          "overall_pick": 76,
+          "round": 8,
+          "from_team": 9,
+          "to_team": 5,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11258,
+          "name": "Chris Johnson",
+          "position_id": 2,
+          "overall_pick": 3,
+          "round": 1,
+          "from_team": 10,
+          "to_team": 5,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11458,
+          "name": "Steve Johnson",
+          "position_id": 3,
+          "overall_pick": 62,
+          "round": 7,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 5941,
+          "name": "Wes Welker",
+          "position_id": 3,
+          "overall_pick": 54,
+          "round": 6,
+          "from_team": 11,
+          "to_team": 5,
+          "from_name": "The Brady  Bunch",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11256,
+          "name": "Felix Jones",
+          "position_id": 2,
+          "overall_pick": 39,
+          "round": 4,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 10522,
+          "name": "James Jones",
+          "position_id": 3,
+          "overall_pick": 140,
+          "round": 14,
+          "from_team": 6,
+          "to_team": 5,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 4529,
+          "name": "Nate Burleson",
+          "position_id": 3,
+          "overall_pick": 144,
+          "round": 15,
+          "from_team": 1,
+          "to_team": 6,
+          "from_name": "New York Bubbs",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 12563,
+          "name": "Michael Crabtree",
+          "position_id": 3,
+          "overall_pick": 157,
+          "round": 16,
+          "from_team": 1,
+          "to_team": 8,
+          "from_name": "New York Bubbs",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": -16023,
+          "name": "Steelers D/ST",
+          "position_id": 16,
+          "overall_pick": 67,
+          "round": 7,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "The Brady  Bunch",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 12549,
+          "name": "Brandon Pettigrew",
+          "position_id": 4,
+          "overall_pick": 127,
+          "round": 13,
+          "from_team": 11,
+          "to_team": 9,
+          "from_name": "The Brady  Bunch",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 6016,
+          "name": "Malcom Floyd",
+          "position_id": 3,
+          "overall_pick": 107,
+          "round": 11,
+          "from_team": 11,
+          "to_team": 9,
+          "from_name": "The Brady  Bunch",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 14024,
+          "name": "Greg Little",
+          "position_id": 3,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 4,
+          "to_team": 9,
+          "from_name": "The Penguins",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 12482,
+          "name": "Mark Sanchez",
+          "position_id": 1,
+          "overall_pick": 143,
+          "round": 15,
+          "from_team": 10,
+          "to_team": 9,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": -16012,
+          "name": "Chiefs D/ST",
+          "position_id": 16,
+          "overall_pick": 153,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 9,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 10471,
+          "name": "Robert Meachem",
+          "position_id": 3,
+          "overall_pick": 118,
+          "round": 12,
+          "from_team": 10,
+          "to_team": 9,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": -16006,
+          "name": "Cowboys D/ST",
+          "position_id": 16,
+          "overall_pick": 151,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 10,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 11788,
+          "name": "Danny Woodhead",
+          "position_id": 2,
+          "overall_pick": 110,
+          "round": 11,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Brady  Bunch"
+        },
+        {
+          "espn_player_id": 12569,
+          "name": "Percy Harvin",
+          "position_id": 3,
+          "overall_pick": 53,
+          "round": 6,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Brady  Bunch"
+        },
+        {
+          "espn_player_id": 10456,
+          "name": "Marshawn Lynch",
+          "position_id": 2,
+          "overall_pick": 73,
+          "round": 8,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Brady  Bunch"
+        },
+        {
+          "espn_player_id": 13982,
+          "name": "Julio Jones",
+          "position_id": 3,
+          "overall_pick": 93,
+          "round": 10,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Brady  Bunch"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 8,
+          "moves": [
+            {
+              "espn_player_id": 14192,
+              "name": "Roy Helu",
+              "position_id": 2,
+              "overall_pick": 155,
+              "round": 16,
+              "from_team": 8,
+              "to_team": 1,
+              "from_name": "Brightleaf Yuppies",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": -16017,
+              "name": "Patriots D/ST",
+              "position_id": 16,
+              "overall_pick": 146,
+              "round": 15,
+              "from_team": 8,
+              "to_team": 1,
+              "from_name": "Brightleaf Yuppies",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 12563,
+              "name": "Michael Crabtree",
+              "position_id": 3,
+              "overall_pick": 157,
+              "round": 16,
+              "from_team": 1,
+              "to_team": 8,
+              "from_name": "New York Bubbs",
+              "to_name": "Brightleaf Yuppies"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 4,
+          "moves": [
+            {
+              "espn_player_id": 13203,
+              "name": "C.J. Spiller",
+              "position_id": 2,
+              "overall_pick": 99,
+              "round": 10,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": -16021,
+              "name": "Eagles D/ST",
+              "position_id": 16,
+              "overall_pick": 117,
+              "round": 12,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "New York Bubbs",
+              "to_name": "The Penguins"
+            }
+          ]
+        },
+        {
+          "team_a": 3,
+          "team_b": 5,
+          "moves": [
+            {
+              "espn_player_id": 13363,
+              "name": "Jacoby Ford",
+              "position_id": 3,
+              "overall_pick": 113,
+              "round": 12,
+              "from_team": 5,
+              "to_team": 3,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "Your Worst Nightmares"
+            },
+            {
+              "espn_player_id": 9611,
+              "name": "Santonio Holmes",
+              "position_id": 3,
+              "overall_pick": 51,
+              "round": 6,
+              "from_team": 3,
+              "to_team": 5,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "The Penthouse Panda Bear"
+            }
+          ]
+        },
+        {
+          "team_a": 4,
+          "team_b": 5,
+          "moves": [
+            {
+              "espn_player_id": 13210,
+              "name": "Ben Tate",
+              "position_id": 2,
+              "overall_pick": 133,
+              "round": 14,
+              "from_team": 5,
+              "to_team": 4,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 9588,
+              "name": "Reggie Bush",
+              "position_id": 2,
+              "overall_pick": 88,
+              "round": 9,
+              "from_team": 5,
+              "to_team": 4,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 11458,
+              "name": "Steve Johnson",
+              "position_id": 3,
+              "overall_pick": 62,
+              "round": 7,
+              "from_team": 4,
+              "to_team": 5,
+              "from_name": "The Penguins",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 11256,
+              "name": "Felix Jones",
+              "position_id": 2,
+              "overall_pick": 39,
+              "round": 4,
+              "from_team": 4,
+              "to_team": 5,
+              "from_name": "The Penguins",
+              "to_name": "The Penthouse Panda Bear"
+            }
+          ]
+        },
+        {
+          "team_a": 5,
+          "team_b": 9,
+          "moves": [
+            {
+              "espn_player_id": 2564,
+              "name": "Santana Moss",
+              "position_id": 3,
+              "overall_pick": 76,
+              "round": 8,
+              "from_team": 9,
+              "to_team": 5,
+              "from_name": "W. Durham Silly Nannies",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": -16012,
+              "name": "Chiefs D/ST",
+              "position_id": 16,
+              "overall_pick": 153,
+              "round": 16,
+              "from_team": 5,
+              "to_team": 9,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "W. Durham Silly Nannies"
+            }
+          ]
+        },
+        {
+          "team_a": 5,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 5941,
+              "name": "Wes Welker",
+              "position_id": 3,
+              "overall_pick": 54,
+              "round": 6,
+              "from_team": 11,
+              "to_team": 5,
+              "from_name": "The Brady  Bunch",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 12569,
+              "name": "Percy Harvin",
+              "position_id": 3,
+              "overall_pick": 53,
+              "round": 6,
+              "from_team": 5,
+              "to_team": 11,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Brady  Bunch"
+            },
+            {
+              "espn_player_id": 10456,
+              "name": "Marshawn Lynch",
+              "position_id": 2,
+              "overall_pick": 73,
+              "round": 8,
+              "from_team": 5,
+              "to_team": 11,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Brady  Bunch"
+            },
+            {
+              "espn_player_id": 13982,
+              "name": "Julio Jones",
+              "position_id": 3,
+              "overall_pick": 93,
+              "round": 10,
+              "from_team": 5,
+              "to_team": 11,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Brady  Bunch"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "source": "data/history/2012/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 14875,
+          "name": "Robert Griffin III",
+          "position_id": 1,
+          "overall_pick": 77,
+          "round": 8,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "The Brady  Bunch",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 4461,
+          "name": "Andre Johnson",
+          "position_id": 3,
+          "overall_pick": 11,
+          "round": 2,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 12525,
+          "name": "Beanie Wells",
+          "position_id": 2,
+          "overall_pick": 78,
+          "round": 8,
+          "from_team": 5,
+          "to_team": 1,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 4582,
+          "name": "Brandon Lloyd",
+          "position_id": 3,
+          "overall_pick": 43,
+          "round": 5,
+          "from_team": 5,
+          "to_team": 1,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 13981,
+          "name": "Mark Ingram",
+          "position_id": 2,
+          "overall_pick": 95,
+          "round": 10,
+          "from_team": 1,
+          "to_team": 2,
+          "from_name": "New York Bubbs",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 14907,
+          "name": "Justin Blackmon",
+          "position_id": 3,
+          "overall_pick": 103,
+          "round": 11,
+          "from_team": 5,
+          "to_team": 2,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 11329,
+          "name": "Mario Manningham",
+          "position_id": 3,
+          "overall_pick": 131,
+          "round": 14,
+          "from_team": 4,
+          "to_team": 3,
+          "from_name": "The Penguins",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": -16020,
+          "name": "Jets D/ST",
+          "position_id": 16,
+          "overall_pick": 157,
+          "round": 16,
+          "from_team": 11,
+          "to_team": 3,
+          "from_name": "The Brady  Bunch",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 11256,
+          "name": "Felix Jones",
+          "position_id": 2,
+          "overall_pick": 120,
+          "round": 12,
+          "from_team": 6,
+          "to_team": 4,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": -16034,
+          "name": "Texans D/ST",
+          "position_id": 16,
+          "overall_pick": 104,
+          "round": 11,
+          "from_team": 11,
+          "to_team": 4,
+          "from_name": "The Brady  Bunch",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 5549,
+          "name": "Steven Jackson",
+          "position_id": 2,
+          "overall_pick": 24,
+          "round": 3,
+          "from_team": 11,
+          "to_team": 4,
+          "from_name": "The Brady  Bunch",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 9838,
+          "name": "Marques Colston",
+          "position_id": 3,
+          "overall_pick": 44,
+          "round": 5,
+          "from_team": 11,
+          "to_team": 4,
+          "from_name": "The Brady  Bunch",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 14053,
+          "name": "Randall Cobb",
+          "position_id": 3,
+          "overall_pick": 150,
+          "round": 15,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11439,
+          "name": "Pierre Garcon",
+          "position_id": 3,
+          "overall_pick": 76,
+          "round": 8,
+          "from_team": 2,
+          "to_team": 5,
+          "from_name": "Run and Hide",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 13206,
+          "name": "Jonathan Dwyer",
+          "position_id": 2,
+          "overall_pick": 137,
+          "round": 14,
+          "from_team": 11,
+          "to_team": 5,
+          "from_name": "The Brady  Bunch",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 5209,
+          "name": "Tony Romo",
+          "position_id": 1,
+          "overall_pick": 71,
+          "round": 8,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 14887,
+          "name": "David Wilson",
+          "position_id": 2,
+          "overall_pick": 97,
+          "round": 10,
+          "from_team": 11,
+          "to_team": 5,
+          "from_name": "The Brady  Bunch",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 12503,
+          "name": "Rashad Jennings",
+          "position_id": 2,
+          "overall_pick": 146,
+          "round": 15,
+          "from_team": 1,
+          "to_team": 6,
+          "from_name": "New York Bubbs",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 11122,
+          "name": "Matt Prater",
+          "position_id": 5,
+          "overall_pick": 169,
+          "round": 17,
+          "from_team": 8,
+          "to_team": 6,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 14056,
+          "name": "Daniel Thomas",
+          "position_id": 2,
+          "overall_pick": 119,
+          "round": 12,
+          "from_team": 10,
+          "to_team": 6,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 14129,
+          "name": "Bilal Powell",
+          "position_id": 2,
+          "overall_pick": 151,
+          "round": 16,
+          "from_team": 4,
+          "to_team": 9,
+          "from_name": "The Penguins",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": -16023,
+          "name": "Steelers D/ST",
+          "position_id": 16,
+          "overall_pick": 128,
+          "round": 13,
+          "from_team": 3,
+          "to_team": 10,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 1716,
+          "name": "David Akers",
+          "position_id": 5,
+          "overall_pick": 161,
+          "round": 17,
+          "from_team": 6,
+          "to_team": 10,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 13216,
+          "name": "Demaryius Thomas",
+          "position_id": 3,
+          "overall_pick": 66,
+          "round": 7,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "New York Bubbs",
+          "to_name": "The Brady  Bunch"
+        },
+        {
+          "espn_player_id": 14193,
+          "name": "Jacquizz Rodgers",
+          "position_id": 2,
+          "overall_pick": 158,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Brady  Bunch"
+        },
+        {
+          "espn_player_id": -16007,
+          "name": "Broncos D/ST",
+          "position_id": 16,
+          "overall_pick": 153,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 11,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Brady  Bunch"
+        },
+        {
+          "espn_player_id": 14017,
+          "name": "Shane Vereen",
+          "position_id": 2,
+          "overall_pick": 123,
+          "round": 13,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Brady  Bunch"
+        },
+        {
+          "espn_player_id": 8419,
+          "name": "Cedric Benson",
+          "position_id": 2,
+          "overall_pick": 98,
+          "round": 10,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Brady  Bunch"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 14875,
+              "name": "Robert Griffin III",
+              "position_id": 1,
+              "overall_pick": 77,
+              "round": 8,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "The Brady  Bunch",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 13216,
+              "name": "Demaryius Thomas",
+              "position_id": 3,
+              "overall_pick": 66,
+              "round": 7,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "New York Bubbs",
+              "to_name": "The Brady  Bunch"
+            }
+          ]
+        },
+        {
+          "team_a": 2,
+          "team_b": 5,
+          "moves": [
+            {
+              "espn_player_id": 14907,
+              "name": "Justin Blackmon",
+              "position_id": 3,
+              "overall_pick": 103,
+              "round": 11,
+              "from_team": 5,
+              "to_team": 2,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "Run and Hide"
+            },
+            {
+              "espn_player_id": 11439,
+              "name": "Pierre Garcon",
+              "position_id": 3,
+              "overall_pick": 76,
+              "round": 8,
+              "from_team": 2,
+              "to_team": 5,
+              "from_name": "Run and Hide",
+              "to_name": "The Penthouse Panda Bear"
+            }
+          ]
+        },
+        {
+          "team_a": 3,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": -16020,
+              "name": "Jets D/ST",
+              "position_id": 16,
+              "overall_pick": 157,
+              "round": 16,
+              "from_team": 11,
+              "to_team": 3,
+              "from_name": "The Brady  Bunch",
+              "to_name": "Your Worst Nightmares"
+            },
+            {
+              "espn_player_id": -16007,
+              "name": "Broncos D/ST",
+              "position_id": 16,
+              "overall_pick": 153,
+              "round": 16,
+              "from_team": 3,
+              "to_team": 11,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "The Brady  Bunch"
+            }
+          ]
+        },
+        {
+          "team_a": 5,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 13206,
+              "name": "Jonathan Dwyer",
+              "position_id": 2,
+              "overall_pick": 137,
+              "round": 14,
+              "from_team": 11,
+              "to_team": 5,
+              "from_name": "The Brady  Bunch",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 14887,
+              "name": "David Wilson",
+              "position_id": 2,
+              "overall_pick": 97,
+              "round": 10,
+              "from_team": 11,
+              "to_team": 5,
+              "from_name": "The Brady  Bunch",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 14193,
+              "name": "Jacquizz Rodgers",
+              "position_id": 2,
+              "overall_pick": 158,
+              "round": 16,
+              "from_team": 5,
+              "to_team": 11,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Brady  Bunch"
+            },
+            {
+              "espn_player_id": 14017,
+              "name": "Shane Vereen",
+              "position_id": 2,
+              "overall_pick": 123,
+              "round": 13,
+              "from_team": 5,
+              "to_team": 11,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Brady  Bunch"
+            },
+            {
+              "espn_player_id": 8419,
+              "name": "Cedric Benson",
+              "position_id": 2,
+              "overall_pick": 98,
+              "round": 10,
+              "from_team": 5,
+              "to_team": 11,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Brady  Bunch"
+            }
+          ]
+        },
+        {
+          "team_a": 6,
+          "team_b": 10,
+          "moves": [
+            {
+              "espn_player_id": 14056,
+              "name": "Daniel Thomas",
+              "position_id": 2,
+              "overall_pick": 119,
+              "round": 12,
+              "from_team": 10,
+              "to_team": 6,
+              "from_name": "Boston Double Rainbows",
+              "to_name": "P RIVERS NAS NAS"
+            },
+            {
+              "espn_player_id": 1716,
+              "name": "David Akers",
+              "position_id": 5,
+              "overall_pick": 161,
+              "round": 17,
+              "from_team": 6,
+              "to_team": 10,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "Boston Double Rainbows"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "source": "data/history/2013/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 11439,
+          "name": "Pierre Garcon",
+          "position_id": 3,
+          "overall_pick": 54,
+          "round": 6,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 14189,
+          "name": "Jordan Cameron",
+          "position_id": 4,
+          "overall_pick": 147,
+          "round": 15,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": -16025,
+          "name": "49ers D/ST",
+          "position_id": 16,
+          "overall_pick": 124,
+          "round": 13,
+          "from_team": 6,
+          "to_team": 1,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 8442,
+          "name": "Roddy White",
+          "position_id": 3,
+          "overall_pick": 38,
+          "round": 4,
+          "from_team": 2,
+          "to_team": 1,
+          "from_name": "Run and Hide",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 15705,
+          "name": "Josh Gordon",
+          "position_id": 3,
+          "overall_pick": 100,
+          "round": 10,
+          "from_team": 5,
+          "to_team": 1,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 13204,
+          "name": "Ryan Mathews",
+          "position_id": 2,
+          "overall_pick": 42,
+          "round": 5,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": -16026,
+          "name": "Seahawks D/ST",
+          "position_id": 16,
+          "overall_pick": 122,
+          "round": 13,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": 1440,
+          "name": "Phil Dawson",
+          "position_id": 5,
+          "overall_pick": 157,
+          "round": 16,
+          "from_team": 6,
+          "to_team": 1,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "New York Bubbs"
+        },
+        {
+          "espn_player_id": -16014,
+          "name": "Rams D/ST",
+          "position_id": 16,
+          "overall_pick": 156,
+          "round": 16,
+          "from_team": 1,
+          "to_team": 2,
+          "from_name": "New York Bubbs",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 15825,
+          "name": "Le'Veon Bell",
+          "position_id": 2,
+          "overall_pick": 56,
+          "round": 6,
+          "from_team": 1,
+          "to_team": 3,
+          "from_name": "New York Bubbs",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 10467,
+          "name": "Dwayne Bowe",
+          "position_id": 3,
+          "overall_pick": 45,
+          "round": 5,
+          "from_team": 1,
+          "to_team": 3,
+          "from_name": "New York Bubbs",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 13210,
+          "name": "Ben Tate",
+          "position_id": 2,
+          "overall_pick": 85,
+          "round": 9,
+          "from_team": 1,
+          "to_team": 5,
+          "from_name": "New York Bubbs",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 14056,
+          "name": "Daniel Thomas",
+          "position_id": 2,
+          "overall_pick": 164,
+          "round": 17,
+          "from_team": 6,
+          "to_team": 5,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 15807,
+          "name": "Cordarrelle Patterson",
+          "position_id": 3,
+          "overall_pick": 142,
+          "round": 15,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 1716,
+          "name": "David Akers",
+          "position_id": 5,
+          "overall_pick": 170,
+          "round": 17,
+          "from_team": 8,
+          "to_team": 6,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 11257,
+          "name": "Rashard Mendenhall",
+          "position_id": 2,
+          "overall_pick": 80,
+          "round": 8,
+          "from_team": 5,
+          "to_team": 6,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 9638,
+          "name": "Greg Jennings",
+          "position_id": 3,
+          "overall_pick": 76,
+          "round": 8,
+          "from_team": 1,
+          "to_team": 6,
+          "from_name": "New York Bubbs",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 5536,
+          "name": "Ben Roethlisberger",
+          "position_id": 1,
+          "overall_pick": 129,
+          "round": 13,
+          "from_team": 10,
+          "to_team": 8,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 14192,
+          "name": "Roy Helu",
+          "position_id": 2,
+          "overall_pick": 146,
+          "round": 15,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "Discount Double Check!",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 15823,
+          "name": "Montee Ball",
+          "position_id": 2,
+          "overall_pick": 37,
+          "round": 4,
+          "from_team": 6,
+          "to_team": 8,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 14911,
+          "name": "Rueben Randle",
+          "position_id": 3,
+          "overall_pick": 140,
+          "round": 14,
+          "from_team": 5,
+          "to_team": 10,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": -16023,
+          "name": "Steelers D/ST",
+          "position_id": 16,
+          "overall_pick": 160,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 10,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Boston Double Rainbows"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 3,
+          "moves": [
+            {
+              "espn_player_id": 11439,
+              "name": "Pierre Garcon",
+              "position_id": 3,
+              "overall_pick": 54,
+              "round": 6,
+              "from_team": 3,
+              "to_team": 1,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 14189,
+              "name": "Jordan Cameron",
+              "position_id": 4,
+              "overall_pick": 147,
+              "round": 15,
+              "from_team": 3,
+              "to_team": 1,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 15825,
+              "name": "Le'Veon Bell",
+              "position_id": 2,
+              "overall_pick": 56,
+              "round": 6,
+              "from_team": 1,
+              "to_team": 3,
+              "from_name": "New York Bubbs",
+              "to_name": "Your Worst Nightmares"
+            },
+            {
+              "espn_player_id": 10467,
+              "name": "Dwayne Bowe",
+              "position_id": 3,
+              "overall_pick": 45,
+              "round": 5,
+              "from_team": 1,
+              "to_team": 3,
+              "from_name": "New York Bubbs",
+              "to_name": "Your Worst Nightmares"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 6,
+          "moves": [
+            {
+              "espn_player_id": -16025,
+              "name": "49ers D/ST",
+              "position_id": 16,
+              "overall_pick": 124,
+              "round": 13,
+              "from_team": 6,
+              "to_team": 1,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 1440,
+              "name": "Phil Dawson",
+              "position_id": 5,
+              "overall_pick": 157,
+              "round": 16,
+              "from_team": 6,
+              "to_team": 1,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 9638,
+              "name": "Greg Jennings",
+              "position_id": 3,
+              "overall_pick": 76,
+              "round": 8,
+              "from_team": 1,
+              "to_team": 6,
+              "from_name": "New York Bubbs",
+              "to_name": "P RIVERS NAS NAS"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 2,
+          "moves": [
+            {
+              "espn_player_id": 8442,
+              "name": "Roddy White",
+              "position_id": 3,
+              "overall_pick": 38,
+              "round": 4,
+              "from_team": 2,
+              "to_team": 1,
+              "from_name": "Run and Hide",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": -16014,
+              "name": "Rams D/ST",
+              "position_id": 16,
+              "overall_pick": 156,
+              "round": 16,
+              "from_team": 1,
+              "to_team": 2,
+              "from_name": "New York Bubbs",
+              "to_name": "Run and Hide"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 5,
+          "moves": [
+            {
+              "espn_player_id": 15705,
+              "name": "Josh Gordon",
+              "position_id": 3,
+              "overall_pick": 100,
+              "round": 10,
+              "from_team": 5,
+              "to_team": 1,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "New York Bubbs"
+            },
+            {
+              "espn_player_id": 13210,
+              "name": "Ben Tate",
+              "position_id": 2,
+              "overall_pick": 85,
+              "round": 9,
+              "from_team": 1,
+              "to_team": 5,
+              "from_name": "New York Bubbs",
+              "to_name": "The Penthouse Panda Bear"
+            }
+          ]
+        },
+        {
+          "team_a": 5,
+          "team_b": 6,
+          "moves": [
+            {
+              "espn_player_id": 14056,
+              "name": "Daniel Thomas",
+              "position_id": 2,
+              "overall_pick": 164,
+              "round": 17,
+              "from_team": 6,
+              "to_team": 5,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 11257,
+              "name": "Rashard Mendenhall",
+              "position_id": 2,
+              "overall_pick": 80,
+              "round": 8,
+              "from_team": 5,
+              "to_team": 6,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "P RIVERS NAS NAS"
+            }
+          ]
+        },
+        {
+          "team_a": 6,
+          "team_b": 8,
+          "moves": [
+            {
+              "espn_player_id": 1716,
+              "name": "David Akers",
+              "position_id": 5,
+              "overall_pick": 170,
+              "round": 17,
+              "from_team": 8,
+              "to_team": 6,
+              "from_name": "Brightleaf Yuppies",
+              "to_name": "P RIVERS NAS NAS"
+            },
+            {
+              "espn_player_id": 15823,
+              "name": "Montee Ball",
+              "position_id": 2,
+              "overall_pick": 37,
+              "round": 4,
+              "from_team": 6,
+              "to_team": 8,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "Brightleaf Yuppies"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "source": "data/history/2014/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 12483,
+          "name": "Matthew Stafford",
+          "position_id": 1,
+          "overall_pick": 22,
+          "round": 3,
+          "from_team": 2,
+          "to_team": 1,
+          "from_name": "Run and Hide",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 16737,
+          "name": "Mike Evans",
+          "position_id": 3,
+          "overall_pick": 95,
+          "round": 10,
+          "from_team": 8,
+          "to_team": 1,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": -16026,
+          "name": "Seahawks D/ST",
+          "position_id": 16,
+          "overall_pick": 74,
+          "round": 8,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Discount Double Check!",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 14204,
+          "name": "Julius Thomas",
+          "position_id": 4,
+          "overall_pick": 27,
+          "round": 3,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Discount Double Check!",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 13983,
+          "name": "A.J. Green",
+          "position_id": 3,
+          "overall_pick": 20,
+          "round": 2,
+          "from_team": 6,
+          "to_team": 1,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 5529,
+          "name": "Philip Rivers",
+          "position_id": 1,
+          "overall_pick": 141,
+          "round": 15,
+          "from_team": 6,
+          "to_team": 1,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 15825,
+          "name": "Le'Veon Bell",
+          "position_id": 2,
+          "overall_pick": 28,
+          "round": 3,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 14189,
+          "name": "Jordan Cameron",
+          "position_id": 4,
+          "overall_pick": 62,
+          "round": 7,
+          "from_team": 2,
+          "to_team": 3,
+          "from_name": "Run and Hide",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 14875,
+          "name": "Robert Griffin",
+          "position_id": 1,
+          "overall_pick": 85,
+          "round": 9,
+          "from_team": 1,
+          "to_team": 3,
+          "from_name": "Austin Bubbs",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": -16017,
+          "name": "Patriots D/ST",
+          "position_id": 16,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 2,
+          "to_team": 3,
+          "from_name": "Run and Hide",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 12556,
+          "name": "Kenny Britt",
+          "position_id": 3,
+          "overall_pick": 132,
+          "round": 14,
+          "from_team": 10,
+          "to_team": 3,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 14912,
+          "name": "Alshon Jeffery",
+          "position_id": 3,
+          "overall_pick": 25,
+          "round": 3,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "Austin Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 15705,
+          "name": "Josh Gordon",
+          "position_id": 3,
+          "overall_pick": 145,
+          "round": 15,
+          "from_team": 1,
+          "to_team": 5,
+          "from_name": "Austin Bubbs",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 8475,
+          "name": "Vincent Jackson",
+          "position_id": 3,
+          "overall_pick": 37,
+          "round": 4,
+          "from_team": 9,
+          "to_team": 5,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 10452,
+          "name": "Adrian Peterson",
+          "position_id": 2,
+          "overall_pick": 1,
+          "round": 1,
+          "from_team": 6,
+          "to_team": 5,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 12569,
+          "name": "Percy Harvin",
+          "position_id": 3,
+          "overall_pick": 42,
+          "round": 5,
+          "from_team": 2,
+          "to_team": 5,
+          "from_name": "Run and Hide",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": -16025,
+          "name": "49ers D/ST",
+          "position_id": 16,
+          "overall_pick": 140,
+          "round": 14,
+          "from_team": 6,
+          "to_team": 5,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 2578,
+          "name": "Reggie Wayne",
+          "position_id": 3,
+          "overall_pick": 81,
+          "round": 9,
+          "from_team": 6,
+          "to_team": 5,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 4527,
+          "name": "Jason Witten",
+          "position_id": 4,
+          "overall_pick": 87,
+          "round": 9,
+          "from_team": 11,
+          "to_team": 5,
+          "from_name": "Discount Double Check!",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 15058,
+          "name": "Blair Walsh",
+          "position_id": 5,
+          "overall_pick": 169,
+          "round": 17,
+          "from_team": 10,
+          "to_team": 5,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": -16034,
+          "name": "Texans D/ST",
+          "position_id": 16,
+          "overall_pick": 152,
+          "round": 16,
+          "from_team": 10,
+          "to_team": 5,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 10456,
+          "name": "Marshawn Lynch",
+          "position_id": 2,
+          "overall_pick": 7,
+          "round": 1,
+          "from_team": 11,
+          "to_team": 6,
+          "from_name": "Discount Double Check!",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 15860,
+          "name": "Jordan Reed",
+          "position_id": 4,
+          "overall_pick": 103,
+          "round": 11,
+          "from_team": 5,
+          "to_team": 6,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 9329,
+          "name": "Nick Novak",
+          "position_id": 5,
+          "overall_pick": 168,
+          "round": 17,
+          "from_team": 4,
+          "to_team": 6,
+          "from_name": "The Penguins",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": -16022,
+          "name": "Cardinals D/ST",
+          "position_id": 16,
+          "overall_pick": 144,
+          "round": 15,
+          "from_team": 9,
+          "to_team": 8,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": -16029,
+          "name": "Panthers D/ST",
+          "position_id": 16,
+          "overall_pick": 130,
+          "round": 13,
+          "from_team": 3,
+          "to_team": 8,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 11923,
+          "name": "Steven Hauschka",
+          "position_id": 5,
+          "overall_pick": 164,
+          "round": 17,
+          "from_team": 9,
+          "to_team": 10,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 16777,
+          "name": "Carlos Hyde",
+          "position_id": 2,
+          "overall_pick": 116,
+          "round": 12,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "Austin Bubbs",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": -16012,
+          "name": "Chiefs D/ST",
+          "position_id": 16,
+          "overall_pick": 158,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 10,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": -16014,
+          "name": "Rams D/ST",
+          "position_id": 16,
+          "overall_pick": 155,
+          "round": 16,
+          "from_team": 8,
+          "to_team": 10,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 13211,
+          "name": "Toby Gerhart",
+          "position_id": 2,
+          "overall_pick": 38,
+          "round": 4,
+          "from_team": 5,
+          "to_team": 10,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 16763,
+          "name": "Jordan Matthews",
+          "position_id": 3,
+          "overall_pick": 138,
+          "round": 14,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Discount Double Check!"
+        },
+        {
+          "espn_player_id": 5549,
+          "name": "Steven Jackson",
+          "position_id": 2,
+          "overall_pick": 65,
+          "round": 7,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Discount Double Check!"
+        },
+        {
+          "espn_player_id": 15795,
+          "name": "DeAndre Hopkins",
+          "position_id": 3,
+          "overall_pick": 96,
+          "round": 10,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Discount Double Check!"
+        },
+        {
+          "espn_player_id": 14145,
+          "name": "Charles Clay",
+          "position_id": 4,
+          "overall_pick": 119,
+          "round": 12,
+          "from_team": 2,
+          "to_team": 11,
+          "from_name": "Run and Hide",
+          "to_name": "Discount Double Check!"
+        },
+        {
+          "espn_player_id": 15878,
+          "name": "Terrance Williams",
+          "position_id": 3,
+          "overall_pick": 76,
+          "round": 8,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Discount Double Check!"
+        },
+        {
+          "espn_player_id": 16731,
+          "name": "Brandin Cooks",
+          "position_id": 3,
+          "overall_pick": 105,
+          "round": 11,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Discount Double Check!"
+        },
+        {
+          "espn_player_id": 13229,
+          "name": "Rob Gronkowski",
+          "position_id": 4,
+          "overall_pick": 36,
+          "round": 4,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Discount Double Check!"
+        },
+        {
+          "espn_player_id": 10636,
+          "name": "Mason Crosby",
+          "position_id": 5,
+          "overall_pick": 161,
+          "round": 17,
+          "from_team": 6,
+          "to_team": 11,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Discount Double Check!"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": -16026,
+              "name": "Seahawks D/ST",
+              "position_id": 16,
+              "overall_pick": 74,
+              "round": 8,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Discount Double Check!",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 14204,
+              "name": "Julius Thomas",
+              "position_id": 4,
+              "overall_pick": 27,
+              "round": 3,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Discount Double Check!",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 5549,
+              "name": "Steven Jackson",
+              "position_id": 2,
+              "overall_pick": 65,
+              "round": 7,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Discount Double Check!"
+            },
+            {
+              "espn_player_id": 15795,
+              "name": "DeAndre Hopkins",
+              "position_id": 3,
+              "overall_pick": 96,
+              "round": 10,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Discount Double Check!"
+            },
+            {
+              "espn_player_id": 15878,
+              "name": "Terrance Williams",
+              "position_id": 3,
+              "overall_pick": 76,
+              "round": 8,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Discount Double Check!"
+            },
+            {
+              "espn_player_id": 16731,
+              "name": "Brandin Cooks",
+              "position_id": 3,
+              "overall_pick": 105,
+              "round": 11,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Discount Double Check!"
+            },
+            {
+              "espn_player_id": 13229,
+              "name": "Rob Gronkowski",
+              "position_id": 4,
+              "overall_pick": 36,
+              "round": 4,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Discount Double Check!"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 4,
+          "moves": [
+            {
+              "espn_player_id": 15825,
+              "name": "Le'Veon Bell",
+              "position_id": 2,
+              "overall_pick": 28,
+              "round": 3,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 14912,
+              "name": "Alshon Jeffery",
+              "position_id": 3,
+              "overall_pick": 25,
+              "round": 3,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "Austin Bubbs",
+              "to_name": "The Penguins"
+            }
+          ]
+        },
+        {
+          "team_a": 5,
+          "team_b": 6,
+          "moves": [
+            {
+              "espn_player_id": 10452,
+              "name": "Adrian Peterson",
+              "position_id": 2,
+              "overall_pick": 1,
+              "round": 1,
+              "from_team": 6,
+              "to_team": 5,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": -16025,
+              "name": "49ers D/ST",
+              "position_id": 16,
+              "overall_pick": 140,
+              "round": 14,
+              "from_team": 6,
+              "to_team": 5,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 2578,
+              "name": "Reggie Wayne",
+              "position_id": 3,
+              "overall_pick": 81,
+              "round": 9,
+              "from_team": 6,
+              "to_team": 5,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 15860,
+              "name": "Jordan Reed",
+              "position_id": 4,
+              "overall_pick": 103,
+              "round": 11,
+              "from_team": 5,
+              "to_team": 6,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "P RIVERS NAS NAS"
+            }
+          ]
+        },
+        {
+          "team_a": 5,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 4527,
+              "name": "Jason Witten",
+              "position_id": 4,
+              "overall_pick": 87,
+              "round": 9,
+              "from_team": 11,
+              "to_team": 5,
+              "from_name": "Discount Double Check!",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": 16763,
+              "name": "Jordan Matthews",
+              "position_id": 3,
+              "overall_pick": 138,
+              "round": 14,
+              "from_team": 5,
+              "to_team": 11,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "Discount Double Check!"
+            }
+          ]
+        },
+        {
+          "team_a": 5,
+          "team_b": 10,
+          "moves": [
+            {
+              "espn_player_id": 15058,
+              "name": "Blair Walsh",
+              "position_id": 5,
+              "overall_pick": 169,
+              "round": 17,
+              "from_team": 10,
+              "to_team": 5,
+              "from_name": "Boston Double Rainbows",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": -16034,
+              "name": "Texans D/ST",
+              "position_id": 16,
+              "overall_pick": 152,
+              "round": 16,
+              "from_team": 10,
+              "to_team": 5,
+              "from_name": "Boston Double Rainbows",
+              "to_name": "The Penthouse Panda Bear"
+            },
+            {
+              "espn_player_id": -16012,
+              "name": "Chiefs D/ST",
+              "position_id": 16,
+              "overall_pick": 158,
+              "round": 16,
+              "from_team": 5,
+              "to_team": 10,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "Boston Double Rainbows"
+            },
+            {
+              "espn_player_id": 13211,
+              "name": "Toby Gerhart",
+              "position_id": 2,
+              "overall_pick": 38,
+              "round": 4,
+              "from_team": 5,
+              "to_team": 10,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "Boston Double Rainbows"
+            }
+          ]
+        },
+        {
+          "team_a": 6,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 10456,
+              "name": "Marshawn Lynch",
+              "position_id": 2,
+              "overall_pick": 7,
+              "round": 1,
+              "from_team": 11,
+              "to_team": 6,
+              "from_name": "Discount Double Check!",
+              "to_name": "P RIVERS NAS NAS"
+            },
+            {
+              "espn_player_id": 10636,
+              "name": "Mason Crosby",
+              "position_id": 5,
+              "overall_pick": 161,
+              "round": 17,
+              "from_team": 6,
+              "to_team": 11,
+              "from_name": "P RIVERS NAS NAS",
+              "to_name": "Discount Double Check!"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "source": "data/history/2015/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 16733,
+          "name": "Odell Beckham Jr.",
+          "position_id": 3,
+          "overall_pick": 17,
+          "round": 2,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 16921,
+          "name": "Alfred Blue",
+          "position_id": 2,
+          "overall_pick": 97,
+          "round": 10,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 9613,
+          "name": "DeAngelo Williams",
+          "position_id": 2,
+          "overall_pick": 130,
+          "round": 13,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Yippee Kai A Justin Tucker",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 11283,
+          "name": "DeSean Jackson",
+          "position_id": 3,
+          "overall_pick": 61,
+          "round": 7,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 2508176,
+          "name": "David Johnson",
+          "position_id": 2,
+          "overall_pick": 110,
+          "round": 11,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Yippee Kai A Justin Tucker",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 12649,
+          "name": "Julian Edelman",
+          "position_id": 3,
+          "overall_pick": 44,
+          "round": 5,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 2971433,
+          "name": "Dorial Green-Beckham",
+          "position_id": 3,
+          "overall_pick": 145,
+          "round": 15,
+          "from_team": 5,
+          "to_team": 1,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 14189,
+          "name": "Jordan Cameron",
+          "position_id": 4,
+          "overall_pick": 104,
+          "round": 11,
+          "from_team": 4,
+          "to_team": 2,
+          "from_name": "The Penguins",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 16749,
+          "name": "Charles Sims",
+          "position_id": 2,
+          "overall_pick": 99,
+          "round": 10,
+          "from_team": 1,
+          "to_team": 3,
+          "from_name": "Austin Bubbs",
+          "to_name": "Your Worst Nightmares"
+        },
+        {
+          "espn_player_id": 5529,
+          "name": "Philip Rivers",
+          "position_id": 1,
+          "overall_pick": 156,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 4,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 13271,
+          "name": "Eric Decker",
+          "position_id": 3,
+          "overall_pick": 82,
+          "round": 9,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "Austin Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 2576623,
+          "name": "DeVante Parker",
+          "position_id": 3,
+          "overall_pick": 116,
+          "round": 12,
+          "from_team": 5,
+          "to_team": 4,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 15951,
+          "name": "Denard Robinson",
+          "position_id": 2,
+          "overall_pick": 160,
+          "round": 16,
+          "from_team": 3,
+          "to_team": 4,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 12576,
+          "name": "Brandon LaFell",
+          "position_id": 3,
+          "overall_pick": 115,
+          "round": 12,
+          "from_team": 9,
+          "to_team": 5,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 2576434,
+          "name": "Melvin Gordon",
+          "position_id": 2,
+          "overall_pick": 39,
+          "round": 4,
+          "from_team": 1,
+          "to_team": 5,
+          "from_name": "Austin Bubbs",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 9838,
+          "name": "Marques Colston",
+          "position_id": 3,
+          "overall_pick": 112,
+          "round": 12,
+          "from_team": 10,
+          "to_team": 6,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 12483,
+          "name": "Matthew Stafford",
+          "position_id": 1,
+          "overall_pick": 135,
+          "round": 14,
+          "from_team": 9,
+          "to_team": 6,
+          "from_name": "W. Durham Silly Nannies",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": -16014,
+          "name": "Rams D/ST",
+          "position_id": 16,
+          "overall_pick": 150,
+          "round": 15,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "Yippee Kai A Justin Tucker",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 16795,
+          "name": "Austin Seferian-Jenkins",
+          "position_id": 4,
+          "overall_pick": 133,
+          "round": 14,
+          "from_team": 2,
+          "to_team": 8,
+          "from_name": "Run and Hide",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 8442,
+          "name": "Roddy White",
+          "position_id": 3,
+          "overall_pick": 98,
+          "round": 10,
+          "from_team": 6,
+          "to_team": 8,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 15873,
+          "name": "Markus Wheaton",
+          "position_id": 3,
+          "overall_pick": 119,
+          "round": 12,
+          "from_team": 1,
+          "to_team": 8,
+          "from_name": "Austin Bubbs",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 15835,
+          "name": "Zach Ertz",
+          "position_id": 4,
+          "overall_pick": 92,
+          "round": 10,
+          "from_team": 10,
+          "to_team": 9,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": 15893,
+          "name": "Andre Ellington",
+          "position_id": 2,
+          "overall_pick": 47,
+          "round": 5,
+          "from_team": 8,
+          "to_team": 10,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": -16017,
+          "name": "Patriots D/ST",
+          "position_id": 16,
+          "overall_pick": 159,
+          "round": 16,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Yippee Kai A Justin Tucker"
+        },
+        {
+          "espn_player_id": 14017,
+          "name": "Shane Vereen",
+          "position_id": 2,
+          "overall_pick": 96,
+          "round": 10,
+          "from_team": 5,
+          "to_team": 11,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Yippee Kai A Justin Tucker"
+        },
+        {
+          "espn_player_id": 11674,
+          "name": "Danny Amendola",
+          "position_id": 3,
+          "overall_pick": 129,
+          "round": 13,
+          "from_team": 10,
+          "to_team": 11,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "Yippee Kai A Justin Tucker"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 4,
+          "moves": [
+            {
+              "espn_player_id": 16733,
+              "name": "Odell Beckham Jr.",
+              "position_id": 3,
+              "overall_pick": 17,
+              "round": 2,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 16921,
+              "name": "Alfred Blue",
+              "position_id": 2,
+              "overall_pick": 97,
+              "round": 10,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 12649,
+              "name": "Julian Edelman",
+              "position_id": 3,
+              "overall_pick": 44,
+              "round": 5,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 13271,
+              "name": "Eric Decker",
+              "position_id": 3,
+              "overall_pick": 82,
+              "round": 9,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "Austin Bubbs",
+              "to_name": "The Penguins"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 9613,
+              "name": "DeAngelo Williams",
+              "position_id": 2,
+              "overall_pick": 130,
+              "round": 13,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Yippee Kai A Justin Tucker",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 2508176,
+              "name": "David Johnson",
+              "position_id": 2,
+              "overall_pick": 110,
+              "round": 11,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Yippee Kai A Justin Tucker",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": -16017,
+              "name": "Patriots D/ST",
+              "position_id": 16,
+              "overall_pick": 159,
+              "round": 16,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Yippee Kai A Justin Tucker"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 3,
+          "moves": [
+            {
+              "espn_player_id": 11283,
+              "name": "DeSean Jackson",
+              "position_id": 3,
+              "overall_pick": 61,
+              "round": 7,
+              "from_team": 3,
+              "to_team": 1,
+              "from_name": "Your Worst Nightmares",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 16749,
+              "name": "Charles Sims",
+              "position_id": 2,
+              "overall_pick": 99,
+              "round": 10,
+              "from_team": 1,
+              "to_team": 3,
+              "from_name": "Austin Bubbs",
+              "to_name": "Your Worst Nightmares"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 5,
+          "moves": [
+            {
+              "espn_player_id": 2971433,
+              "name": "Dorial Green-Beckham",
+              "position_id": 3,
+              "overall_pick": 145,
+              "round": 15,
+              "from_team": 5,
+              "to_team": 1,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 2576434,
+              "name": "Melvin Gordon",
+              "position_id": 2,
+              "overall_pick": 39,
+              "round": 4,
+              "from_team": 1,
+              "to_team": 5,
+              "from_name": "Austin Bubbs",
+              "to_name": "The Penthouse Panda Bear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "source": "data/history/2016/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 13232,
+          "name": "Jimmy Graham",
+          "position_id": 4,
+          "overall_pick": 64,
+          "round": 7,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Taco MacArthur",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 17133,
+          "name": "Isaiah Crowell",
+          "position_id": 2,
+          "overall_pick": 116,
+          "round": 12,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 14885,
+          "name": "Doug Martin",
+          "position_id": 2,
+          "overall_pick": 31,
+          "round": 4,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 13982,
+          "name": "Julio Jones",
+          "position_id": 3,
+          "overall_pick": 4,
+          "round": 1,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Taco MacArthur",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 13204,
+          "name": "Ryan Mathews",
+          "position_id": 2,
+          "overall_pick": 56,
+          "round": 6,
+          "from_team": 4,
+          "to_team": 1,
+          "from_name": "The Penguins",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 11467,
+          "name": "Justin Forsett",
+          "position_id": 2,
+          "overall_pick": 108,
+          "round": 11,
+          "from_team": 8,
+          "to_team": 1,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 2577327,
+          "name": "Tyler Lockett",
+          "position_id": 3,
+          "overall_pick": 84,
+          "round": 9,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Taco MacArthur",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 14880,
+          "name": "Kirk Cousins",
+          "position_id": 1,
+          "overall_pick": 161,
+          "round": 17,
+          "from_team": 1,
+          "to_team": 2,
+          "from_name": "Austin Bubbs",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 15835,
+          "name": "Zach Ertz",
+          "position_id": 4,
+          "overall_pick": 107,
+          "round": 11,
+          "from_team": 6,
+          "to_team": 2,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 5529,
+          "name": "Philip Rivers",
+          "position_id": 1,
+          "overall_pick": 103,
+          "round": 11,
+          "from_team": 10,
+          "to_team": 4,
+          "from_name": "Boston Double Rainbows",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 14886,
+          "name": "Lamar Miller",
+          "position_id": 2,
+          "overall_pick": 13,
+          "round": 2,
+          "from_team": 8,
+          "to_team": 4,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": -16026,
+          "name": "Seahawks D/ST",
+          "position_id": 16,
+          "overall_pick": 104,
+          "round": 11,
+          "from_team": 11,
+          "to_team": 4,
+          "from_name": "Taco MacArthur",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 2573300,
+          "name": "Jay Ajayi",
+          "position_id": 2,
+          "overall_pick": 100,
+          "round": 10,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "Austin Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 15102,
+          "name": "Rishard Matthews",
+          "position_id": 3,
+          "overall_pick": 146,
+          "round": 15,
+          "from_team": 5,
+          "to_team": 4,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 11122,
+          "name": "Matt Prater",
+          "position_id": 5,
+          "overall_pick": 169,
+          "round": 17,
+          "from_team": 2,
+          "to_team": 4,
+          "from_name": "Run and Hide",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 14912,
+          "name": "Alshon Jeffery",
+          "position_id": 3,
+          "overall_pick": 20,
+          "round": 2,
+          "from_team": 1,
+          "to_team": 4,
+          "from_name": "Austin Bubbs",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 8544,
+          "name": "Darren Sproles",
+          "position_id": 2,
+          "overall_pick": 136,
+          "round": 14,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11923,
+          "name": "Steven Hauschka",
+          "position_id": 5,
+          "overall_pick": 154,
+          "round": 16,
+          "from_team": 6,
+          "to_team": 5,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 16732,
+          "name": "Eric Ebron",
+          "position_id": 4,
+          "overall_pick": 121,
+          "round": 13,
+          "from_team": 1,
+          "to_team": 5,
+          "from_name": "Austin Bubbs",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": -16004,
+          "name": "Bengals D/ST",
+          "position_id": 16,
+          "overall_pick": 153,
+          "round": 16,
+          "from_team": 8,
+          "to_team": 6,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": 2976212,
+          "name": "Stefon Diggs",
+          "position_id": 3,
+          "overall_pick": 95,
+          "round": 10,
+          "from_team": 5,
+          "to_team": 8,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 9705,
+          "name": "Brandon Marshall",
+          "position_id": 3,
+          "overall_pick": 25,
+          "round": 3,
+          "from_team": 4,
+          "to_team": 8,
+          "from_name": "The Penguins",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 14198,
+          "name": "Dion Lewis",
+          "position_id": 2,
+          "overall_pick": 164,
+          "round": 17,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "Taco MacArthur",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 1097,
+          "name": "Adam Vinatieri",
+          "position_id": 5,
+          "overall_pick": 165,
+          "round": 17,
+          "from_team": 4,
+          "to_team": 8,
+          "from_name": "The Penguins",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 4527,
+          "name": "Jason Witten",
+          "position_id": 4,
+          "overall_pick": 137,
+          "round": 14,
+          "from_team": 11,
+          "to_team": 8,
+          "from_name": "Taco MacArthur",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 2969962,
+          "name": "Duke Johnson Jr.",
+          "position_id": 2,
+          "overall_pick": 74,
+          "round": 8,
+          "from_team": 6,
+          "to_team": 10,
+          "from_name": "P RIVERS NAS NAS",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": -16009,
+          "name": "Packers D/ST",
+          "position_id": 16,
+          "overall_pick": 156,
+          "round": 16,
+          "from_team": 4,
+          "to_team": 10,
+          "from_name": "The Penguins",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 15826,
+          "name": "Giovani Bernard",
+          "position_id": 2,
+          "overall_pick": 80,
+          "round": 8,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Taco MacArthur"
+        },
+        {
+          "espn_player_id": 5362,
+          "name": "Antonio Gates",
+          "position_id": 4,
+          "overall_pick": 120,
+          "round": 12,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Taco MacArthur"
+        },
+        {
+          "espn_player_id": 13981,
+          "name": "Mark Ingram",
+          "position_id": 2,
+          "overall_pick": 21,
+          "round": 3,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Taco MacArthur"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 13232,
+              "name": "Jimmy Graham",
+              "position_id": 4,
+              "overall_pick": 64,
+              "round": 7,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Taco MacArthur",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 13982,
+              "name": "Julio Jones",
+              "position_id": 3,
+              "overall_pick": 4,
+              "round": 1,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Taco MacArthur",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 2577327,
+              "name": "Tyler Lockett",
+              "position_id": 3,
+              "overall_pick": 84,
+              "round": 9,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Taco MacArthur",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 15826,
+              "name": "Giovani Bernard",
+              "position_id": 2,
+              "overall_pick": 80,
+              "round": 8,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Taco MacArthur"
+            },
+            {
+              "espn_player_id": 5362,
+              "name": "Antonio Gates",
+              "position_id": 4,
+              "overall_pick": 120,
+              "round": 12,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Taco MacArthur"
+            },
+            {
+              "espn_player_id": 13981,
+              "name": "Mark Ingram",
+              "position_id": 2,
+              "overall_pick": 21,
+              "round": 3,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Taco MacArthur"
+            }
+          ]
+        },
+        {
+          "team_a": 1,
+          "team_b": 4,
+          "moves": [
+            {
+              "espn_player_id": 17133,
+              "name": "Isaiah Crowell",
+              "position_id": 2,
+              "overall_pick": 116,
+              "round": 12,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 13204,
+              "name": "Ryan Mathews",
+              "position_id": 2,
+              "overall_pick": 56,
+              "round": 6,
+              "from_team": 4,
+              "to_team": 1,
+              "from_name": "The Penguins",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 2573300,
+              "name": "Jay Ajayi",
+              "position_id": 2,
+              "overall_pick": 100,
+              "round": 10,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "Austin Bubbs",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 14912,
+              "name": "Alshon Jeffery",
+              "position_id": 3,
+              "overall_pick": 20,
+              "round": 2,
+              "from_team": 1,
+              "to_team": 4,
+              "from_name": "Austin Bubbs",
+              "to_name": "The Penguins"
+            }
+          ]
+        },
+        {
+          "team_a": 4,
+          "team_b": 10,
+          "moves": [
+            {
+              "espn_player_id": 5529,
+              "name": "Philip Rivers",
+              "position_id": 1,
+              "overall_pick": 103,
+              "round": 11,
+              "from_team": 10,
+              "to_team": 4,
+              "from_name": "Boston Double Rainbows",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": -16009,
+              "name": "Packers D/ST",
+              "position_id": 16,
+              "overall_pick": 156,
+              "round": 16,
+              "from_team": 4,
+              "to_team": 10,
+              "from_name": "The Penguins",
+              "to_name": "Boston Double Rainbows"
+            }
+          ]
+        },
+        {
+          "team_a": 4,
+          "team_b": 8,
+          "moves": [
+            {
+              "espn_player_id": 14886,
+              "name": "Lamar Miller",
+              "position_id": 2,
+              "overall_pick": 13,
+              "round": 2,
+              "from_team": 8,
+              "to_team": 4,
+              "from_name": "Brightleaf Yuppies",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 9705,
+              "name": "Brandon Marshall",
+              "position_id": 3,
+              "overall_pick": 25,
+              "round": 3,
+              "from_team": 4,
+              "to_team": 8,
+              "from_name": "The Penguins",
+              "to_name": "Brightleaf Yuppies"
+            },
+            {
+              "espn_player_id": 1097,
+              "name": "Adam Vinatieri",
+              "position_id": 5,
+              "overall_pick": 165,
+              "round": 17,
+              "from_team": 4,
+              "to_team": 8,
+              "from_name": "The Penguins",
+              "to_name": "Brightleaf Yuppies"
+            }
+          ]
+        },
+        {
+          "team_a": 4,
+          "team_b": 5,
+          "moves": [
+            {
+              "espn_player_id": 15102,
+              "name": "Rishard Matthews",
+              "position_id": 3,
+              "overall_pick": 146,
+              "round": 15,
+              "from_team": 5,
+              "to_team": 4,
+              "from_name": "The Penthouse Panda Bear",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 8544,
+              "name": "Darren Sproles",
+              "position_id": 2,
+              "overall_pick": 136,
+              "round": 14,
+              "from_team": 4,
+              "to_team": 5,
+              "from_name": "The Penguins",
+              "to_name": "The Penthouse Panda Bear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "source": "data/history/2017/league.json.gz",
+      "transactions": 0,
+      "weekly_roster_files": 0,
+      "confirmed_trades": 0,
+      "gradeable_trades": 0,
+      "coverage": "insufficient_trade_evidence",
+      "end_state_moves": [
+        {
+          "espn_player_id": 13232,
+          "name": "Jimmy Graham",
+          "position_id": 4,
+          "overall_pick": 28,
+          "round": 3,
+          "from_team": 11,
+          "to_team": 1,
+          "from_name": "Taco MacArthur",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 9704,
+          "name": "Stephen Gostkowski",
+          "position_id": 5,
+          "overall_pick": 136,
+          "round": 14,
+          "from_team": 3,
+          "to_team": 1,
+          "from_name": "Your Worst Nightmares",
+          "to_name": "Austin Bubbs"
+        },
+        {
+          "espn_player_id": 2577327,
+          "name": "Tyler Lockett",
+          "position_id": 3,
+          "overall_pick": 120,
+          "round": 12,
+          "from_team": 5,
+          "to_team": 2,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 15880,
+          "name": "Robert Woods",
+          "position_id": 3,
+          "overall_pick": 153,
+          "round": 16,
+          "from_team": 11,
+          "to_team": 2,
+          "from_name": "Taco MacArthur",
+          "to_name": "Run and Hide"
+        },
+        {
+          "espn_player_id": 10475,
+          "name": "Greg Olsen",
+          "position_id": 4,
+          "overall_pick": 33,
+          "round": 4,
+          "from_team": 11,
+          "to_team": 4,
+          "from_name": "Taco MacArthur",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 2985659,
+          "name": "Wil Lutz",
+          "position_id": 5,
+          "overall_pick": 147,
+          "round": 15,
+          "from_team": 8,
+          "to_team": 4,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 15826,
+          "name": "Giovani Bernard",
+          "position_id": 2,
+          "overall_pick": 122,
+          "round": 13,
+          "from_team": 2,
+          "to_team": 4,
+          "from_name": "Run and Hide",
+          "to_name": "The Penguins"
+        },
+        {
+          "espn_player_id": 15920,
+          "name": "Latavius Murray",
+          "position_id": 2,
+          "overall_pick": 137,
+          "round": 14,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 14880,
+          "name": "Kirk Cousins",
+          "position_id": 1,
+          "overall_pick": 104,
+          "round": 11,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 11283,
+          "name": "DeSean Jackson",
+          "position_id": 3,
+          "overall_pick": 84,
+          "round": 9,
+          "from_team": 4,
+          "to_team": 5,
+          "from_name": "The Penguins",
+          "to_name": "The Penthouse Panda Bear"
+        },
+        {
+          "espn_player_id": 3043078,
+          "name": "Derrick Henry",
+          "position_id": 2,
+          "overall_pick": 103,
+          "round": 11,
+          "from_team": 1,
+          "to_team": 6,
+          "from_name": "Austin Bubbs",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": -16034,
+          "name": "Texans D/ST",
+          "position_id": 16,
+          "overall_pick": 134,
+          "round": 14,
+          "from_team": 8,
+          "to_team": 6,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "P RIVERS NAS NAS"
+        },
+        {
+          "espn_player_id": -16030,
+          "name": "Jaguars D/ST",
+          "position_id": 16,
+          "overall_pick": 160,
+          "round": 16,
+          "from_team": 5,
+          "to_team": 8,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 5536,
+          "name": "Ben Roethlisberger",
+          "position_id": 1,
+          "overall_pick": 140,
+          "round": 14,
+          "from_team": 5,
+          "to_team": 8,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 11122,
+          "name": "Matt Prater",
+          "position_id": 5,
+          "overall_pick": 161,
+          "round": 17,
+          "from_team": 5,
+          "to_team": 8,
+          "from_name": "The Penthouse Panda Bear",
+          "to_name": "Brightleaf Yuppies"
+        },
+        {
+          "espn_player_id": 16504,
+          "name": "Jack Doyle",
+          "position_id": 4,
+          "overall_pick": 123,
+          "round": 13,
+          "from_team": 1,
+          "to_team": 9,
+          "from_name": "Austin Bubbs",
+          "to_name": "W. Durham Silly Nannies"
+        },
+        {
+          "espn_player_id": -16026,
+          "name": "Seahawks D/ST",
+          "position_id": 16,
+          "overall_pick": 113,
+          "round": 12,
+          "from_team": 11,
+          "to_team": 10,
+          "from_name": "Taco MacArthur",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 2976499,
+          "name": "Amari Cooper",
+          "position_id": 3,
+          "overall_pick": 23,
+          "round": 3,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "Austin Bubbs",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 17372,
+          "name": "Chris Boswell",
+          "position_id": 5,
+          "overall_pick": 163,
+          "round": 17,
+          "from_team": 1,
+          "to_team": 10,
+          "from_name": "Austin Bubbs",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": -16012,
+          "name": "Chiefs D/ST",
+          "position_id": 16,
+          "overall_pick": 139,
+          "round": 14,
+          "from_team": 2,
+          "to_team": 10,
+          "from_name": "Run and Hide",
+          "to_name": "Boston Double Rainbows"
+        },
+        {
+          "espn_player_id": 11247,
+          "name": "Jonathan Stewart",
+          "position_id": 2,
+          "overall_pick": 98,
+          "round": 10,
+          "from_team": 1,
+          "to_team": 11,
+          "from_name": "Austin Bubbs",
+          "to_name": "Taco MacArthur"
+        },
+        {
+          "espn_player_id": 2574808,
+          "name": "Robby Anderson",
+          "position_id": 3,
+          "overall_pick": 127,
+          "round": 13,
+          "from_team": 8,
+          "to_team": 11,
+          "from_name": "Brightleaf Yuppies",
+          "to_name": "Taco MacArthur"
+        },
+        {
+          "espn_player_id": 3046439,
+          "name": "Hunter Henry",
+          "position_id": 4,
+          "overall_pick": 124,
+          "round": 13,
+          "from_team": 4,
+          "to_team": 11,
+          "from_name": "The Penguins",
+          "to_name": "Taco MacArthur"
+        }
+      ],
+      "reciprocal_end_state_leads": [
+        {
+          "team_a": 1,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 13232,
+              "name": "Jimmy Graham",
+              "position_id": 4,
+              "overall_pick": 28,
+              "round": 3,
+              "from_team": 11,
+              "to_team": 1,
+              "from_name": "Taco MacArthur",
+              "to_name": "Austin Bubbs"
+            },
+            {
+              "espn_player_id": 11247,
+              "name": "Jonathan Stewart",
+              "position_id": 2,
+              "overall_pick": 98,
+              "round": 10,
+              "from_team": 1,
+              "to_team": 11,
+              "from_name": "Austin Bubbs",
+              "to_name": "Taco MacArthur"
+            }
+          ]
+        },
+        {
+          "team_a": 4,
+          "team_b": 11,
+          "moves": [
+            {
+              "espn_player_id": 10475,
+              "name": "Greg Olsen",
+              "position_id": 4,
+              "overall_pick": 33,
+              "round": 4,
+              "from_team": 11,
+              "to_team": 4,
+              "from_name": "Taco MacArthur",
+              "to_name": "The Penguins"
+            },
+            {
+              "espn_player_id": 3046439,
+              "name": "Hunter Henry",
+              "position_id": 4,
+              "overall_pick": 124,
+              "round": 13,
+              "from_team": 4,
+              "to_team": 11,
+              "from_name": "The Penguins",
+              "to_name": "Taco MacArthur"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
