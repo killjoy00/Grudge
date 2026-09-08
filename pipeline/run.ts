@@ -341,10 +341,13 @@ function buildStatements(bundle: SeasonBundle): { statements: Stmt[]; summary: R
       overall_pick_number: it.overallPickNumber ?? null, is_keeper: it.isKeeper ?? false,
     }))
   );
-  // Transaction items reference players; a drafted player may not appear in any
-  // boxscore we loaded, so null the FK rather than fail the whole transaction.
+  // Retain the provider identity even when this week's roster batch did not
+  // contain the player. DO NOTHING preserves any existing, richer metadata.
   const knownPlayers = new Set(players.map((p) => p.espn_player_id));
-  for (const it of items) if (it.espn_player_id && !knownPlayers.has(it.espn_player_id)) it.espn_player_id = null;
+  const absent = [...new Set(items.map(i => i.espn_player_id)
+    .filter((id): id is number => id != null && !knownPlayers.has(id)))];
+  statements.push(...upsertChunked('public.players', ['espn_player_id', 'full_name'],
+    absent.map(id => ({ espn_player_id: id, full_name: `ESPN player #${id}` })), ['espn_player_id'], []));
   statements.push(...upsertChunked('public.transaction_items',
     ['espn_transaction_id', 'item_index', 'espn_player_id', 'item_type', 'from_team_id', 'to_team_id', 'from_lineup_slot_id', 'to_lineup_slot_id', 'overall_pick_number', 'is_keeper'],
     items, ['espn_transaction_id', 'item_index']));

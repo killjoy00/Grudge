@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "seasons": {
+    "1999": {
+      "file": "1999.json.gz",
+      "sha256": "a583ea9c43395f1ea8257268437822b98a46376cc62806a580faa047f8effc67",
+      "row_count": 6758,
+      "status": "complete"
+    },
+    "2000": {
+      "file": "2000.json.gz",
+      "sha256": "4cf53d60edf0756767814545136cbd803ba9829c9961df2b29d246aca4aee097",
+      "row_count": 6594,
+      "status": "complete"
+    },
+    "2001": {
+      "file": "2001.json.gz",
+      "sha256": "c4e0c035927290036f77d47e963c1030ce5a8b2e824321e638628fa3f55bd283",
+      "row_count": 6736,
+      "status": "complete"
+    },
+    "2002": {
+      "file": "2002.json.gz",
+      "sha256": "7bb0d139cb2ce82edc4211985867f082df083966406fb3f1ba82de0162a9ede2",
+      "row_count": 6978,
+      "status": "complete"
+    },
+    "2003": {
+      "file": "2003.json.gz",
+      "sha256": "1bc281fc8bc58012c8978066deb3f19b128358e4e0e652518d9292de917c18c1",
+      "row_count": 6707,
+      "status": "complete"
+    },
+    "2004": {
+      "file": "2004.json.gz",
+      "sha256": "e21b61aa0a25d7279589e2d8117cedbc6a5826ea19d46d5adcfe29ac2bcf32bf",
+      "row_count": 6704,
+      "status": "complete"
+    },
+    "2005": {
+      "file": "2005.json.gz",
+      "sha256": "c976709f77263746c8046b6da91dd16a2570362c96bd9f9dd51b9a8591b48be1",
+      "row_count": 6734,
+      "status": "complete"
+    },
+    "2006": {
+      "file": "2006.json.gz",
+      "sha256": "e154d1950b9e197596e61ec7b06e1578b168fedcba134a96bc90512583c97b24",
+      "row_count": 6633,
+      "status": "complete"
+    },
+    "2007": {
+      "file": "2007.json.gz",
+      "sha256": "b5d64eb3a207a732b8b81d65debad0e4fa2865aad73fd8ba7865875616fe543f",
+      "row_count": 6723,
+      "status": "complete"
+    },
+    "2008": {
+      "file": "2008.json.gz",
+      "sha256": "00e66dc68a02d5cb7c1cd8a047d1690b5486c9f718da72a5f72720b3eaf604a6",
+      "row_count": 6652,
+      "status": "complete"
+    },
+    "2009": {
+      "file": "2009.json.gz",
+      "sha256": "c62eb7c999c6304de3ee36ec3eb8d2e97afc613546ecb6d88b145456bde627b5",
+      "row_count": 7015,
+      "status": "complete"
+    },
+    "2010": {
+      "file": "2010.json.gz",
+      "sha256": "fcfbe9a2d565576b6afe96ec0e1e00016c12f90a2df4a57469abee335337041f",
+      "row_count": 6969,
+      "status": "complete"
+    },
+    "2011": {
+      "file": "2011.json.gz",
+      "sha256": "7f0b670fe6a091e4144a24eef6e5533ee9eda80026519116f27a9164855d85c5",
+      "row_count": 6997,
+      "status": "complete"
+    },
+    "2012": {
+      "file": "2012.json.gz",
+      "sha256": "2dd63883962db95a021ea0fc85925901b1947ba841b2c2a0ccb3e1b6aba842c6",
+      "row_count": 6980,
+      "status": "complete"
+    },
+    "2013": {
+      "file": "2013.json.gz",
+      "sha256": "c589d1a2fee3c8d86a99b05461c408ea1331ba34b5e0d8bf2e3500a09d7c3769",
+      "row_count": 6862,
+      "status": "complete"
+    },
+    "2014": {
+      "file": "2014.json.gz",
+      "sha256": "06292943af4c25dec4b3ca9eb4161d4a94dd161c82b76d5e3a8a71f7cc94eff0",
+      "row_count": 6972,
+      "status": "complete"
+    },
+    "2015": {
+      "file": "2015.json.gz",
+      "sha256": "990b0154d950bb5d1148ac346e7282e198ea5c7c54c53822b9448322a2c52992",
+      "row_count": 6968,
+      "status": "complete"
+    },
+    "2016": {
+      "file": "2016.json.gz",
+      "sha256": "c8789a123241835682db96271cee8e5fad44b40d177517e8484015165c366593",
+      "row_count": 6911,
+      "status": "complete"
+    },
+    "2017": {
+      "file": "2017.json.gz",
+      "sha256": "e2ff83d480a39402da34d59892e4233bdc3c8e348e44133f319941eb257d47a8",
+      "row_count": 6963,
+      "status": "complete"
+    },
+    "2018": {
+      "file": "2018.json.gz",
+      "sha256": "4a3d17fe0806e2a0e10115aae08b1962fada1dbd38fea7967491c901617ee3a6",
+      "row_count": 6851,
+      "status": "complete"
+    },
+    "2019": {
+      "file": "2019.json.gz",
+      "sha256": "279f3a0335c6d664049f875dffbe45cafea1c09bab55be885fab619f6fb58336",
+      "row_count": 6849,
+      "status": "complete"
+    },
+    "2020": {
+      "file": "2020.json.gz",
+      "sha256": "947d2f55ccb25e717a34d3b134a774def3b269a24a1f281bc11bd03ed6bbceba",
+      "row_count": 7033,
+      "status": "complete"
+    },
+    "2021": {
+      "file": "2021.json.gz",
+      "sha256": "ffc8b76de5e03a100e8a6553cba9c0a500017e7bfc915bd289a1e6754329a3bd",
+      "row_count": 7416,
+      "status": "complete"
+    },
+    "2022": {
+      "file": "2022.json.gz",
+      "sha256": "02066cd64d39a6370e4d3932628479792ee270a3a8be765347ac7e4e7c506023",
+      "row_count": 7342,
+      "status": "complete"
+    },
+    "2023": {
+      "file": "2023.json.gz",
+      "sha256": "bafe93c90af4764ecc747e7d8611e32e3f06f271eabfaaa4eab95c7219e697ef",
+      "row_count": 7328,
+      "status": "complete"
+    },
+    "2024": {
+      "file": "2024.json.gz",
+      "sha256": "6e35a9795b7330e6b34343d074d62153668db504b814b037eeb214200d613b6e",
+      "row_count": 7372,
+      "status": "complete"
+    },
+    "2025": {
+      "file": "2025.json.gz",
+      "sha256": "02a901ca293711617ff15ea2ee8f252ec31bf685031f7c578ac85f777b30b939",
+      "row_count": 7554,
+      "status": "complete"
+    },
+    "2026": {
+      "file": "2026.json.gz",
+      "sha256": "c2ceffcf2037941946135d9c249790fa31cd3d190d175eb1d397a9276e6c5f51",
+      "row_count": 0,
+      "status": "awaiting_games"
+    }
+  },
+  "registry_sha256": "28287d3910a79e4f397d98393b09a9c4a6e9460a36d518e3d7e6484e1cac732b"
+}

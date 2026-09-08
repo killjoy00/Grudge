@@ -115,7 +115,7 @@ export default async function VaultSeasonPage({ params }: { params: Promise<{ se
                         <tr key={pick.overall_pick}>
                           <td className="rank">{pick.round}.{String(pick.round_pick).padStart(2, '0')}<span className="tsub block">#{pick.overall_pick} overall</span></td>
                           <td>
-                            <span className="tname">{pick.player_name ?? `ESPN player #${pick.espn_player_id}`}</span>
+                            <a className="tname" href={`/players/espn/${pick.espn_player_id}?season=${season}`}>{pick.player_name ?? `ESPN player #${pick.espn_player_id}`}</a>
                             <span className="tsub block">{POSITIONS[pick.position_id ?? 0] ?? 'Position unavailable'}</span>
                             {pick.is_keeper && <span className="tag best">keeper</span>}
                           </td>
