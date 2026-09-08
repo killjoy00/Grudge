@@ -1,3 +1,2 @@
-production deploy request
-main: 83d6c24c7350549b71fe025f5c28a393d30c1866
-requested: 2026-09-06T15:37:00-05:00
+Deploy main 56489a81cbb6034ffaecebd13f51c4056e680026 after applying the model evidence migration and successfully refreshing all draft and trade results.
+Requested 2026-09-08.
