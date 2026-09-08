@@ -77,12 +77,12 @@ export const getCachedPlayoffOdds = unstable_cache(
  */
 export const getCachedSeasonTrades = unstable_cache(
   seasonTrades,
-  ['season-trades'],
+  ['season-trades-v3'],
   { revalidate: 3600 }
 );
 
 export const getCachedTradeRecords = unstable_cache(
   allTimeTradeRecords,
-  ['trade-records'],
+  ['trade-records-v3'],
   { revalidate: 3600 }
 );

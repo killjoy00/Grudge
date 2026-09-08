@@ -21,6 +21,8 @@
  * pipeline and the reads in lib/, so the reasoning stays directly testable.
  */
 
+import { tradeIdentity } from './trade-identity.ts';
+
 /** One weekly roster row. Only ownership matters here, not slots or points. */
 export interface OwnershipRow {
   week: number;
@@ -65,11 +67,12 @@ export interface DetectedTradePlayer {
  * itemized trades are removed. It is useful but explicitly marked as
  * reconstruction.
  */
-export type TradeConfidence = 'ledger' | 'reciprocal';
+export type TradeConfidence = 'ledger' | 'reciprocal' | 'manual';
 
 export interface DetectedTrade {
   season: number;
   trade_id: string;
+  identity_key: string;
   effective_week: number;
   team_a: number;
   team_b: number;
@@ -150,19 +153,6 @@ function itemizedCompletion(t: LedgerTransaction): DetectedTradePlayer[] | null 
   return moves;
 }
 
-function allocateTradeId(
-  season: number,
-  week: number,
-  a: number,
-  b: number,
-  used: Map<string, number>
-) {
-  const base = `${season}-w${week}-${a}v${b}`;
-  const count = (used.get(base) ?? 0) + 1;
-  used.set(base, count);
-  return count === 1 ? base : `${base}-${count}`;
-}
-
 function pairHasBothDirections(players: DetectedTradePlayer[], a: number, b: number) {
   return players.some((p) => p.from_team_id === a && p.to_team_id === b)
     && players.some((p) => p.from_team_id === b && p.to_team_id === a);
@@ -181,7 +171,6 @@ export function detectTrades(
   entries: OwnershipRow[],
   transactions: LedgerTransaction[]
 ): DetectedTrade[] {
-  const usedTradeIds = new Map<string, number>();
   const trades: DetectedTrade[] = [];
   const explicitMovesByPeriod = new Map<number, Set<number>>();
   const explicitTransactionIds = new Set<string>();
@@ -201,7 +190,7 @@ export function detectTrades(
 
     trades.push({
       season,
-      trade_id: allocateTradeId(season, t.scoringPeriodId, a, b, usedTradeIds),
+      ...tradeIdentity(season, t.scoringPeriodId, players, t.relatedTransactionId ?? t.id),
       effective_week: t.scoringPeriodId,
       team_a: a,
       team_b: b,
@@ -219,7 +208,7 @@ export function detectTrades(
     week.set(e.espn_player_id, e.espn_team_id);
   }
   const weeks = [...byWeek.keys()].sort((a, b) => a - b);
-  if (weeks.length === 0) return trades;
+  if (weeks.length === 0) return [...new Map(trades.map((t) => [t.identity_key, t])).values()];
 
   // Free-agent movement is tracked as a warning for the fallback, not as an
   // unconditional exclusion. A player can be added in period W, appear on the
@@ -311,7 +300,7 @@ export function detectTrades(
       players.sort((x, y) => x.espn_player_id - y.espn_player_id);
       trades.push({
         season,
-        trade_id: allocateTradeId(season, week, a, b, usedTradeIds),
+        ...tradeIdentity(season, week, players, accept?.relatedTransactionId ?? accept?.id ?? null),
         effective_week: week,
         team_a: a,
         team_b: b,
@@ -326,7 +315,7 @@ export function detectTrades(
     prevWeek = week;
   }
 
-  return trades.sort((x, y) =>
+  return [...new Map(trades.map((t) => [t.identity_key, t])).values()].sort((x, y) =>
     x.effective_week - y.effective_week
     || x.team_a - y.team_a
     || x.team_b - y.team_b

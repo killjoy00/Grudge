@@ -10,9 +10,10 @@ import 'server-only';
  * in it belongs here.
  */
 import { asPublic, asUser } from './db.ts';
+import { publishedTrades, unpublishedTrade } from './published-trades.ts';
 import {
-  valueTrade, seasonContext, franchiseTradeRecords,
-  type SeasonRosterRow, type SeasonPlayerRow, type TradeValue,
+  franchiseTradeRecords,
+  type TradeValue,
   type FranchiseTradeRecord,
 } from '../pipeline/trade-value.ts';
 
@@ -63,13 +64,13 @@ export function votingOpen(trade: Pick<TradeRow, 'voting_closes_at'>): boolean {
 /** Seasons with at least one reconstructed trade, newest first. */
 export async function tradeSeasons(): Promise<number[]> {
   const rows = await asPublic<{ season: number }>(
-    'select distinct season from public.trades order by season desc'
+    "select distinct season from public.trades where evidence_status = 'active' order by season desc"
   );
   return rows.map((r) => r.season);
 }
 
 async function tradesOf(season?: number): Promise<TradeRow[]> {
-  const where = season === undefined ? '' : 'where season = $1';
+  const where = season === undefined ? "where evidence_status = 'active'" : "where evidence_status = 'active' and season = $1";
   return asPublic<TradeRow>(
     `select season, trade_id, effective_week, team_a, team_b, accepted_at,
             espn_transaction_id, confidence, voting_closes_at
@@ -79,47 +80,6 @@ async function tradesOf(season?: number): Promise<TradeRow[]> {
   );
 }
 
-/**
- * Everything a season's trades are valued against.
- *
- * Only weeks whose results are in: a week loaded but not played would show up
- * as every acquisition scoring nothing, which reads as a verdict rather than
- * as an empty column.
- */
-async function contextFor(season: number) {
-  const [rosterRows, playerRows, teams] = await Promise.all([
-    asPublic<{
-      week: number; espn_team_id: number; espn_player_id: number;
-      lineup_slot_id: number; is_starter: boolean; applied_points: string | null;
-    }>(
-      `select r.week, r.espn_team_id, r.espn_player_id, r.lineup_slot_id,
-              r.is_starter, r.applied_points
-         from public.roster_entries r
-         join public.weeks w
-           on w.season = r.season and w.week = r.week and w.results_complete
-        where r.season = $1`,
-      [season]
-    ),
-    asPublic<SeasonPlayerRow>(
-      `select distinct p.espn_player_id, p.default_position_id, p.eligible_slots
-         from public.players p
-         join public.roster_entries r using (espn_player_id)
-        where r.season = $1`,
-      [season]
-    ),
-    asPublic<{ n: number }>(
-      'select count(*)::int as n from public.teams where season = $1', [season]
-    ),
-  ]);
-
-  const rows: SeasonRosterRow[] = rosterRows.map((r) => ({
-    week: r.week, espn_team_id: r.espn_team_id, espn_player_id: r.espn_player_id,
-    lineup_slot_id: r.lineup_slot_id, is_starter: r.is_starter,
-    applied_points: Number(r.applied_points ?? 0),
-  }));
-  return seasonContext(rows, playerRows, teams[0]?.n || 10);
-}
-
 /** Value every trade in a season. Returns an empty map for a season with none. */
 async function valueSeason(
   season: number, trades: TradeRow[]
@@ -127,22 +87,9 @@ async function valueSeason(
   const mine = trades.filter((t) => t.season === season);
   if (mine.length === 0) return new Map();
 
-  const [ctx, players] = await Promise.all([
-    contextFor(season),
-    asPublic<{ trade_id: string; espn_player_id: number; from_team_id: number; to_team_id: number }>(
-      `select trade_id, espn_player_id, from_team_id, to_team_id
-         from public.trade_players where season = $1`,
-      [season]
-    ),
-  ]);
-
-  return new Map(mine.map((t) => [t.trade_id, valueTrade({
-    effective_week: t.effective_week,
-    team_a: t.team_a,
-    team_b: t.team_b,
-    moves: players.filter((p) => p.trade_id === t.trade_id),
-    ...ctx,
-  })]));
+  const published = new Map((await publishedTrades(season)).map((r) => [r.trade_id, r.fit]));
+  return new Map(mine.map((t) => [t.trade_id,
+    published.get(t.trade_id) ?? unpublishedTrade(t.team_a, t.team_b)]));
 }
 
 /** Every trade in a season, valued, newest first. */
@@ -153,10 +100,13 @@ export async function seasonTrades(season: number): Promise<TradeCard[]> {
   const [values, players, teams] = await Promise.all([
     valueSeason(season, trades),
     asPublic<TradePlayerRow>(
-      `select tp.trade_id, tp.espn_player_id, p.full_name, p.default_position_id,
+      `select tp.trade_id, tp.espn_player_id, coalesce(profile.full_name, p.full_name) as full_name,
+              coalesce(profile.position_id, p.default_position_id) as default_position_id,
               tp.from_team_id, tp.to_team_id
          from public.trade_players tp
          left join public.players p using (espn_player_id)
+         left join public.player_season_profiles profile
+           on profile.season = tp.season and profile.espn_player_id = tp.espn_player_id
         where tp.season = $1
         order by tp.trade_id, p.default_position_id nulls last, p.full_name`,
       [season]
@@ -186,9 +136,8 @@ export async function seasonTrades(season: number): Promise<TradeCard[]> {
  * All-time trade standing, folded together by franchise so a manager who has
  * been three different team names is still one row.
  *
- * This walks every season with a trade in it and values each one against that
- * season's rosters, which is why the page caches it: the underlying numbers
- * only move when the weekly pipeline runs.
+ * Reads immutable published results, then folds them by franchise. Historical
+ * rosters and counterfactual lineups are computed only by the refresh pipeline.
  */
 export async function allTimeTradeRecords(): Promise<FranchiseTradeRecord[]> {
   const trades = await tradesOf();
@@ -207,12 +156,12 @@ export async function allTimeTradeRecords(): Promise<FranchiseTradeRecord[]> {
     ),
   ]);
 
-  const values = new Map(perSeason.flatMap((m) => [...m]));
+  const values = new Map(perSeason.flatMap((m, i) => [...m].map(([id, value]) => [`${seasons[i]}:${id}`, value] as const)));
   const byTeam = new Map(franchises.map((f) => [`${f.season}:${f.espn_team_id}`, f]));
-  const seasonOf = new Map(trades.map((t) => [t.trade_id, t.season]));
+  const seasonOf = new Map(trades.map((t) => [`${t.season}:${t.trade_id}`, t.season]));
 
   return franchiseTradeRecords(
-    trades.map((t) => ({ trade_id: t.trade_id, value: values.get(t.trade_id)! })),
+    trades.map((t) => ({ trade_id: `${t.season}:${t.trade_id}`, value: values.get(`${t.season}:${t.trade_id}`)! })),
     (season, teamId) => {
       const f = byTeam.get(`${season}:${teamId}`);
       if (!f?.franchise_key) return null;

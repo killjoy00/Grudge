@@ -1,4 +1,5 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 
 import { asPublic } from './db.ts';
 import { GRADED_DRAFT_CTE } from './draft-ranking.ts';
@@ -73,6 +74,7 @@ export interface FranchiseDraftPositionRow {
 }
 
 export interface DraftRecords {
+  coverage: { board_seasons: number[]; graded_seasons: number[]; blocked_seasons: number[] };
   bestClasses: DraftClassRow[];
   worstClasses: DraftClassRow[];
   steals: DraftPickValueRow[];
@@ -84,24 +86,10 @@ export interface DraftRecords {
   franchisePositions: FranchiseDraftPositionRow[];
 }
 
-/**
- * One comparable player-season production set across two archive eras.
- *
- * 2008-2017: legacy_draft_performance prefers ESPN's exact archived season
- * total and gap-fills players missing from the final-roster snapshot with the
- * validated nflverse reconstruction.
- *
- * 2018-2025: the weekly roster archive itself has player scoring, so sum one
- * score per player/week. max() prevents a same-week ownership edge from ever
- * counting a player's score twice.
- *
- * Draft value is deliberately relative within season+position. That makes the
- * small residual legacy reconstruction error (typically ~1 point) much less
- * important than it would be in a raw-points leaderboard and keeps a QB's point
- * scale from being compared directly with a TE's.
- */
-export async function getDraftRecords(): Promise<DraftRecords> {
+/** All grade tables share one versioned, coverage-gated result set. */
+async function draftRecordsRaw(): Promise<DraftRecords> {
   const [
+    coverageRows,
     bestClasses,
     worstClasses,
     steals,
@@ -112,6 +100,10 @@ export async function getDraftRecords(): Promise<DraftRecords> {
     positionSummary,
     franchisePositions,
   ] = await Promise.all([
+    asPublic<DraftRecords['coverage']>(`${GRADED_DRAFT_CTE}
+      select array(select distinct season from public.draft_picks where season >= 2005 and season <> 2020 order by season) as board_seasons,
+        array(select distinct season from graded order by season) as graded_seasons,
+        array(select season from public.model_publications where model_kind='draft' and coverage_status='blocked' order by season) as blocked_seasons`),
     asPublic<DraftClassRow>(`${GRADED_DRAFT_CTE}
       select season, franchise_key, team_name, manager_key, manager,
              count(*)::int as graded_picks,
@@ -157,7 +149,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
              active_weeks, production_score::text, draft_capital_score::text,
              value_delta::text
         from graded
-       where active_weeks >= 8
+       where active_weeks >= 8 and season >= 2018
        order by value_delta asc, overall_pick asc, fantasy_points asc
        limit 5`),
     asPublic<RepeatDraftRow>(`
@@ -172,7 +164,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
           on tf.season = d.season and tf.espn_team_id = d.espn_team_id
         left join public.franchises f using (franchise_key)
         left join public.players p using (espn_player_id)
-       where d.season between 2005 and 2025
+       where d.season >= 2005
          and d.season <> 2020
        group by tf.franchise_key, coalesce(f.current_name, tf.team_name), d.espn_player_id, p.full_name
       having count(*) >= 3
@@ -184,7 +176,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
         from public.draft_picks d
         left join public.players p using (espn_player_id)
        where d.round = 1
-         and d.season between 2005 and 2025
+         and d.season >= 2005
          and d.season <> 2020
        group by p.default_position_id
        order by count(*) desc, p.default_position_id nulls last`),
@@ -195,7 +187,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
           join public.team_franchise tf
             on tf.season = d.season and tf.espn_team_id = d.espn_team_id
           left join public.players p using (espn_player_id)
-         where d.season between 2005 and 2025
+         where d.season >= 2005
            and d.season <> 2020
            and p.default_position_id is not null
       ), first_pick_rows as (
@@ -231,7 +223,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
             on tf.season = d.season and tf.espn_team_id = d.espn_team_id
           left join public.franchises f using (franchise_key)
           left join public.players p using (espn_player_id)
-         where d.season between 2005 and 2025
+         where d.season >= 2005
            and d.season <> 2020
            and p.default_position_id is not null
       ), franchise_totals as (
@@ -307,6 +299,7 @@ export async function getDraftRecords(): Promise<DraftRecords> {
   ]);
 
   return {
+    coverage: coverageRows[0] ?? { board_seasons: [], graded_seasons: [], blocked_seasons: [] },
     bestClasses,
     worstClasses,
     steals,
@@ -318,3 +311,6 @@ export async function getDraftRecords(): Promise<DraftRecords> {
     franchisePositions,
   };
 }
+
+
+export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.3'], { revalidate: 3600 });

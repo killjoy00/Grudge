@@ -1,4 +1,5 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 
 import { asPublic } from './db.ts';
 import { GRADED_DRAFT_CTE } from './draft-ranking.ts';
@@ -40,7 +41,7 @@ export interface DraftSlotRecords {
   franchises: FranchiseDraftSlotRow[];
 }
 
-export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
+async function draftSlotRecordsRaw(): Promise<DraftSlotRecords> {
   const [performance, outcomes, franchises] = await Promise.all([
     asPublic<DraftSlotPerformanceRow>(`${GRADED_DRAFT_CTE},
       class_scores as (
@@ -66,7 +67,7 @@ export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
         select d.season, d.espn_team_id, d.overall_pick::int as draft_slot
           from public.draft_picks d
          where d.round = 1
-           and d.season between 2008 and 2025
+           and d.season >= 2008
            and d.season <> 2020
       ), slot_classes as (
         select slots.draft_slot, class_ranked.*
@@ -97,7 +98,7 @@ export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
           join public.team_franchise tf
             on tf.season = d.season and tf.espn_team_id = d.espn_team_id
          where d.round = 1
-           and d.season between 2005 and 2025
+           and d.season >= 2005
            and d.season <> 2020
       ), regular_ranked as (
         select fs.season,
@@ -111,7 +112,7 @@ export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
                ) as regular_rank,
                fs.is_champion
           from public.franchise_seasons fs
-         where fs.season between 2005 and 2025
+         where fs.season >= 2005
            and fs.season <> 2020
       )
       select sr.draft_slot,
@@ -137,7 +138,7 @@ export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
             on tf.season = d.season and tf.espn_team_id = d.espn_team_id
           left join public.franchises f using (franchise_key)
          where d.round = 1
-           and d.season between 2005 and 2025
+           and d.season >= 2005
            and d.season <> 2020
       ), slot_counts as (
         select franchise_key,
@@ -173,3 +174,6 @@ export async function getDraftSlotRecords(): Promise<DraftSlotRecords> {
 
   return { performance, outcomes, franchises };
 }
+
+
+export const getDraftSlotRecords = unstable_cache(draftSlotRecordsRaw, ['draft-slot-records-2026.3'], { revalidate: 3600 });

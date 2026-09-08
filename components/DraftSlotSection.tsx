@@ -60,7 +60,7 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       </table></div></div>
 
       <p className="note">
-        Draft-quality columns use the 17 fully graded ten-team drafts from 2008–2025, excluding 2020.
+        Draft-quality columns use complete, published ten-team drafts from 2008 onward, excluding 2020.
         “Best draft” and “worst draft” mean the highest and lowest class value in that season; exact value ties count for each tied class.
         Reg. Champ. and Champ use every recovered draft slot from 2005–2025, excluding 2020, and match the History page&rsquo;s regular-season champion and championship records.
       </p>

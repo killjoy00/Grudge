@@ -59,3 +59,22 @@ test('a zero-point owned week is below replacement, not silently ignored', () =>
   const value = valueTradeProduction(input);
   assert.equal(value.a.value, -10);
 });
+
+test('missing player scoring is ungraded; an observed zero remains a measured result', () => {
+  const input = base();
+  input.points = input.points.filter((row) => row.espn_player_id !== 20);
+  const value = valueTradeProduction(input);
+  assert.equal(value.graded, false);
+  assert.equal(value.gradingReason, 'incomplete_data');
+  assert.equal(value.winner, null);
+});
+
+test('consolation production earns neither points nor replacement penalties', () => {
+  const input = base();
+  const value = valueTradeProduction({ ...input, rosters: input.rosters.map((r) => ({
+    ...r, tracked: r.week === 1,
+  })) });
+  assert.equal(value.a.value, 13);
+  assert.equal(value.b.value, 3);
+  assert.equal(value.a.playerWeeks, 1);
+});

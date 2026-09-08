@@ -1,0 +1,49 @@
+name: Refresh draft and trade model results
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'pipeline/draft-model.ts'
+      - 'pipeline/trade-value.ts'
+      - 'pipeline/trade-production.ts'
+      - 'pipeline/trade-history.ts'
+      - 'pipeline/trade-identity.ts'
+      - 'pipeline/player-week.ts'
+      - 'pipeline/scoring-evidence.ts'
+      - 'pipeline/model-*.ts'
+      - 'lib/model-queries.ts'
+      - 'scripts/refresh-model-results.ts'
+      - 'data/derived/draft-performance.json'
+      - 'data/derived/player-week-scores.json.gz'
+      - 'data/derived/player-identities.json'
+      - 'data/derived/model-evidence-manifest.json'
+      - '.github/workflows/refresh-model-results.yml'
+
+# Shares a writer lock with weekly and transaction backfills.
+concurrency:
+  group: weekly-pipeline
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Verify committed evidence before database writes
+        run: npm run models:refresh -- --dry-run
+      # Migration 2026-09-12-model-evidence.sql must be applied by the database
+      # owner before this change is merged. The pipeline role is never promoted.
+      - name: Import scoring, reconcile trades and publish model results
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run models:refresh

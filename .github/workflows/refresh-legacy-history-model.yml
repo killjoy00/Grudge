@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: refresh-legacy-history-model
+  group: weekly-pipeline
   cancel-in-progress: false
 
 permissions:
@@ -51,7 +51,7 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run history:scores -- --from=2005 --to=2017
 
-      - name: Import legacy draft performance
+      - name: Publish draft and trade model results
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run history:draft-performance:import
@@ -65,6 +65,6 @@ jobs:
             echo "- Result: **${{ job.status }}**"
             echo '- Durable ESPN franchise IDs refreshed for the full 2005+ league record.'
             echo '- 2005–2017 team-week results, all-play luck, current-formula power rankings, and score-only weekly awards rebuilt from recovered scoreboards.'
-            echo '- 2008–2017 legacy draft-performance totals imported from the committed validated dataset.'
+            echo '- Versioned draft and trade results published from canonical scoring evidence.'
             echo '- No player-lineup, worst-bench, transaction or FAAB data is synthesized for the legacy era.'
           } >> "$GITHUB_STEP_SUMMARY"

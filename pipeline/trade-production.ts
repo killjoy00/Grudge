@@ -3,6 +3,7 @@ import {
   type PlayerWeekPoints,
   type RosterWeekRow,
   type TradeMove,
+  type TradeGradingReason,
 } from './trade-value.ts';
 
 export interface TradeProductionInput {
@@ -15,6 +16,7 @@ export interface TradeProductionInput {
   position: Map<number, number>;
   replacement: Map<number, number>;
   weeks: number[];
+  trackedGames?: { week: number; team_id: number }[];
 }
 
 export interface ProductionSide {
@@ -32,6 +34,7 @@ export interface TradeProductionValue {
   margin: number;
   winner: number | null;
   graded: boolean;
+  gradingReason: TradeGradingReason;
 }
 
 export interface FranchiseProductionRecord {
@@ -60,7 +63,10 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
  */
 export function valueTradeProduction(input: TradeProductionInput): TradeProductionValue {
   const rosterBy = new Map<number, Map<number, Set<number>>>();
+  const trackedTeams = new Set<string>();
+  for (const g of input.trackedGames ?? []) trackedTeams.add(`${g.week}:${g.team_id}`);
   for (const row of input.rosters) {
+    if (!input.trackedGames && row.tracked !== false) trackedTeams.add(`${row.week}:${row.espn_team_id}`);
     let teams = rosterBy.get(row.week);
     if (!teams) rosterBy.set(row.week, (teams = new Map()));
     let roster = teams.get(row.espn_team_id);
@@ -70,6 +76,7 @@ export function valueTradeProduction(input: TradeProductionInput): TradeProducti
 
   const pointsBy = new Map<number, Map<number, number>>();
   for (const row of input.points) {
+    if (row.points === null || !Number.isFinite(row.points)) continue;
     let week = pointsBy.get(row.week);
     if (!week) pointsBy.set(row.week, (week = new Map()));
     week.set(row.espn_player_id, row.points);
@@ -79,7 +86,9 @@ export function valueTradeProduction(input: TradeProductionInput): TradeProducti
     const pos = input.position.get(move.espn_player_id);
     return pos !== undefined && !UNGRADED_POSITIONS.has(pos);
   });
-  const scoredWeeks = input.weeks.filter((week) => week >= input.effective_week && rosterBy.has(week));
+  let incomplete = input.moves.some((move) => !input.position.has(move.espn_player_id));
+  const scoredWeeks = input.weeks.filter((week) => week >= input.effective_week &&
+    (trackedTeams.has(`${week}:${input.team_a}`) || trackedTeams.has(`${week}:${input.team_b}`)));
 
   const sideFor = (teamId: number): ProductionSide => {
     const received = moves.filter((move) => move.to_team_id === teamId).map((move) => move.espn_player_id);
@@ -87,15 +96,20 @@ export function valueTradeProduction(input: TradeProductionInput): TradeProducti
     let playerWeeks = 0;
 
     for (const week of scoredWeeks) {
+      if (!trackedTeams.has(`${week}:${teamId}`)) continue;
       const roster = rosterBy.get(week)?.get(teamId);
-      if (!roster) continue;
+      if (!roster) { incomplete = true; continue; }
       const weekPoints = pointsBy.get(week);
 
       for (const playerId of received) {
         if (!roster.has(playerId)) continue;
         const pos = input.position.get(playerId);
         if (pos === undefined) continue;
-        value += (weekPoints?.get(playerId) ?? 0) - (input.replacement.get(pos) ?? 0);
+        if (!weekPoints?.has(playerId) || !input.replacement.has(pos)) {
+          incomplete = true;
+          continue;
+        }
+        value += weekPoints.get(playerId)! - input.replacement.get(pos)!;
         playerWeeks += 1;
       }
     }
@@ -105,7 +119,10 @@ export function valueTradeProduction(input: TradeProductionInput): TradeProducti
 
   const a = sideFor(input.team_a);
   const b = sideFor(input.team_b);
-  const graded = a.playerWeeks + b.playerWeeks > 0;
+  const gradingReason: TradeGradingReason = incomplete ? 'incomplete_data'
+    : moves.length === 0 ? 'excluded_positions'
+    : a.playerWeeks + b.playerWeeks === 0 ? 'not_played' : null;
+  const graded = gradingReason === null;
   const margin = round1(a.value - b.value);
 
   return {
@@ -113,7 +130,7 @@ export function valueTradeProduction(input: TradeProductionInput): TradeProducti
     b,
     margin,
     winner: !graded ? null : margin > 0 ? input.team_a : margin < 0 ? input.team_b : null,
-    graded,
+    graded, gradingReason,
   };
 }
 
