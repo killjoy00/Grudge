@@ -48,6 +48,15 @@ export function playerFilters(params: Params, current = currentNflSeason()): Pla
 export function playerHref(key: string, season?: number) {
   return `/players/${encodeURIComponent(key)}${season ? `?season=${season}` : ''}`;
 }
+/**
+ * Player keys carry a colon (`gsis:00-0036900`, `archive:2024:4046692`), so
+ * playerHref percent-encodes it. Next hands the route segment back exactly as
+ * it appeared in the path, still encoded, and an encoded key matches no row.
+ * Decode it before the lookup; a key that is already decoded is unchanged.
+ */
+export function decodePlayerKey(segment: string) {
+  try { return decodeURIComponent(segment); } catch { return segment; }
+}
 export function espnPlayerHref(id: number | string, season: number) {
   return `/players/espn/${id}?season=${season}`;
 }
