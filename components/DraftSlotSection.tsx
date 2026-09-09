@@ -16,7 +16,7 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
     !best || Number(row.avg_class_value) > Number(best.avg_class_value) ? row : best
   ), records.performance[0]);
   const worstValueSlot = records.performance.reduce((worst, row) => (
-    !worst || Number(row.avg_class_value) < Number(bestOrSelf(worst).avg_class_value) ? row : worst
+    !worst || Number(row.avg_class_value) < Number(worst.avg_class_value) ? row : worst
   ), records.performance[0]);
   const mostBestDraftsSlot = records.performance.reduce((best, row) => (
     !best || row.best_drafts > best.best_drafts ||
@@ -91,5 +91,3 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
     </>
   );
 }
-
-function bestOrSelf<T>(value: T): T { return value; }
