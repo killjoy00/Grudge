@@ -8,9 +8,10 @@ test('published draft SQL executes, preserves canonical identity, verified zero,
   const db = await modelDatabase();
   try {
     await db.exec(`
-      insert into nfl_players(player_key) values ('espn:10'),('espn:20');
-      insert into nfl_player_aliases(season,espn_player_id,player_key)
-        values (2025,10,'espn:10'),(2025,20,'espn:20');
+      insert into nfl_players(player_key,full_name,position,bio)
+        values ('espn:10','Player 10','RB','{}'),('espn:20','Player 20','RB','{}');
+      insert into nfl_player_aliases(season,espn_player_id,player_key,match_method)
+        values (2025,10,'espn:10','provider_id'),(2025,20,'espn:20','provider_id');
       insert into draft_picks values (2025,1,1,1,1,10),(2025,2,1,2,2,20);
       insert into team_franchise values (2025,1,'one','One'),(2025,2,'two','Two');
       insert into model_runs(run_id,model_kind,model_version,input_hash,coverage)
