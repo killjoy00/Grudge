@@ -2,6 +2,35 @@ import 'server-only';
 
 import { asPublic } from './db.ts';
 
+/** Shared shape for tracked matchup record queries. Identity is already resolved. */
+export interface MatchupRecordRow {
+  season: number;
+  week: number;
+  espn_team_id: number;
+  franchise_key: string;
+  team_name: string;
+  opponent_name: string;
+  points_for: string;
+  points_against: string;
+  result: 'W' | 'L' | 'T';
+  margin: string;
+  playoff_tier: string | null;
+}
+
+/** Shared shape for tracked player-week record queries. */
+export interface PlayerWeekRecordRow {
+  season: number;
+  week: number;
+  espn_player_id: number;
+  full_name: string | null;
+  default_position_id: number | null;
+  points: string;
+  franchise_key: string;
+  team_name: string;
+  is_starter: boolean;
+  playoff_tier: string | null;
+}
+
 /** Settled franchise-season results. Current-season identity lives elsewhere. */
 export interface FranchiseSeasonRow {
   season: number;
