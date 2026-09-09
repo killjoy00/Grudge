@@ -1,2 +1,2 @@
-Deploy main 56489a81cbb6034ffaecebd13f51c4056e680026 after applying the model evidence migration and successfully refreshing all draft and trade results.
-Requested 2026-09-08.
+Deploy main a6354c2add6c032d50577350b9dee7487dacb84f after PR #68 canonical identity migration and validation.
+Requested 2026-09-09.
