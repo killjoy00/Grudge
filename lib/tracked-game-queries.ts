@@ -34,7 +34,7 @@ export async function getTrackedPlayoffWeek(season: number) {
 export async function getTrackedTopScoringWeeks(limit = 10) {
   const tracked = trackedMatchupSql('m');
   return asPublic<{
-    season: number; week: number; espn_team_id: number; name: string;
+    season: number; week: number; espn_team_id: number; franchise_key: string; name: string;
     points: string; opponent: string | null; points_against: string;
     result: string | null; playoff_tier: string | null;
   }>(
@@ -48,11 +48,15 @@ export async function getTrackedTopScoringWeeks(limit = 10) {
               case m.winner when 'AWAY' then 'W' when 'HOME' then 'L' when 'TIE' then 'T' end
          from public.matchups m where m.is_final and m.away_points is not null and ${tracked}
      )
-     select s.season,s.week,s.espn_team_id,t.name,round(s.points_for,1)::text as points,
-            ot.name as opponent,round(s.points_against,1)::text as points_against,s.result,
+     select s.season,s.week,s.espn_team_id,fst.franchise_key,fst.team_name as name,
+            round(s.points_for,1)::text as points,ofs.team_name as opponent,
+            round(s.points_against,1)::text as points_against,s.result,
             nullif(s.playoff_tier,'NONE') as playoff_tier
-       from sides s join public.teams t on t.season=s.season and t.espn_team_id=s.espn_team_id
-       left join public.teams ot on ot.season=s.season and ot.espn_team_id=s.opponent_team_id
+       from sides s
+       join public.franchise_season_teams fst
+         on fst.season=s.season and fst.espn_team_id=s.espn_team_id
+       left join public.franchise_season_teams ofs
+         on ofs.season=s.season and ofs.espn_team_id=s.opponent_team_id
       order by s.points_for desc limit $1`, [limit]
   );
 }
@@ -62,15 +66,17 @@ export async function getTrackedTopPlayerWeeks(limit = 10) {
   return asPublic<{
     season: number; week: number; player_key: string; espn_player_id: number;
     full_name: string | null; default_position_id: number | null;
-    points: string; espn_team_id: number; team: string; is_starter: boolean;
+    points: string; espn_team_id: number; franchise_key: string; team: string; is_starter: boolean;
     playoff_tier: string | null;
   }>(
     `select r.season,r.week,pi.player_key,r.espn_player_id,pi.full_name,
             pi.position_id as default_position_id,round(r.applied_points,1)::text as points,
-            r.espn_team_id,t.name as team,r.is_starter,nullif(m.playoff_tier,'NONE') as playoff_tier
+            r.espn_team_id,fs.franchise_key,fs.team_name as team,r.is_starter,
+            nullif(m.playoff_tier,'NONE') as playoff_tier
        from public.roster_entries r
        join public.player_identity pi on pi.season=r.season and pi.espn_player_id=r.espn_player_id
-       join public.teams t on t.season=r.season and t.espn_team_id=r.espn_team_id
+       join public.franchise_season_teams fs
+         on fs.season=r.season and fs.espn_team_id=r.espn_team_id
        join public.weeks w on w.season=r.season and w.week=r.week and w.results_complete
        join public.matchups m on m.season=r.season and m.week=r.week
         and r.espn_team_id in(m.home_team_id,m.away_team_id) and ${tracked}
