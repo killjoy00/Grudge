@@ -17,16 +17,16 @@ export interface PowerChampionRow {
 /** The #1 team in the final current-formula power ranking of every played season. */
 export async function getPowerRankingChampions() {
   return asPublic<PowerChampionRow>(
-    `select p.season, p.week, p.espn_team_id, fs.franchise_key, fs.team_name,
+    `select p.season, p.week, p.espn_team_id, fst.franchise_key, fst.team_name,
             m.manager_key, m.display_name as manager,
             p.rank::int, round(p.score, 4)::text as score
        from public.power_rankings p
        join public.seasons s
          on s.season = p.season and p.week = s.regular_season_weeks
-       join public.franchise_seasons fs
-         on fs.season = p.season and fs.espn_team_id = p.espn_team_id
+       join public.franchise_season_teams fst
+         on fst.season = p.season and fst.espn_team_id = p.espn_team_id
        left join public.manager_franchise_seasons ms
-         on ms.season = fs.season and ms.franchise_key = fs.franchise_key and ms.is_primary
+         on ms.season = fst.season and ms.franchise_key = fst.franchise_key and ms.is_primary
        left join public.managers m using (manager_key)
       where p.rank = 1
       order by p.season desc`
@@ -53,25 +53,35 @@ export interface PowerSeasonRecordRow {
 
 /**
  * Every team's final regular-season power score, on one comparable scale.
- * The stored score uses the site's normal 40/30/20/10 power formula and is
- * explicitly taken at each season's regular-season boundary.
+ * Identity comes from the franchise-season mapping; settled finish data is an
+ * optional overlay so a season can reach its regular-season boundary first.
  */
 export async function getFinalPowerSeasonRecords() {
   return asPublic<PowerSeasonRecordRow>(
     `select p.season, p.week, p.espn_team_id,
-            fs.franchise_key, fs.team_name,
+            fst.franchise_key, fst.team_name,
             m.manager_key, m.display_name as manager,
-            fs.regular_wins as wins, fs.regular_losses as losses, fs.regular_ties as ties,
-            fs.final_place, fs.is_champion,
+            coalesce(r.regular_wins, live.cum_wins, 0)::int as wins,
+            coalesce(r.regular_losses, live.cum_losses, 0)::int as losses,
+            coalesce(r.regular_ties, live.cum_ties, 0)::int as ties,
+            r.final_place, coalesce(r.is_champion, false) as is_champion,
             s.playoff_team_count,
             p.rank::int, round(p.score, 4)::text as score
        from public.power_rankings p
        join public.seasons s
          on s.season = p.season and p.week = s.regular_season_weeks
-       join public.franchise_seasons fs
-         on fs.season = p.season and fs.espn_team_id = p.espn_team_id
+       join public.franchise_season_teams fst
+         on fst.season = p.season and fst.espn_team_id = p.espn_team_id
+       left join public.franchise_season_results r
+         on r.season = fst.season and r.franchise_key = fst.franchise_key
+       left join lateral (
+         select twr.cum_wins, twr.cum_losses, twr.cum_ties
+           from public.team_week_results twr
+          where twr.season = fst.season and twr.espn_team_id = fst.espn_team_id
+          order by twr.week desc limit 1
+       ) live on true
        left join public.manager_franchise_seasons ms
-         on ms.season = fs.season and ms.franchise_key = fs.franchise_key and ms.is_primary
+         on ms.season = fst.season and ms.franchise_key = fst.franchise_key and ms.is_primary
        left join public.managers m using (manager_key)
       order by p.score desc, p.season asc, p.rank asc`
   );
@@ -97,17 +107,17 @@ async function getSeasonLuckRecords(direction: 'asc' | 'desc', limit: number) {
          from public.luck_index
         group by season
      )
-     select l.season, l.espn_team_id, fs.franchise_key, fs.team_name,
+     select l.season, l.espn_team_id, fst.franchise_key, fst.team_name,
             m.manager_key, m.display_name as manager,
             l.actual_wins::int,
             round(l.expected_wins, 2)::text as expected_wins,
             round(l.luck_delta, 2)::text as luck_delta
        from final_weeks fw
        join public.luck_index l on l.season = fw.season and l.week = fw.week
-       join public.franchise_seasons fs
-         on fs.season = l.season and fs.espn_team_id = l.espn_team_id
+       join public.franchise_season_teams fst
+         on fst.season = l.season and fst.espn_team_id = l.espn_team_id
        left join public.manager_franchise_seasons ms
-         on ms.season = fs.season and ms.franchise_key = fs.franchise_key and ms.is_primary
+         on ms.season = fst.season and ms.franchise_key = fst.franchise_key and ms.is_primary
        left join public.managers m using (manager_key)
       order by ${order}, l.season asc
       limit $1`,
