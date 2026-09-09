@@ -1,18 +1,6 @@
 #!/usr/bin/env -S npx tsx
 
-/**
- * Emit the whole league-history load as one portable SQL transaction.
- *
- * `import-manual-history.ts` needs a Postgres connection string. This does the
- * same work as a .sql file instead, so the load can go through anything that
- * runs SQL -- the Neon MCP connector, `scripts/neon-sql.mjs`, psql, or the Neon
- * console -- without a credential reaching this machine.
- *
- * The statements are the same idempotent upserts the importer builds, so
- * running this twice is a no-op the second time.
- *
- *   npx tsx scripts/history-load-sql.ts > load.sql
- */
+/** Emit the whole league-history load as one portable SQL transaction. */
 
 import {
   parseFranchises,
@@ -22,7 +10,6 @@ import {
 } from '../lib/manual-history.ts';
 import { readArchiveFile } from '../lib/history-files.ts';
 
-/** SQL literals, quoted here because these values are inlined, not bound. */
 function literal(value: unknown): string {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
@@ -52,6 +39,10 @@ const franchises = parseFranchises(readArchiveFile('franchises.csv'));
 const managers = parseManagers(readArchiveFile('managers.csv'));
 const seasons = parseSeasonResults(readArchiveFile('season-results.csv'));
 const managerSeasons = parseManagerSeasons(readArchiveFile('manager-seasons.csv'));
+const seasonTeams = seasons.map(({ season, franchise_key, team_name, espn_team_id }) => ({
+  season, franchise_key, team_name, espn_team_id,
+}));
+const seasonResults = seasons.map(({ team_name: _name, espn_team_id: _id, ...result }) => result);
 
 const years = seasons.map((row) => row.season);
 const blocks = [
@@ -63,34 +54,27 @@ const blocks = [
   '',
   'begin;',
   '',
-  upsert(
-    'public.franchises',
+  upsert('public.franchises',
     ['franchise_key', 'current_name', 'founded_season', 'folded_season', 'notes'],
-    franchises, ['franchise_key']
-  ),
+    franchises, ['franchise_key']),
   '',
-  upsert(
-    'public.managers',
-    ['manager_key', 'display_name', 'notes'],
-    managers, ['manager_key']
-  ),
+  upsert('public.managers', ['manager_key', 'display_name', 'notes'], managers, ['manager_key']),
   '',
-  upsert(
-    'public.franchise_seasons',
+  upsert('public.franchise_season_teams',
+    ['season', 'franchise_key', 'team_name', 'espn_team_id'],
+    seasonTeams, ['season', 'franchise_key']),
+  '',
+  upsert('public.franchise_season_results',
     [
-      'season', 'franchise_key', 'team_name', 'espn_team_id', 'regular_wins',
-      'regular_losses', 'regular_ties', 'regular_points_for', 'regular_points_against',
-      'playoff_wins', 'playoff_losses', 'final_place', 'is_champion', 'is_runner_up',
-      'source', 'source_note',
+      'season', 'franchise_key', 'regular_wins', 'regular_losses', 'regular_ties',
+      'regular_points_for', 'regular_points_against', 'playoff_wins', 'playoff_losses',
+      'final_place', 'is_champion', 'is_runner_up', 'source', 'source_note',
     ],
-    seasons, ['season', 'franchise_key']
-  ),
+    seasonResults, ['season', 'franchise_key']),
   '',
-  upsert(
-    'public.manager_franchise_seasons',
+  upsert('public.manager_franchise_seasons',
     ['season', 'manager_key', 'franchise_key', 'is_primary'],
-    managerSeasons, ['season', 'manager_key', 'franchise_key']
-  ),
+    managerSeasons, ['season', 'manager_key', 'franchise_key']),
   '',
   'commit;',
   '',
