@@ -34,6 +34,16 @@ export async function getIdentitySeasonField(season: number) {
   );
 }
 
+/** Exact season-scoped provider-team -> durable franchise bridge for UI links. */
+export async function getSeasonFranchiseMap(season: number) {
+  return asPublic<{ espn_team_id: number; franchise_key: string }>(
+    `select espn_team_id, franchise_key
+       from public.franchise_season_teams
+      where season = $1 and espn_team_id is not null`,
+    [season]
+  );
+}
+
 /** Power rankings resolve provider team ids inside the season before linking. */
 export async function getIdentityPowerRankings(season: number, week?: number) {
   return asPublic<{
