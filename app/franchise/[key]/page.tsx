@@ -202,7 +202,7 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
                       {regularSeasonTitleSeasons.has(season.season) && <span className="tag era">Regular-season champ</span>}
                       {season.is_champion && <span className="tag best">Champion</span>}
                       {season.is_runner_up && <span className="tag era">Runner-up</span>}
-                      {identity.espn_team_id && season.season >= 2018 && <EspnTeamLink teamId={identity.espn_team_id} season={season.season} />}
+                      {season.espn_team_id !== null && season.season >= 2018 && <EspnTeamLink teamId={season.espn_team_id} season={season.season} />}
                       {season.manager_key && season.manager && <span className="tsub block">Manager: <a href={managerHref(season.manager_key)}>{season.manager}</a></span>}
                       {(playersBySeason.get(season.season) ?? []).length > 0 && (
                         <span className="tsub block">

@@ -1,7 +1,7 @@
 import { franchiseHref, managerHref } from '../lib/history-format.ts';
 import type { DraftClassRow, DraftPickValueRow, DraftRecords } from '../lib/draft-records.ts';
 import { POSITIONS } from '../pipeline/trade.ts';
-import { espnPlayerHref } from '../lib/player-data.ts';
+import { playerHref } from '../lib/player-data.ts';
 
 const signed = (value: number | string) => {
   const n = Number(value);
@@ -53,7 +53,7 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
           <tr key={`${title}-${row.season}-${row.overall_pick}`}>
             <td>{index + 1}</td>
             <td>
-              <a className="tname" href={espnPlayerHref(row.espn_player_id, row.season)}>{row.full_name ?? `ESPN player #${row.espn_player_id}`}</a>
+              <a className="tname" href={playerHref(row.player_key, row.season)}>{row.full_name ?? row.player_key}</a>
               <span className="tsub block">{positionLabel(row.default_position_id)} · {row.season} R{row.round} P{row.round_pick} (#{row.overall_pick})</span>
               {row.active_weeks !== null && <span className="tsub block">Scored in {row.active_weeks} weeks</span>}
             </td>
@@ -137,13 +137,13 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
 
       <h2>Draft habits</h2>
       <h3>Players franchises kept coming back to</h3>
-      <p className="sub">This uses the full {boardRange} draft archive and needs no player-performance assumptions.</p>
+      <p className="sub">Repeated-player counts use canonical player identities. Draft rows without a reviewed player crosswalk are not guessed into a career.</p>
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>Franchise</th><th>Player</th><th className="num">Times drafted</th><th>Seasons</th></tr></thead>
         <tbody>{records.repeats.map((row) => (
-          <tr key={`${row.franchise_key}-${row.espn_player_id}`}>
+          <tr key={`${row.franchise_key}-${row.player_key}`}>
             <td><a href={franchiseHref(row.franchise_key)}>{row.team_name}</a></td>
-            <td className="tname">{row.full_name ?? `ESPN player #${row.espn_player_id}`}</td>
+            <td className="tname"><a href={playerHref(row.player_key)}>{row.full_name ?? row.player_key}</a></td>
             <td className="num"><strong>{row.times_drafted}</strong></td>
             <td>{row.seasons}</td>
           </tr>
@@ -152,7 +152,7 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
 
       <h3>Position history</h3>
       <p className="sub">
-        All drafted positions from the recovered boards. “First pick” means the first selection a franchise made in that season, rather than every pick that happened to fall in round 1.
+        All drafted positions with resolved season-aware player identity from the recovered boards. “First pick” means the first selection a franchise made in that season, rather than every pick that happened to fall in round 1.
       </p>
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>Position</th><th className="num">All picks</th><th className="num">Draft share</th><th className="num">First picks</th><th className="num">First-pick share</th></tr></thead>
@@ -169,7 +169,7 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
 
       <h3>Franchise position report cards</h3>
       <p className="sub">
-        Most drafted and first-pick tendencies use the full {boardRange} boards. Best and worst positions use the same positional value metric as the steal/bust tables, require at least eight graded picks at that position, and cover QB/RB/WR/TE from {gradeRange}.
+        Most drafted and first-pick tendencies use resolved player identities from the {boardRange} boards. Best and worst positions use the same positional value metric as the steal/bust tables, require at least eight graded picks at that position, and cover QB/RB/WR/TE from {gradeRange}.
       </p>
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>Franchise</th><th>Most drafted</th><th>Most common first pick</th><th>Best value position</th><th>Worst value position</th></tr></thead>

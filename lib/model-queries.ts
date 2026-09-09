@@ -1,6 +1,6 @@
 import { trackedMatchupSql } from './playoff-policy.ts';
 
-/** Keep ownership for excluded games; scoring comes only from its canonical key. */
+/** Keep raw ownership ids at the boundary; resolve scoring through the season alias. */
 export const TRADE_ROSTER_SQL = `
 select r.week, r.espn_team_id, r.espn_player_id, r.lineup_slot_id, r.is_starter,
        s.points as applied_points,
@@ -10,33 +10,64 @@ select r.week, r.espn_team_id, r.espn_player_id, r.lineup_slot_id, r.is_starter,
            and ${trackedMatchupSql('m')}) as tracked
   from public.roster_entries r
   join public.weeks w on w.season = r.season and w.week = r.week and w.results_complete
+  left join public.nfl_player_aliases a
+    on a.season = r.season and a.espn_player_id = r.espn_player_id
   left join public.player_week_scores s
-    on s.season = r.season and s.week = r.week and s.espn_player_id = r.espn_player_id
+    on s.season = r.season and s.week = r.week and s.player_key = a.player_key
  where r.season = $1
  order by r.week, r.espn_team_id, r.espn_player_id`;
 
+/** Return ESPN ids only as the raw trade-model boundary key; score identity is player_key. */
 export const TRADE_POINTS_SQL = `
-select s.week, s.espn_player_id, s.points, s.evidence,
-       exists (select 1 from public.roster_entries r where r.season = s.season
-         and r.week = s.week and r.espn_player_id = s.espn_player_id and r.is_starter) as started
+select s.week, a.espn_player_id, s.points, s.evidence,
+       exists (
+         select 1 from public.roster_entries r
+         join public.nfl_player_aliases ra
+           on ra.season = r.season and ra.espn_player_id = r.espn_player_id
+        where r.season = s.season and r.week = s.week
+          and ra.player_key = s.player_key and r.is_starter
+       ) as started
   from public.player_week_scores s
+  join lateral (
+    select x.espn_player_id
+      from public.nfl_player_aliases x
+     where x.season = s.season and x.player_key = s.player_key
+     order by (x.espn_player_id = s.espn_player_id) desc, x.espn_player_id
+     limit 1
+  ) a on true
   join public.weeks w on w.season = s.season and w.week = s.week and w.results_complete
- where s.season = $1 and s.espn_player_id is not null
- order by s.week, s.espn_player_id`;
+ where s.season = $1
+ order by s.week, a.espn_player_id`;
 
 export const TRADE_PLAYERS_SQL = `
 with ids as (
-  select espn_player_id from public.player_week_scores where season = $1 and espn_player_id is not null
-  union select espn_player_id from public.roster_entries where season = $1
+  select espn_player_id from public.roster_entries where season = $1
   union select espn_player_id from public.trade_players where season = $1
+  union
+  select a.espn_player_id
+    from public.player_week_scores s
+    join lateral (
+      select x.espn_player_id
+        from public.nfl_player_aliases x
+       where x.season = s.season and x.player_key = s.player_key
+       order by (x.espn_player_id = s.espn_player_id) desc, x.espn_player_id
+       limit 1
+    ) a on true
+   where s.season = $1
 )
-select i.espn_player_id, coalesce(profile.position_id, s.position_id, p.default_position_id) as default_position_id,
-       coalesce(profile.eligible_slots, p.eligible_slots) as eligible_slots
-  from ids i left join public.players p using (espn_player_id)
-  left join public.player_season_profiles profile on profile.season = $1 and profile.espn_player_id = i.espn_player_id
-  left join lateral (select position_id from public.player_week_scores x
-    where x.season = $1 and x.espn_player_id = i.espn_player_id and x.position_id is not null
-    order by x.week limit 1) s on true
+select i.espn_player_id,
+       coalesce(identity.position_id, score.position_id, legacy.default_position_id) as default_position_id,
+       coalesce(identity.eligible_slots, legacy.eligible_slots) as eligible_slots
+  from ids i
+  left join public.player_identity identity
+    on identity.season = $1 and identity.espn_player_id = i.espn_player_id
+  left join public.players legacy on legacy.espn_player_id = i.espn_player_id
+  left join lateral (
+    select x.position_id
+      from public.player_week_scores x
+     where x.season = $1 and x.player_key = identity.player_key and x.position_id is not null
+     order by x.week limit 1
+  ) score on true
  order by i.espn_player_id`;
 
 export const TRADE_GAMES_SQL = `

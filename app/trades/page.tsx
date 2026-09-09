@@ -14,7 +14,8 @@ import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
 import { TradeVote } from '../../components/TradeVote.tsx';
 import { POSITIONS } from '../../pipeline/trade.ts';
-import { espnPlayerHref } from '../../lib/player-data.ts';
+import { playerHref } from '../../lib/player-data.ts';
+import { franchiseHref } from '../../lib/history-format.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,10 +30,14 @@ function TradeSide({
   ahead: boolean;
 }) {
   const players = card.received[teamId] ?? [];
+  const teamName = card.teamNames[teamId] ?? `Team ${teamId}`;
+  const franchiseKey = card.teamFranchises[teamId];
   return (
     <div className={`trade-side${ahead ? ' ahead' : ''}`} style={{ borderTopColor: accent }}>
       <div className="trade-side-head">
-        <a href={`/team/${teamId}`} className="tname">{card.teamNames[teamId] ?? `Team ${teamId}`}</a>
+        {franchiseKey
+          ? <a href={franchiseHref(franchiseKey)} className="tname">{teamName}</a>
+          : <span className="tname">{teamName}</span>}
         <EspnTeamLink teamId={teamId} season={card.trade.season} />
       </div>
       <div className="trade-got">got</div>
@@ -41,11 +46,11 @@ function TradeSide({
         {players.map((p) => {
           const counted = !UNGRADED_POSITIONS.has(p.default_position_id ?? -1);
           return (
-            <li key={p.espn_player_id} className={counted ? undefined : 'trade-uncounted'}>
+            <li key={p.player_key} className={counted ? undefined : 'trade-uncounted'}>
               <span className="trade-pos">
-                {POSITIONS[p.default_position_id ?? 0] ?? '\u2014'}
+                {POSITIONS[p.default_position_id ?? 0] ?? '—'}
               </span>
-              <a href={espnPlayerHref(p.espn_player_id, card.trade.season)}>{p.full_name ?? `Player ${p.espn_player_id}`}</a>
+              <a href={playerHref(p.player_key, card.trade.season)}>{p.full_name ?? `Player ${p.espn_player_id}`}</a>
               {!counted && <span className="trade-nocount"> not counted</span>}
             </li>
           );
@@ -96,7 +101,7 @@ function TradeArticle({
         <span className="eyebrow">
           Week {trade.effective_week}
           {trade.accepted_at &&
-            ` \u00b7 ${new Date(trade.accepted_at).toLocaleDateString('en-US',
+            ` · ${new Date(trade.accepted_at).toLocaleDateString('en-US',
               { month: 'short', day: 'numeric' })}`}
         </span>
         {trade.confidence === 'reciprocal' && (

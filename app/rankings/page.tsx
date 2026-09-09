@@ -5,6 +5,7 @@ import {
 } from '../../lib/cached-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
 import { SeasonPicker } from '../../components/SeasonPicker.tsx';
+import { franchiseHref } from '../../lib/history-format.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,10 +19,10 @@ interface Components {
 
 const FORMULA = '40% all-play record · 30% points per game · 20% actual record · 10% strength of schedule.';
 
-function Row({ rank, name, espnTeamId, detail, pct }: {
+function Row({ rank, name, franchiseKey, detail, pct }: {
   rank: number;
   name: string;
-  espnTeamId: number;
+  franchiseKey: string;
   detail: string;
   pct: number;
 }) {
@@ -29,7 +30,7 @@ function Row({ rank, name, espnTeamId, detail, pct }: {
     <div style={{ padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
         <span className="rank">{rank}</span>
-        <a href={`/team/${espnTeamId}`} className="tname">{name}</a>
+        <a href={franchiseHref(franchiseKey)} className="tname">{name}</a>
         <span className="spacer" style={{ flex: 1 }} />
         <span className="tsub" style={{ fontVariantNumeric: 'tabular-nums' }}>{detail}</span>
       </div>
@@ -87,10 +88,10 @@ export default async function Rankings({
           const components = row.components as Components;
           return (
             <Row
-              key={row.espn_team_id}
+              key={row.franchise_key}
               rank={row.rank}
               name={row.name}
-              espnTeamId={row.espn_team_id}
+              franchiseKey={row.franchise_key}
               pct={(Number(row.score) / top) * 100}
               detail={`${(components.allPlayWinPct * 100).toFixed(0)}% all-play · ${components.pointsForPerGame.toFixed(1)} ppg`}
             />

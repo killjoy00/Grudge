@@ -25,6 +25,7 @@ export interface DraftPickValueRow {
   team_name: string;
   manager_key: string | null;
   manager: string | null;
+  player_key: string;
   espn_player_id: number;
   full_name: string | null;
   default_position_id: number | null;
@@ -39,7 +40,7 @@ export interface DraftPickValueRow {
 export interface RepeatDraftRow {
   franchise_key: string;
   team_name: string;
-  espn_player_id: number;
+  player_key: string;
   full_name: string | null;
   times_drafted: number;
   seasons: string;
@@ -128,7 +129,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
        limit 10`),
     asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
-             manager_key, manager, espn_player_id::int, full_name, default_position_id,
+             manager_key, manager, player_key, espn_player_id::int, full_name, default_position_id,
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
              active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
@@ -136,7 +137,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
        limit 10`),
     asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
-             manager_key, manager, espn_player_id::int, full_name, default_position_id,
+             manager_key, manager, player_key, espn_player_id::int, full_name, default_position_id,
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
              active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
@@ -144,7 +145,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
        limit 10`),
     asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
-             manager_key, manager, espn_player_id::int, full_name, default_position_id,
+             manager_key, manager, player_key, espn_player_id::int, full_name, default_position_id,
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
              active_weeks, production_score::text, draft_capital_score::text,
              value_delta::text
@@ -155,41 +156,45 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
     asPublic<RepeatDraftRow>(`
       select tf.franchise_key,
              coalesce(f.current_name, tf.team_name) as team_name,
-             d.espn_player_id::int,
-             p.full_name,
+             a.player_key,
+             np.full_name,
              count(*)::int as times_drafted,
              string_agg(d.season::text, ', ' order by d.season) as seasons
         from public.draft_picks d
         join public.team_franchise tf
           on tf.season = d.season and tf.espn_team_id = d.espn_team_id
+        join public.nfl_player_aliases a
+          on a.season = d.season and a.espn_player_id = d.espn_player_id
+        join public.nfl_players np using (player_key)
         left join public.franchises f using (franchise_key)
-        left join public.players p using (espn_player_id)
        where d.season >= 2005
          and d.season <> 2020
-       group by tf.franchise_key, coalesce(f.current_name, tf.team_name), d.espn_player_id, p.full_name
+       group by tf.franchise_key, coalesce(f.current_name, tf.team_name), a.player_key, np.full_name
       having count(*) >= 3
-       order by count(*) desc, p.full_name nulls last
+       order by count(*) desc, np.full_name nulls last
        limit 12`),
     asPublic<FirstRoundPositionRow>(`
-      select p.default_position_id,
+      select pi.position_id as default_position_id,
              count(*)::int as picks
         from public.draft_picks d
-        left join public.players p using (espn_player_id)
+        left join public.player_identity pi
+          on pi.season = d.season and pi.espn_player_id = d.espn_player_id
        where d.round = 1
          and d.season >= 2005
          and d.season <> 2020
-       group by p.default_position_id
-       order by count(*) desc, p.default_position_id nulls last`),
+       group by pi.position_id
+       order by count(*) desc, pi.position_id nulls last`),
     asPublic<DraftPositionSummaryRow>(`
       with draft_base as (
-        select d.season, d.overall_pick, tf.franchise_key, p.default_position_id
+        select d.season, d.overall_pick, tf.franchise_key, pi.position_id as default_position_id
           from public.draft_picks d
           join public.team_franchise tf
             on tf.season = d.season and tf.espn_team_id = d.espn_team_id
-          left join public.players p using (espn_player_id)
+          left join public.player_identity pi
+            on pi.season = d.season and pi.espn_player_id = d.espn_player_id
          where d.season >= 2005
            and d.season <> 2020
-           and p.default_position_id is not null
+           and pi.position_id is not null
       ), first_pick_rows as (
         select draft_base.*,
                row_number() over (
@@ -217,15 +222,16 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
       draft_base as (
         select d.season, d.overall_pick, tf.franchise_key,
                coalesce(f.current_name, tf.team_name) as team_name,
-               p.default_position_id
+               pi.position_id as default_position_id
           from public.draft_picks d
           join public.team_franchise tf
             on tf.season = d.season and tf.espn_team_id = d.espn_team_id
           left join public.franchises f using (franchise_key)
-          left join public.players p using (espn_player_id)
+          left join public.player_identity pi
+            on pi.season = d.season and pi.espn_player_id = d.espn_player_id
          where d.season >= 2005
            and d.season <> 2020
-           and p.default_position_id is not null
+           and pi.position_id is not null
       ), franchise_totals as (
         select franchise_key,
                max(team_name) as team_name,
@@ -312,5 +318,4 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
   };
 }
 
-
-export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.3'], { revalidate: 3600 });
+export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.4'], { revalidate: 3600 });

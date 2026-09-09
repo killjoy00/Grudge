@@ -13,6 +13,19 @@ export async function modelDatabase() {
     create table roster_entries (season int, week int, espn_team_id int, espn_player_id bigint,
       lineup_slot_id int, is_starter boolean, applied_points numeric);
     create table players (espn_player_id bigint primary key, full_name text, default_position_id int, eligible_slots int[]);
+    create table nfl_players (
+      player_key text primary key,
+      full_name text not null,
+      position text not null,
+      bio jsonb not null default '{}'
+    );
+    create table nfl_player_aliases (
+      season int not null,
+      espn_player_id bigint not null,
+      player_key text not null references nfl_players(player_key),
+      match_method text not null,
+      primary key(season, espn_player_id)
+    );
     create table draft_picks (season int, overall_pick int, round int, round_pick int,
       espn_team_id int, espn_player_id bigint, primary key(season, overall_pick));
     create table team_franchise (season int, espn_team_id int, franchise_key text, team_name text);
@@ -28,6 +41,15 @@ export async function modelDatabase() {
     create function trade_voting_window() returns interval language sql immutable as $$ select interval '7 days' $$;
   `);
   await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-12-model-evidence.sql', import.meta.url), 'utf8'));
+  await db.exec(`create view player_identity as
+    select a.season,a.espn_player_id,a.player_key,null::text as full_name,
+           coalesce(psp.position_id,p.default_position_id) as position_id,
+           coalesce(psp.eligible_slots,p.eligible_slots) as eligible_slots
+      from nfl_player_aliases a
+      left join player_season_profiles psp on psp.season=a.season and psp.espn_player_id=a.espn_player_id
+      left join players p on p.espn_player_id=a.espn_player_id;`);
+  await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-17-canonical-trade-players.sql', import.meta.url), 'utf8'));
+  await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-18-canonical-draft-grade-players.sql', import.meta.url), 'utf8'));
   return db;
 }
 export async function execute(db: PGlite, statements: Stmt[]) {

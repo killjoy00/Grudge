@@ -2,15 +2,40 @@ import 'server-only';
 
 import { asPublic } from './db.ts';
 
-export interface FranchiseIdentity {
+/** Shared shape for tracked matchup record queries. Identity is already resolved. */
+export interface MatchupRecordRow {
+  season: number;
+  week: number;
+  espn_team_id: number;
   franchise_key: string;
-  current_name: string;
-  espn_team_id: number | null;
+  team_name: string;
+  opponent_name: string;
+  points_for: string;
+  points_against: string;
+  result: 'W' | 'L' | 'T';
+  margin: string;
+  playoff_tier: string | null;
 }
 
+/** Shared shape for tracked player-week record queries. */
+export interface PlayerWeekRecordRow {
+  season: number;
+  week: number;
+  espn_player_id: number;
+  full_name: string | null;
+  default_position_id: number | null;
+  points: string;
+  franchise_key: string;
+  team_name: string;
+  is_starter: boolean;
+  playoff_tier: string | null;
+}
+
+/** Settled franchise-season results. Current-season identity lives elsewhere. */
 export interface FranchiseSeasonRow {
   season: number;
   team_name: string;
+  espn_team_id: number | null;
   wins: number;
   losses: number;
   ties: number;
@@ -43,42 +68,9 @@ export interface FranchiseManagerRow {
   last_season: number;
 }
 
-export interface FranchiseKeyPlayerRow {
-  season: number;
-  full_name: string;
-  position_id: number | null;
-  points: string;
-  starts: number;
-}
-
-export async function getFranchiseIdentity(franchiseKey: string) {
-  const rows = await asPublic<FranchiseIdentity>(
-    `select f.franchise_key, f.current_name,
-            max(fs.espn_team_id) filter (where fs.espn_team_id is not null) as espn_team_id
-       from public.franchises f
-       left join public.franchise_seasons fs using (franchise_key)
-      where f.franchise_key = $1
-      group by f.franchise_key, f.current_name`,
-    [franchiseKey]
-  );
-  return rows[0] ?? null;
-}
-
-export async function getFranchiseKeyForEspnId(espnTeamId: number) {
-  const rows = await asPublic<{ franchise_key: string }>(
-    `select franchise_key
-       from public.franchise_seasons
-      where espn_team_id = $1
-      order by season desc
-      limit 1`,
-    [espnTeamId]
-  );
-  return rows[0]?.franchise_key ?? null;
-}
-
 export async function getFranchiseSeasonsByKey(franchiseKey: string) {
   return asPublic<FranchiseSeasonRow>(
-    `select fs.season, fs.team_name,
+    `select fs.season, fs.team_name, fs.espn_team_id,
             fs.regular_wins as wins, fs.regular_losses as losses, fs.regular_ties as ties,
             round(fs.regular_points_for, 1)::text as points_for,
             round(fs.regular_points_against, 1)::text as points_against,
@@ -104,32 +96,6 @@ export async function getFranchiseManagersByKey(franchiseKey: string) {
        from public.franchise_manager_totals
       where franchise_key = $1
       order by last_season desc, first_season desc`,
-    [franchiseKey]
-  );
-}
-
-export async function getFranchiseKeyPlayersByKey(franchiseKey: string) {
-  return asPublic<FranchiseKeyPlayerRow>(
-    `with target as (
-       select max(espn_team_id) as espn_team_id
-         from public.franchise_seasons
-        where franchise_key = $1 and espn_team_id is not null
-     )
-     select season, full_name, position_id, points, starts from (
-       select r.season, p.full_name, p.default_position_id as position_id,
-              round(sum(r.applied_points), 1)::text as points,
-              count(*)::int as starts,
-              row_number() over (
-                partition by r.season order by sum(r.applied_points) desc
-              ) as rn
-         from public.roster_entries r
-         join public.players p using (espn_player_id)
-         join target t on t.espn_team_id = r.espn_team_id
-        where r.is_starter and r.applied_points is not null
-        group by r.season, p.full_name, p.default_position_id
-     ) ranked
-      where rn <= 3
-      order by season desc, rn`,
     [franchiseKey]
   );
 }
@@ -184,6 +150,7 @@ export async function getManagerProfile(managerKey: string) {
   return rows[0] ?? null;
 }
 
+/** Completed season rows for a manager's career statistics. */
 export async function getManagerSeasonsByKey(managerKey: string) {
   return asPublic<ManagerSeasonRow>(
     `select fs.season, fs.franchise_key, f.current_name, fs.team_name, fs.espn_team_id,
@@ -207,6 +174,7 @@ export interface SeasonManagerRow {
   display_name: string;
 }
 
+/** Manager attribution is identity data and is valid before results exist. */
 export async function getSeasonManagers(season: number) {
   return asPublic<SeasonManagerRow>(
     `select ms.franchise_key, m.manager_key, m.display_name
@@ -216,155 +184,6 @@ export async function getSeasonManagers(season: number) {
       order by m.display_name`,
     [season]
   );
-}
-
-export interface PlayoffGameRow {
-  season: number;
-  week: number;
-  espn_matchup_id: number;
-  home_team_id: number;
-  home_key: string;
-  home_name: string;
-  home_points: string;
-  away_team_id: number;
-  away_key: string;
-  away_name: string;
-  away_points: string;
-  winner: string;
-}
-
-export async function getSeasonPlayoffGames(season: number) {
-  return asPublic<PlayoffGameRow>(
-    `select m.season, m.week, m.espn_matchup_id,
-            m.home_team_id, hf.franchise_key as home_key, hf.team_name as home_name,
-            round(m.home_points, 1)::text as home_points,
-            m.away_team_id, af.franchise_key as away_key, af.team_name as away_name,
-            round(m.away_points, 1)::text as away_points,
-            m.winner
-       from public.matchups m
-       join public.franchise_seasons hf
-         on hf.season = m.season and hf.espn_team_id = m.home_team_id
-       join public.franchise_seasons af
-         on af.season = m.season and af.espn_team_id = m.away_team_id
-      where m.season = $1 and m.is_final
-        and m.playoff_tier = 'WINNERS_BRACKET'
-        and m.home_points is not null and m.away_points is not null
-      order by m.week, m.espn_matchup_id`,
-    [season]
-  );
-}
-
-export interface MatchupRecordRow {
-  season: number;
-  week: number;
-  espn_team_id: number;
-  franchise_key: string;
-  team_name: string;
-  opponent_name: string;
-  points_for: string;
-  points_against: string;
-  result: 'W' | 'L' | 'T';
-  margin: string;
-  playoff_tier: string | null;
-}
-
-async function getMatchupRecord(
-  season: number | null,
-  kind: 'highest_score' | 'lowest_score' | 'highest_scoring_loss' | 'biggest_blowout' | 'closest_finish'
-) {
-  const filter = kind === 'highest_scoring_loss'
-    ? `and x.result = 'L'`
-    : kind === 'biggest_blowout'
-      ? `and x.result = 'W'`
-      : '';
-  const order = kind === 'highest_score' || kind === 'highest_scoring_loss'
-    ? 'x.points_for desc'
-    : kind === 'lowest_score'
-      ? 'x.points_for asc'
-      : kind === 'biggest_blowout'
-        ? 'abs(x.points_for - x.points_against) desc'
-        : 'abs(x.points_for - x.points_against) asc, x.points_for desc';
-
-  const rows = await asPublic<MatchupRecordRow>(
-    `with sides as (
-       select m.season, m.week, m.playoff_tier,
-              m.home_team_id as espn_team_id, m.away_team_id as opponent_team_id,
-              m.home_points as points_for, m.away_points as points_against,
-              case m.winner when 'HOME' then 'W' when 'AWAY' then 'L' else 'T' end as result
-         from public.matchups m
-        where m.is_final and m.home_points is not null and m.away_points is not null
-       union all
-       select m.season, m.week, m.playoff_tier,
-              m.away_team_id, m.home_team_id,
-              m.away_points, m.home_points,
-              case m.winner when 'AWAY' then 'W' when 'HOME' then 'L' else 'T' end
-         from public.matchups m
-        where m.is_final and m.home_points is not null and m.away_points is not null
-     )
-     select x.season, x.week, x.espn_team_id, fs.franchise_key,
-            fs.team_name, ofs.team_name as opponent_name,
-            round(x.points_for, 1)::text as points_for,
-            round(x.points_against, 1)::text as points_against,
-            x.result,
-            round(x.points_for - x.points_against, 1)::text as margin,
-            nullif(x.playoff_tier, 'NONE') as playoff_tier
-       from sides x
-       join public.franchise_seasons fs
-         on fs.season = x.season and fs.espn_team_id = x.espn_team_id
-       join public.franchise_seasons ofs
-         on ofs.season = x.season and ofs.espn_team_id = x.opponent_team_id
-      where ($1::int is null or x.season = $1) ${filter}
-      order by ${order}
-      limit 1`,
-    [season]
-  );
-  return rows[0] ?? null;
-}
-
-export interface PlayerWeekRecordRow {
-  season: number;
-  week: number;
-  espn_player_id: number;
-  full_name: string | null;
-  default_position_id: number | null;
-  points: string;
-  franchise_key: string;
-  team_name: string;
-  is_starter: boolean;
-  playoff_tier: string | null;
-}
-
-export async function getTopPlayerWeekForSeason(season: number) {
-  const rows = await asPublic<PlayerWeekRecordRow>(
-    `select r.season, r.week, r.espn_player_id, p.full_name, p.default_position_id,
-            round(r.applied_points, 1)::text as points,
-            fs.franchise_key, fs.team_name, r.is_starter,
-            nullif(m.playoff_tier, 'NONE') as playoff_tier
-       from public.roster_entries r
-       join public.players p using (espn_player_id)
-       join public.franchise_seasons fs
-         on fs.season = r.season and fs.espn_team_id = r.espn_team_id
-       join public.weeks w
-         on w.season = r.season and w.week = r.week and w.results_complete
-       left join public.matchups m
-         on m.season = r.season and m.week = r.week
-        and r.espn_team_id in (m.home_team_id, m.away_team_id)
-      where r.season = $1 and r.applied_points is not null
-      order by r.applied_points desc
-      limit 1`,
-    [season]
-  );
-  return rows[0] ?? null;
-}
-
-export async function getSeasonHighlights(season: number) {
-  const [highestScore, biggestBlowout, closestFinish, topPlayer] = await Promise.all([
-    getMatchupRecord(season, 'highest_score'),
-    getMatchupRecord(season, 'biggest_blowout'),
-    getMatchupRecord(season, 'closest_finish'),
-    getTopPlayerWeekForSeason(season),
-  ]);
-  return { highestScore, biggestBlowout, closestFinish, topPlayer };
 }
 
 export interface RichChampionRow {
@@ -447,6 +266,7 @@ export interface AllSeasonRecordRow {
   is_runner_up: boolean;
 }
 
+/** Historical record books intentionally consume settled result rows only. */
 export async function getAllSeasonRecords() {
   return asPublic<AllSeasonRecordRow>(
     `select fs.season, fs.franchise_key, f.current_name, fs.team_name,
@@ -463,15 +283,4 @@ export async function getAllSeasonRecords() {
        left join public.managers m using (manager_key)
       order by fs.season desc, fs.regular_wins desc, fs.regular_points_for desc`
   );
-}
-
-export async function getGameRecords() {
-  const [highestScore, lowestScore, highestScoringLoss, biggestBlowout, closestFinish] = await Promise.all([
-    getMatchupRecord(null, 'highest_score'),
-    getMatchupRecord(null, 'lowest_score'),
-    getMatchupRecord(null, 'highest_scoring_loss'),
-    getMatchupRecord(null, 'biggest_blowout'),
-    getMatchupRecord(null, 'closest_finish'),
-  ]);
-  return { highestScore, lowestScore, highestScoringLoss, biggestBlowout, closestFinish };
 }

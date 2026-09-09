@@ -24,6 +24,7 @@ with published as (
      )
 ), graded as (
   select d.season, d.overall_pick, d.round, d.round_pick, d.espn_team_id, d.espn_player_id,
+         r.player_key,
          r.result->>'full_name' as full_name,
          (r.result->>'position')::int as default_position_id,
          (r.result->>'fantasy_points')::numeric as fantasy_points,

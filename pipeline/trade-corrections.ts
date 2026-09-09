@@ -33,8 +33,13 @@ export function correctionStatements(c: TradeCorrection): Stmt[] {
     manually_corrected=true,confidence='manual',evidence_status='active',voting_closes_at=least(voting_closes_at,now())
     where season=$1 and trade_id=$2`,[c.season,c.trade_id,week,a,b,revision]));
   out.push(stmt('delete from public.trade_players where season=$1 and trade_id=$2',[c.season,c.trade_id]));
-  out.push(stmt(`insert into public.trade_players (season,trade_id,espn_player_id,from_team_id,to_team_id)
-    select $1,$2,espn_player_id,from_team_id,to_team_id from jsonb_to_recordset($3::jsonb)
-      as x(espn_player_id bigint,from_team_id int,to_team_id int)`,[c.season,c.trade_id,JSON.stringify(moves)]));
+  out.push(stmt(`insert into public.trade_players
+      (season,trade_id,player_key,espn_player_id,from_team_id,to_team_id)
+    select $1,$2,a.player_key,x.espn_player_id,x.from_team_id,x.to_team_id
+      from jsonb_to_recordset($3::jsonb)
+        as x(espn_player_id bigint,from_team_id int,to_team_id int)
+      join public.nfl_player_aliases a
+        on a.season=$1 and a.espn_player_id=x.espn_player_id`,
+    [c.season,c.trade_id,JSON.stringify(moves)]));
   return out;
 }

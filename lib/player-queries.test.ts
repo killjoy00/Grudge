@@ -24,7 +24,7 @@ function season(): PlayerSeasonArtifact {
     game_id: `2024_${week}_BUF_KC`, team: 'BUF', opponent: 'KC', stats: {receiving_yards: 40},
     fantasy_points: points === null ? null : String(points), calculated_points: null, score_evidence: String(evidence)}));
   return {schema_version: 1, model_version: 'test', season: 2024, status: 'in_progress',
-    players: ['a','b','c','d'].map(key=>({season: 2024, player_key: key, position: 'WR', teams: ['BUF']})),
+    players: ['a','b','c','d'].map(key=>({season: 2024, player_key:key,position:'WR',teams:['BUF']})),
     games, aliases: [{season: 2024, espn_player_id: 1, player_key: 'a', match_method: 'provider_id'}],
     rosters: [], regular_weeks: [3,6,7], postseason_weeks: [], scoring_items: [{statId: 53, points: .5}], scoring_hash: 'rules', sources: [], validation: {}};
 }
@@ -89,12 +89,17 @@ test('career history respects season identity, actual managers, completed moves 
       insert into managers values ('mike','Mike'),('joe','Joe'),('jon','Jon');
       insert into manager_franchise_seasons values (2005,'penguins','joe',true),(2024,'penguins','mike',true),(2024,'yuppies','jon',true);
       insert into roster_entries values (2024,3,4,1,0,true,10),(2024,4,4,1,20,false,20),(2024,6,8,1,0,true,25);
+      insert into player_week_scores(season,week,player_key,espn_player_id,points,evidence,source,scoring_version,input_hash)
+        values (2024,3,'new',1,10,'observed','espn','test','w3'),
+               (2024,4,'new',1,20,'observed','espn','test','w4'),
+               (2024,6,'new',1,25,'observed','espn','test','w6');
       insert into seasons (season, regular_season_weeks) values (2024,4);
       insert into weeks values (2024,3,true),(2024,4,true),(2024,6,true);
       insert into matchups values (2024,3,4,8,'NONE'),(2024,4,4,8,'NONE'),(2024,6,4,8,'LOSERS_CONSOLATION');
       insert into trades (season,trade_id,effective_week,team_a,team_b,confidence,evidence_status)
         values (2024,'stable',6,4,8,'ledger','active'),(2024,'withdrawn',7,4,8,'reciprocal','needs_review');
-      insert into trade_players values (2024,'stable',1,4,8),(2024,'withdrawn',1,8,4);
+      insert into trade_players(season,trade_id,espn_player_id,from_team_id,to_team_id,player_key)
+        values (2024,'stable',1,4,8,'new'),(2024,'withdrawn',1,8,4,'new');
       insert into transactions values
         ('done',2024,2,'WAIVER','EXECUTED',false,'{"processDate":1726000000000,"items":[{"playerId":1}]}'),
         ('failed',2024,5,'WAIVER','FAILED_ROSTERLIMIT',false,'{}'),

@@ -5,6 +5,7 @@ import { HistoryNav } from '../../../components/HistoryNav.tsx';
 import { getDraftRecords } from '../../../lib/draft-records.ts';
 import { getCachedHistoryRecords } from '../../../lib/history-cache.ts';
 import { franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
+import { playerHref } from '../../../lib/player-data.ts';
 import type { AllSeasonRecordRow, MatchupRecordRow } from '../../../lib/history-queries.ts';
 import {
   getFinalPowerSeasonRecords,
@@ -182,8 +183,8 @@ export default async function RecordsPage() {
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>#</th><th>Team</th><th className="num">Points</th><th>Week</th><th>Opponent</th></tr></thead>
         <tbody>{topWeeks.map((row, index) => (
-          <tr key={`${row.season}-${row.week}-${row.espn_team_id}`} className={index === 0 ? 'title-row' : undefined}>
-            <td>{index + 1}</td><td><a className="tname" href={`/team/${row.espn_team_id}`}>{row.name}</a></td>
+          <tr key={`${row.season}-${row.week}-${row.franchise_key}`} className={index === 0 ? 'title-row' : undefined}>
+            <td>{index + 1}</td><td><a className="tname" href={franchiseHref(row.franchise_key)}>{row.name}</a></td>
             <td className="num"><strong>{row.points}</strong></td>
             <td><a href={seasonHref(row.season)}>{row.season} wk {row.week}</a>{row.playoff_tier && <span className="tag era">postseason</span>}</td>
             <td>{row.opponent ?? '—'}<span className="tsub block">{row.result ?? ''} {row.points}-{row.points_against}</span></td>
@@ -196,10 +197,10 @@ export default async function RecordsPage() {
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>#</th><th>Player</th><th>Team</th><th className="num">Points</th><th>Week</th><th>Lineup</th></tr></thead>
         <tbody>{topPlayers.map((row, index) => (
-          <tr key={`${row.season}-${row.week}-${row.espn_player_id}`} className={index === 0 ? 'title-row' : undefined}>
+          <tr key={`${row.season}-${row.week}-${row.player_key}`} className={index === 0 ? 'title-row' : undefined}>
             <td>{index + 1}</td>
-            <td><span className="tname">{row.full_name ?? `ESPN player #${row.espn_player_id}`}</span><span className="tsub block">{POSITIONS[row.default_position_id ?? 0] ?? '—'}</span></td>
-            <td><a href={`/team/${row.espn_team_id}`}>{row.team}</a></td>
+            <td><a className="tname" href={playerHref(row.player_key, row.season)}>{row.full_name ?? `ESPN player #${row.espn_player_id}`}</a><span className="tsub block">{POSITIONS[row.default_position_id ?? 0] ?? '—'}</span></td>
+            <td><a href={franchiseHref(row.franchise_key)}>{row.team}</a></td>
             <td className="num"><strong>{row.points}</strong></td>
             <td><a href={seasonHref(row.season)}>{row.season} wk {row.week}</a>{row.playoff_tier && <span className="tag era">postseason</span>}</td>
             <td>{row.is_starter ? 'Starter' : <span className="tag worst">Bench</span>}</td>

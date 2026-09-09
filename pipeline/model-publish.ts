@@ -62,9 +62,14 @@ export function draftPublicationStatements(seasons: DraftPerformanceSeason[], co
     values ($1, 'draft', $2, $3, $4::jsonb) on conflict do nothing`,
   [runId, DRAFT_MODEL_VERSION, inputHash, JSON.stringify(coverage)])];
   for (let i = 0; i < grades.length; i += 500) out.push(stmt(`
-    insert into public.draft_grade_results (run_id, season, overall_pick, espn_team_id, espn_player_id, result)
+    insert into public.draft_grade_results
+      (run_id, season, overall_pick, espn_team_id, espn_player_id, player_key, result)
     select $1, (x->>'season')::int, (x->>'overall_pick')::int, (x->>'espn_team_id')::int,
-      (x->>'espn_player_id')::bigint, x from jsonb_array_elements($2::jsonb) x
+      (x->>'espn_player_id')::bigint,
+      (select a.player_key from public.nfl_player_aliases a
+        where a.season = (x->>'season')::int and a.espn_player_id = (x->>'espn_player_id')::bigint),
+      x
+      from jsonb_array_elements($2::jsonb) x
     on conflict do nothing`, [runId, JSON.stringify(grades.slice(i, i + 500))]));
   for (const season of seasons) {
     const ready = grades.filter((g) => g.season === season.season).length === season.picks.length && season.picks.length > 0;

@@ -13,6 +13,10 @@ export function digest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 export function canonicalPlayerKey(id: number): string {
+  // ESPN encodes NFL defensive units as -16000 minus its pro-team id. The NFL
+  // player directory intentionally gives those durable franchise identities
+  // (`dst:1`, `dst:2`, ...), so never emit a parallel `espn:-16002` identity.
+  if (id <= -16001 && id >= -16099) return `dst:${-id - 16000}`;
   const gsis = (identities as Record<string, string>)[String(id)];
   return gsis ? `gsis:${gsis}` : `espn:${id}`;
 }

@@ -6,6 +6,8 @@ import {
 } from '../../../../../lib/queries.ts';
 import { Comments } from '../../../../../components/Comments.tsx';
 import { EspnMatchupLink, EspnTeamLink } from '../../../../../components/EspnLink.tsx';
+import { franchiseHref } from '../../../../../lib/history-format.ts';
+import { getSeasonFranchiseMap } from '../../../../../lib/season-identity-queries.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,12 +25,13 @@ export default async function WeeklyRecapPage({
   }
 
   const { userId } = await auth();
-  const [games, awards, bench, comments, table] = await Promise.all([
+  const [games, awards, bench, comments, table, seasonIdentities] = await Promise.all([
     getWeekResults(season, week),
     getWeekAwards(season, week),
     getBenchWatch(season, week),
     userId ? getComments(season, week) : Promise.resolve([]),
     getStandings(season, week),
+    getSeasonFranchiseMap(season),
   ]);
 
   // A recap is an archived settled week, not a generic schedule page. Refuse
@@ -36,6 +39,11 @@ export default async function WeeklyRecapPage({
   // but empty historical record.
   if (games.length === 0 || table.length === 0) notFound();
 
+  const franchiseByTeam = new Map(seasonIdentities.map((row) => [row.espn_team_id, row.franchise_key]));
+  const franchiseLink = (teamId: number, name: string) => {
+    const key = franchiseByTeam.get(teamId);
+    return key ? <a href={franchiseHref(key)}>{name}</a> : name;
+  };
   const award = (key: string) => awards.find((a) => a.award_key === key);
   const worstBench = bench[0];
 
@@ -59,7 +67,7 @@ export default async function WeeklyRecapPage({
             <div className="match" key={g.espn_matchup_id}>
               <div className={`side ${awayWon ? 'win' : g.is_final ? 'lose' : ''}`}>
                 <span>
-                  {g.away_name}
+                  {franchiseLink(g.away_team_id, g.away_name)}
                   <EspnTeamLink teamId={g.away_team_id} season={season} />
                 </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.away_points ?? '—'}</span>
@@ -71,7 +79,7 @@ export default async function WeeklyRecapPage({
               </span>
               <div className={`side ${homeWon ? 'win' : g.is_final ? 'lose' : ''}`}>
                 <span>
-                  {g.home_name}
+                  {franchiseLink(g.home_team_id, g.home_name)}
                   <EspnTeamLink teamId={g.home_team_id} season={season} />
                 </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.home_points ?? '—'}</span>
@@ -142,14 +150,19 @@ export default async function WeeklyRecapPage({
       <div className="card">
         <table>
           <tbody>
-            {table.slice(0, 10).map((r, i) => (
-              <tr key={r.espn_team_id}>
-                <td className="rank">{i + 1}</td>
-                <td><a href={`/team/${r.espn_team_id}`} className="tname">{r.name}</a></td>
-                <td className="num">{r.wins}-{r.losses}</td>
-                <td className="num">{r.points_for}</td>
-              </tr>
-            ))}
+            {table.slice(0, 10).map((r, i) => {
+              const franchiseKey = franchiseByTeam.get(r.espn_team_id);
+              return (
+                <tr key={franchiseKey ?? r.espn_team_id}>
+                  <td className="rank">{i + 1}</td>
+                  <td>{franchiseKey
+                    ? <a href={franchiseHref(franchiseKey)} className="tname">{r.name}</a>
+                    : <span className="tname">{r.name}</span>}</td>
+                  <td className="num">{r.wins}-{r.losses}</td>
+                  <td className="num">{r.points_for}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -5,7 +5,7 @@ import { getCachedPowerRankings, getCachedSeasonList } from '../../../lib/cached
 import { getCachedHistorySeason } from '../../../lib/history-cache.ts';
 import { finish, franchiseHref, managerHref, pointsPerGame, record, seasonHref } from '../../../lib/history-format.ts';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 function gameSummary(row: { team_name: string; opponent_name: string; points_for: string; points_against: string }) {
   return `${row.team_name} ${row.points_for}–${row.points_against} ${row.opponent_name}`;
@@ -23,19 +23,28 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
   ]);
   if (rows.length === 0) notFound();
 
+  const settled = rows.every((row) => row.is_settled);
+  const hasGames = rows.some((row) => row.wins + row.losses + row.ties > 0);
   const managerByFranchise = new Map(managers.map((manager) => [manager.franchise_key, manager]));
-  const champion = rows.find((row) => row.is_champion) ?? null;
-  const runnerUp = rows.find((row) => row.is_runner_up) ?? null;
-  const regularSeasonChampion = rows[0]!;
-  const finalRows = [...rows].sort((a, b) => (a.final_place ?? 999) - (b.final_place ?? 999));
-  const topOffense = [...rows].sort((a, b) =>
-    (pointsPerGame(b.points_for, b.wins, b.losses, b.ties) ?? 0)
-    - (pointsPerGame(a.points_for, a.wins, a.losses, a.ties) ?? 0)
-  )[0]!;
+  const champion = settled ? rows.find((row) => row.is_champion) ?? null : null;
+  const runnerUp = settled ? rows.find((row) => row.is_runner_up) ?? null : null;
+  const standingsLeader = rows[0]!;
+  const regularSeasonChampion = settled ? standingsLeader : null;
+  const finalRows = settled
+    ? [...rows].sort((a, b) => (a.final_place ?? 999) - (b.final_place ?? 999))
+    : rows;
+  const topOffense = hasGames
+    ? [...rows].sort((a, b) =>
+      (pointsPerGame(b.points_for, b.wins, b.losses, b.ties) ?? -Infinity)
+      - (pointsPerGame(a.points_for, a.wins, a.losses, a.ties) ?? -Infinity)
+    )[0] ?? null
+    : null;
   const powerChampion = powerRows.find((row) => row.rank === 1) ?? null;
   const currentIndex = seasonList.findIndex((row) => row.season === season);
   const newer = currentIndex > 0 ? seasonList[currentIndex - 1]?.season : null;
-  const older = currentIndex >= 0 && currentIndex < seasonList.length - 1 ? seasonList[currentIndex + 1]?.season : null;
+  const older = currentIndex >= 0 && currentIndex < seasonList.length - 1
+    ? seasonList[currentIndex + 1]?.season
+    : seasonList.find((row) => row.season < season)?.season ?? null;
   const maxPlayoffWeek = playoffGames.length ? Math.max(...playoffGames.map((game) => game.week)) : null;
   const source = rows[0]!.source;
 
@@ -45,19 +54,27 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
     if (week === maxPlayoffWeek - 1) return 'Semifinal';
     return 'First round';
   };
-  const sameChampion = champion?.franchise_key === regularSeasonChampion.franchise_key;
+  const sameChampion = settled && champion?.franchise_key === regularSeasonChampion?.franchise_key;
 
   return (
     <>
       <div className="page-hero">
-        <div className="eyebrow">Season file · {source === 'manual' ? 'commissioner finish + recovered ESPN weekly record' : 'ESPN archive'}</div>
+        <div className="eyebrow">
+          {settled
+            ? `Season file · ${source === 'manual' ? 'commissioner finish + recovered ESPN weekly record' : 'ESPN archive'}`
+            : 'Current season · canonical franchise field + live ESPN results'}
+        </div>
         <h1>{season} Grudge Match</h1>
         <p>
-          {champion ? (
+          {!settled ? (
+            hasGames
+              ? <><strong>{standingsLeader.team_name}</strong> currently leads the regular-season standings. Final season results have not been recorded yet.</>
+              : <>The <strong>{season}</strong> franchise and manager identities are loaded. Results have not been recorded yet.</>
+          ) : champion ? (
             sameChampion
               ? <><strong>{champion.team_name}</strong> won both the regular season and league championship.</>
-              : <><strong>{champion.team_name}</strong> won the league championship. <strong>{regularSeasonChampion.team_name}</strong> won the regular season.</>
-          ) : <><strong>{regularSeasonChampion.team_name}</strong> won the regular season.</>}
+              : <><strong>{champion.team_name}</strong> won the league championship. <strong>{regularSeasonChampion!.team_name}</strong> won the regular season.</>
+          ) : <><strong>{regularSeasonChampion!.team_name}</strong> won the regular season.</>}
         </p>
       </div>
 
@@ -72,10 +89,14 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
       </div>
 
       <div className="stat-strip">
-        <div><span>League champion</span><strong>{champion?.team_name ?? '—'}</strong></div>
-        <div><span>Regular-season champion</span><strong>{regularSeasonChampion.team_name}</strong><small className="block note">{record(regularSeasonChampion.wins, regularSeasonChampion.losses, regularSeasonChampion.ties)}</small></div>
-        <div><span>Final power #1</span><strong>{powerChampion?.name ?? '—'}</strong>{powerChampion && <small className="block note">score {powerChampion.score}</small>}</div>
-        <div><span>Best offense</span><strong>{pointsPerGame(topOffense.points_for, topOffense.wins, topOffense.losses, topOffense.ties)?.toFixed(1) ?? '—'} PF/G</strong><small className="block note">{topOffense.team_name}</small></div>
+        <div><span>League champion</span><strong>{settled ? champion?.team_name ?? '—' : 'In progress'}</strong></div>
+        <div>
+          <span>{settled ? 'Regular-season champion' : hasGames ? 'Current leader' : 'Season status'}</span>
+          <strong>{settled || hasGames ? standingsLeader.team_name : 'Awaiting results'}</strong>
+          {(settled || hasGames) && <small className="block note">{record(standingsLeader.wins, standingsLeader.losses, standingsLeader.ties)}</small>}
+        </div>
+        <div><span>{settled ? 'Final power #1' : 'Current power #1'}</span><strong>{powerChampion?.name ?? '—'}</strong>{powerChampion && <small className="block note">score {powerChampion.score}</small>}</div>
+        <div><span>Best offense</span><strong>{topOffense ? `${pointsPerGame(topOffense.points_for, topOffense.wins, topOffense.losses, topOffense.ties)?.toFixed(1) ?? '—'} PF/G` : '—'}</strong>{topOffense && <small className="block note">{topOffense.team_name}</small>}</div>
       </div>
 
       {champion && (
@@ -142,16 +163,16 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
         </>
       )}
 
-      <h2>Final standings</h2>
+      <h2>{settled ? 'Final standings' : 'Current standings'}</h2>
       <div className="card">
         <div className="scroll"><table>
           <thead><tr><th className="rank">#</th><th>Franchise</th><th>Manager</th><th className="num">Record</th><th className="num">PF</th><th className="num">PF/G</th><th className="num">Finish</th></tr></thead>
-          <tbody>{finalRows.map((row) => {
+          <tbody>{finalRows.map((row, index) => {
             const manager = managerByFranchise.get(row.franchise_key);
-            const wonRegularSeason = row.franchise_key === regularSeasonChampion.franchise_key;
+            const wonRegularSeason = settled && row.franchise_key === regularSeasonChampion?.franchise_key;
             return (
               <tr key={row.franchise_key} className={row.is_champion ? 'title-row' : undefined}>
-                <td className="rank">{row.final_place ?? '—'}</td>
+                <td className="rank">{settled ? row.final_place ?? '—' : hasGames ? index + 1 : '—'}</td>
                 <td>
                   <a className="tname" href={franchiseHref(row.franchise_key)}>{row.team_name}</a>
                   {wonRegularSeason && <span className="tag era">Regular-season champ</span>}
@@ -162,7 +183,7 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
                 <td className="num">{record(row.wins, row.losses, row.ties)}</td>
                 <td className="num">{row.points_for ?? '—'}</td>
                 <td className="num">{pointsPerGame(row.points_for, row.wins, row.losses, row.ties)?.toFixed(1) ?? '—'}</td>
-                <td className="num">{finish(row.final_place) ?? '—'}</td>
+                <td className="num">{settled ? finish(row.final_place) ?? '—' : '—'}</td>
               </tr>
             );
           })}</tbody>
@@ -171,6 +192,9 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
           <p className="note">
             Commissioner records remain authoritative for final standings and playoff finish. ESPN&rsquo;s recovered archive supplies this season&rsquo;s weekly team scores, opponents, playoff scoreboards and draft board. Player-level weekly lineups and transactions are not available before 2018.
           </p>
+        )}
+        {!settled && (
+          <p className="note">Franchise and manager identity are available independently of final season results. This page will use live cumulative weekly records until the settled season result is written.</p>
         )}
       </div>
     </>
