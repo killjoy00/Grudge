@@ -4,9 +4,6 @@ import { unstable_cache } from 'next/cache';
 import { getSeasonStandings } from './queries.ts';
 import {
   getAllSeasonRecords,
-  getFranchiseIdentity,
-  getFranchiseKeyForEspnId,
-  getFranchiseKeyPlayersByKey,
   getFranchiseManagersByKey,
   getFranchiseSeasonsByKey,
   getManagerProfile,
@@ -15,6 +12,11 @@ import {
   getSeasonManagers,
   getSeasonPlayoffGames,
 } from './history-queries.ts';
+import {
+  getFranchiseIdentity,
+  getFranchiseKeyForEspnId,
+  getFranchiseKeyPlayersByKey,
+} from './history-identity-queries.ts';
 import { getTrackedGameRecords, getTrackedSeasonHighlights } from './tracked-game-queries.ts';
 
 export const getCachedFranchiseByKey = unstable_cache(
@@ -24,13 +26,13 @@ export const getCachedFranchiseByKey = unstable_cache(
     getFranchiseManagersByKey(franchiseKey),
     getFranchiseKeyPlayersByKey(franchiseKey),
   ]),
-  ['history-franchise-by-key'],
+  ['history-franchise-by-key-v2'],
   { revalidate: 86400 }
 );
 
 export const getCachedFranchiseKeyForEspnId = unstable_cache(
   getFranchiseKeyForEspnId,
-  ['history-franchise-key-for-espn-id'],
+  ['history-franchise-key-for-espn-id-v2'],
   { revalidate: 86400 }
 );
 
