@@ -161,7 +161,7 @@ export async function getManagerSeasonsByKey(managerKey: string) {
        from public.manager_franchise_seasons ms
        join public.franchise_seasons fs
          on fs.season = ms.season and fs.franchise_key = ms.franchise_key
-       join public.franchises f using (franchise_key)
+       join public.franchises f on f.franchise_key = fs.franchise_key
       where ms.manager_key = $1 and ms.is_primary
       order by fs.season desc`,
     [managerKey]
