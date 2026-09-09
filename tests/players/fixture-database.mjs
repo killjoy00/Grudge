@@ -28,7 +28,9 @@ await db.exec(`insert into draft_picks values (2024,40,4,10,4,3139477);
   insert into manager_franchise_seasons values (2024,'the-penguins','michael-chepul',true),(2024,'brightleaf-yuppies','jonathan-crisp',true);
   insert into trades (season,trade_id,effective_week,team_a,team_b,confidence,evidence_status)
     values (2024,'2024-w6-4v8',6,4,8,'reciprocal','active');
-  insert into trade_players values (2024,'2024-w6-4v8',3139477,4,8);
+  insert into trade_players(season,trade_id,espn_player_id,from_team_id,to_team_id,player_key)
+    select 2024,'2024-w6-4v8',3139477,4,8,player_key
+      from nfl_player_aliases where season=2024 and espn_player_id=3139477;
   grant select on all tables in schema public to app_user;
   set role app_user;`);
 
