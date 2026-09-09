@@ -32,6 +32,7 @@ export async function modelDatabase() {
   `);
   await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-12-model-evidence.sql', import.meta.url), 'utf8'));
   await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-17-canonical-trade-players.sql', import.meta.url), 'utf8'));
+  await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-18-canonical-draft-grade-players.sql', import.meta.url), 'utf8'));
   return db;
 }
 export async function execute(db: PGlite, statements: Stmt[]) {
