@@ -11,13 +11,15 @@ export interface HistorySeasonMetric {
   expected_wins: string | null;
 }
 
+// Power/luck are live season metrics, so their identity source must not require
+// a settled franchise_season_results row.
 const SEASON_METRIC_SELECT = `
   select fs.season,
          p.rank::int as power_rank,
          case when p.score is null then null else round(p.score, 4)::text end as power_score,
          case when l.luck_delta is null then null else round(l.luck_delta, 3)::text end as luck_delta,
          case when l.expected_wins is null then null else round(l.expected_wins, 3)::text end as expected_wins
-    from public.franchise_seasons fs
+    from public.franchise_season_teams fs
     left join lateral (
       select pr.rank, pr.score
         from public.power_rankings pr
@@ -82,9 +84,9 @@ function momentsQuery(targetJoin: string, targetWhere: string) {
   ), target as (
     select x.*, fs.franchise_key, fs.team_name, ofs.team_name as opponent_name
       from sides x
-      join public.franchise_seasons fs
+      join public.franchise_season_teams fs
         on fs.season = x.season and fs.espn_team_id = x.espn_team_id
-      join public.franchise_seasons ofs
+      join public.franchise_season_teams ofs
         on ofs.season = x.season and ofs.espn_team_id = x.opponent_team_id
       ${targetJoin}
      where ${targetWhere}
@@ -125,6 +127,8 @@ export async function getManagerGameMoments(managerKey: string) {
   );
 }
 
+// A regular-season title is a settled result, so this deliberately reads the
+// compatibility result view rather than the season identity table.
 export async function getManagerRegularSeasonTitleSeasons(managerKey: string) {
   return asPublic<{ season: number; franchise_key: string; team_name: string }>(
     `with ranked as (
