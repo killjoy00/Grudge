@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
+import { MetricBars } from '../../../components/MetricBars.tsx';
 import { asPublic } from '../../../lib/db.ts';
-import { PLAYER_CAREER_SQL, PLAYER_HISTORY_SQL, PLAYER_CONTRIBUTIONS_SQL } from '../../../lib/player-queries.ts';
+import { PLAYER_CAREER_SQL, PLAYER_HISTORY_SQL } from '../../../lib/player-queries.ts';
+import { getPlayerGrudgeSeasons } from '../../../lib/player-intelligence.ts';
 import { decodePlayerKey, displayNumber, playerFilters, playerHref, PLAYER_STATS, statColumns,
   type PlayerProfile, type PlayerGame, type PlayerRow, type PlayerHistoryEvent, type PlayerImport } from '../../../lib/player-data.ts';
 import { PlayerFilters } from '../../../components/PlayerFilters.tsx';
@@ -39,12 +41,12 @@ export default async function PlayerPage({params, searchParams}: Props) {
   const [profile] = await asPublic<PlayerProfile>('select * from public.nfl_players where player_key=$1', [playerKey]);
   if (!profile) notFound();
   const filters = playerFilters(await searchParams);
-  const [career, games, history, contributions, coverageRows] = await Promise.all([
+  const [career, games, history, grudgeSeasons, coverageRows] = await Promise.all([
     asPublic<PlayerRow & {season: number}>(PLAYER_CAREER_SQL, [playerKey, filters.period]),
     asPublic<PlayerGame>(`select * from public.nfl_player_games where player_key=$1 and season=$2 and season_type=$3
       and week between $4 and $5 order by week`, [playerKey, filters.season, filters.period, filters.from, filters.to]),
     asPublic<PlayerHistoryEvent>(PLAYER_HISTORY_SQL, [playerKey]),
-    asPublic<{season: number; team_name: string; franchise_key: string; roster_weeks: number; starts: number; points: string | null}>(PLAYER_CONTRIBUTIONS_SQL, [playerKey]),
+    getPlayerGrudgeSeasons(playerKey),
     asPublic<PlayerImport>('select * from public.nfl_player_imports where season=$1', [filters.season]),
   ]);
   const seasons = [...new Set([filters.season, ...career.map(s=>s.season)])].sort((a,b)=>b-a);
@@ -52,18 +54,26 @@ export default async function PlayerPage({params, searchParams}: Props) {
   const columns = statColumns(position);
   const total = games.length && games.every(g => g.fantasy_points !== null) ? games.reduce((sum,g)=>sum+Number(g.fantasy_points),0) : null;
   const label = (key: string) => PLAYER_STATS.find(([k])=>k===key)?.[1] ?? key.replaceAll('_', ' ');
+  const grudgeStarts = grudgeSeasons.reduce((sum, row) => sum + row.starts, 0);
+  const grudgePoints = grudgeSeasons.every((row) => row.points !== null)
+    ? grudgeSeasons.reduce((sum, row) => sum + Number(row.points), 0)
+    : null;
+  const grudgeFranchises = new Set(grudgeSeasons.map((row) => row.franchise_key)).size;
+  const drafts = history.filter((event) => event.kind === 'draft').length;
+  const trades = history.filter((event) => event.kind === 'trade').length;
+
   return <>
     <a className="player-back" href={`/players?season=${filters.season}&position=${encodeURIComponent(position)}`}>← Players</a>
     <section className="page-hero compact-hero player-profile-hero"><div className="eyebrow">{position} · Player file</div>
       <h1>{profile.full_name}</h1><p>{[profile.bio.college_name, profile.bio.rookie_season ? `NFL debut ${profile.bio.rookie_season}` : null,
         profile.bio.height ? `${profile.bio.height} in · ${profile.bio.weight || '—'} lb` : null].filter(Boolean).join(' · ') || 'NFL stats and a career through Grudge Match.'}</p>
     </section>
-    <nav className="player-sections" aria-label="Player sections"><a href="#game-log">Game log</a><a href="#seasons">Season totals</a><a href="#grudge-history">Grudge history</a></nav>
+    <nav className="player-sections" aria-label="Player sections"><a href="#game-log">Game log</a><a href="#seasons">Season totals</a><a href="#grudge-career">Grudge career</a><a href="#grudge-history">Transactions</a></nav>
     {playerKey.startsWith('archive:') && <p className="callout">This archived player identity has not been matched confidently to an NFL record. The league history below is preserved; NFL stats are withheld until the identity is resolved.</p>}
     <PlayerFilters key={JSON.stringify(filters)} filters={filters} seasons={seasons} profile />
     <div className="stat-strip three"><div><strong>{displayNumber(total, 2)}</strong><span>Points · selected weeks</span></div>
       <div><strong>{games.length || '—'}</strong><span>Games with stats</span></div>
-      <div><strong>{history.filter(e=>e.kind==='draft').length}</strong><span>Grudge drafts</span></div></div>
+      <div><strong>{drafts}</strong><span>Grudge drafts</span></div></div>
     <h2 id="game-log">{filters.season} game log</h2>
     <p className="sub">{filters.period === 'REG' ? 'NFL regular season' : 'NFL playoffs'} · Weeks {filters.from}–{filters.to}</p>
     {games.length ? <div className="card"><div className="scroll"><table className="player-game-table"><thead><tr><th>Week / opponent</th><th className="num">Points</th>
@@ -84,12 +94,29 @@ export default async function PlayerPage({params, searchParams}: Props) {
         <td className="num">{s.games || '—'}</td><td className="num"><strong>{displayNumber(s.points, 2)}</strong></td><td className="num">{displayNumber(s.average, 2)}</td>
         {columns.map(k=><td className="num" key={k}>{displayNumber(s[k], 0)}</td>)}
       </tr>)}</tbody></table></div>
-    <h2 id="grudge-history">Grudge history</h2><p className="sub">Drafts, transactions and observed ownership, with the managers from each season.</p>
-    {contributions.length > 0 && <details className="card"><summary>Points started for each Grudge team</summary><p className="note">Actual lineup contributions in completed regular-season and championship-bracket matchups. Bench points and consolation games are excluded.</p>
-      <div className="scroll"><table><thead><tr><th>Team</th><th className="num">Starts</th><th className="num">Points started</th></tr></thead><tbody>{contributions.map((s,i)=><tr key={`${s.season}-${i}`}>
-        <td>{s.season} · <a href={franchiseHref(s.franchise_key)}>{s.team_name}</a></td><td className="num">{s.starts}</td><td className="num">{displayNumber(s.points, 2)}</td>
-      </tr>)}</tbody></table></div>
-    </details>}
+
+    <h2 id="grudge-career">Grudge career</h2>
+    <p className="sub">Actual roster and starter contributions in tracked games. This section begins in 2018, when ESPN&rsquo;s weekly player-level lineups become recoverable.</p>
+    {grudgeSeasons.length > 0 ? <>
+      <div className="stat-strip">
+        <div><strong>{grudgeStarts}</strong><span>Starts</span></div>
+        <div><strong>{displayNumber(grudgePoints, 2)}</strong><span>Points started</span></div>
+        <div><strong>{grudgeFranchises}</strong><span>Franchises</span></div>
+        <div><strong>{drafts} / {trades}</strong><span>Drafts / trades</span></div>
+      </div>
+      <div className="card">
+        <MetricBars rows={grudgeSeasons.map((row) => ({
+          key: `${row.season}-${row.franchise_key}`,
+          label: row.team_name,
+          value: Number(row.points ?? 0),
+          display: row.points === null ? 'Incomplete' : `${Number(row.points).toFixed(1)} pts`,
+          href: franchiseHref(row.franchise_key),
+          detail: `${row.season} · ${row.starts} start${row.starts === 1 ? '' : 's'} · ${row.roster_weeks} roster week${row.roster_weeks === 1 ? '' : 's'}`,
+        }))} />
+      </div>
+    </> : <div className="card empty-state"><strong>No weekly Grudge lineup evidence</strong><span>This player may predate the recoverable 2018+ lineup archive or may never have appeared on a Grudge roster.</span></div>}
+
+    <h2 id="grudge-history">Transactions &amp; ownership</h2><p className="sub">Drafts, transactions and observed ownership, with the managers from each season.</p>
     {history.length ? <ol className="card player-timeline">{history.map(e=><TimelineEvent key={e.event_key} event={e} />)}</ol>
       : <div className="card empty-state"><strong>No Grudge records found</strong><span>This player has no linked draft, transaction or roster record in the available archives.</span></div>}
     <PlayerCoverage coverage={coverageRows[0]} />

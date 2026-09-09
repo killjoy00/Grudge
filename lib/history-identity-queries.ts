@@ -10,6 +10,7 @@ export interface FranchiseIdentity {
 
 export interface FranchiseKeyPlayerRow {
   season: number;
+  player_key: string;
   full_name: string;
   position_id: number | null;
   points: string;
@@ -53,12 +54,12 @@ export async function getFranchiseKeyForEspnId(espnTeamId: number) {
 /**
  * Top starters are joined through each season's exact franchise/team mapping.
  * This preserves historical team-id handoffs (notably CTE: 7 in 2005, 10 after)
- * and uses the canonical NFL player bridge for display identity.
+ * and carries the canonical NFL player key all the way to the UI.
  */
 export async function getFranchiseKeyPlayersByKey(franchiseKey: string) {
   return asPublic<FranchiseKeyPlayerRow>(
-    `select season, full_name, position_id, points, starts from (
-       select r.season, p.full_name, p.position_id,
+    `select season, player_key, full_name, position_id, points, starts from (
+       select r.season, p.player_key, p.full_name, p.position_id,
               round(sum(r.applied_points), 1)::text as points,
               count(*)::int as starts,
               row_number() over (

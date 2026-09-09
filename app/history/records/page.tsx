@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { DraftRecordsSection } from '../../../components/DraftRecordsSection.tsx';
 import { HistoryNav } from '../../../components/HistoryNav.tsx';
+import { PlayerCareerRecordsSection } from '../../../components/PlayerCareerRecordsSection.tsx';
 import { getDraftRecords } from '../../../lib/draft-records.ts';
 import { getCachedHistoryRecords } from '../../../lib/history-cache.ts';
 import { franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
@@ -141,14 +142,14 @@ export default async function RecordsPage() {
       <div className="page-hero">
         <div className="eyebrow">The record book</div>
         <h1>League records</h1>
-        <p>Season achievements, game marks, draft archaeology, power champions and schedule luck in one place.</p>
+        <p>Season achievements, game marks, player careers, draft archaeology, power champions and schedule luck in one place.</p>
       </div>
 
       <HistoryNav current="records" />
 
       <h2>Season records</h2>
       <h3>Highest win percentage</h3>
-      <p className="sub">Regular-season win percentage; PF/G breaks ties so 12-, 13- and 14-game schedules compare fairly.</p>
+      <p className="sub">Regular-season win percentage; PF/G breaks ties so different schedule lengths compare fairly.</p>
       <SeasonTable rows={bestSeasons} markLabel="Win %" value={(row) => `${(winRate(row.wins, row.losses, row.ties) * 100).toFixed(1)}%`} />
 
       <h3>Best offenses</h3>
@@ -156,7 +157,7 @@ export default async function RecordsPage() {
       <SeasonTable rows={offenses} markLabel="PF/G" value={(row) => `${pointsPerGame(row.points_for, row.wins, row.losses, row.ties)?.toFixed(1) ?? '—'}`} />
 
       <h3>Best champions</h3>
-      <p className="sub">Final regular-season power score: {POWER_FORMULA}. Every season from 2005 onward uses the same model.</p>
+      <p className="sub">Final regular-season power score: {POWER_FORMULA}. Every recoverable settled season from 2005 onward uses the same model.</p>
       <PowerSeasonTable rows={champions} />
 
       <h3>Best teams that did not win it</h3>
@@ -208,10 +209,12 @@ export default async function RecordsPage() {
         ))}</tbody>
       </table></div></div>
 
+      <PlayerCareerRecordsSection />
+
       <DraftRecordsSection records={draftRecords} />
 
       <h2>Power-ranking champions</h2>
-      <p className="sub">The team ranked #1 after the final regular-season week, using the same current 40/30/20/10 formula in every recoverable season.</p>
+      <p className="sub">The team ranked #1 after the final regular-season week, using the same current 40/30/20/10 formula in every recoverable settled season.</p>
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>Season</th><th>Team</th><th>Manager</th><th className="num">Power</th></tr></thead>
         <tbody>{powerChampions.map((row) => (

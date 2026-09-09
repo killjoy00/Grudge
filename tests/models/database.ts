@@ -28,6 +28,15 @@ export async function modelDatabase() {
     );
     create table draft_picks (season int, overall_pick int, round int, round_pick int,
       espn_team_id int, espn_player_id bigint, primary key(season, overall_pick));
+    create table franchises (franchise_key text primary key, current_name text not null);
+    create table franchise_season_teams (
+      season int not null,
+      franchise_key text not null references franchises(franchise_key),
+      espn_team_id int,
+      team_name text not null,
+      primary key(season, franchise_key),
+      unique(season, espn_team_id)
+    );
     create table team_franchise (season int, espn_team_id int, franchise_key text, team_name text);
     create table manager_franchise_seasons (season int, franchise_key text, manager_key text, is_primary boolean);
     create table managers (manager_key text, display_name text);

@@ -1,11 +1,15 @@
 name: Weekly pipeline
 
-# Tuesday 12:00 UTC, after Monday Night Football has finished and ESPN has
-# settled the week. Also runnable by hand, which matters: a week that fails
-# because ESPN was down needs a retry without waiting seven days.
 on:
   schedule:
     - cron: '0 12 * * 2'
+  # A marker update gives the mobile/agent workflow a safe current-season retry
+  # path. The pipeline's own data commit does not match this path, so it cannot
+  # recursively trigger itself. Push-triggered runs never send a recap.
+  push:
+    branches: [main]
+    paths:
+      - '.weekly-pipeline-request'
   workflow_dispatch:
     inputs:
       season:
@@ -18,9 +22,6 @@ on:
         default: false
         type: boolean
 
-# Never let two runs touch the database or push to the branch at once. A
-# manual retry firing while the scheduled run is mid-flight would otherwise
-# race on the data commit.
 concurrency:
   group: weekly-pipeline
   cancel-in-progress: false
@@ -31,28 +32,26 @@ permissions:
 jobs:
   pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-
       - name: Install
         run: npm ci
 
-      # Run the test suite BEFORE touching the database. If normalization is
-      # broken, the right outcome is a red build and an untouched database,
-      # not a successful run that writes wrong numbers.
+      # No production write is allowed until code tests and the database schema
+      # both agree with this commit's canonical identity contract.
       - name: Test
         run: npx tsx --test pipeline/*.test.ts lib/*.test.ts
+      - name: Verify production schema contract
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run schema:verify
 
-      # Each database-writing command is internally transactional. The commands
-      # are separate transactions, though, so the workflow stops immediately on
-      # any error and never sends a recap for a partially completed run.
       - name: Fetch ESPN data and load
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
@@ -74,57 +73,18 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/score-predictions.ts
 
-      # THE WEEK AHEAD, captured before it is played.
-      #
-      # Everything above this point is about a week that is over. This is the
-      # one step that looks forward: ESPN's projection for each side of the
-      # coming week, plus the draft board.
-      #
-      # It MUST run now rather than on demand. ESPN revises projections right
-      # up to kickoff, so a number read on Sunday is not the one it published
-      # on Tuesday -- and the record the site keeps against ESPN would then be
-      # scored against a forecast nobody was ever shown. One snapshot a week,
-      # and that snapshot is both what the page displays and what it settles
-      # against.
-      #
-      # Runs after the scoring step so a failure here cannot stop the week's
-      # real results from landing, and before the commit like everything else
-      # that writes.
       - name: Capture the week ahead
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/preview.ts
 
-      # THE RECORD BOOKS, REBUILT EVERY WEEK.
-      #
-      # Until this step existed, franchise_seasons was only ever written when a
-      # person remembered to run two scripts by hand. The rest of the history
-      # page comes out of the weekly tables and stayed current; the all-time
-      # records, the champions, and every franchise file did not. A season
-      # could finish in December and still be missing from the record books in
-      # March, with nothing anywhere to say so.
-      #
-      # Derive is a pure function of files in the repo, so it is safe to run
-      # weekly: mid-season it rebuilds exactly what is already committed and
-      # the commit step below sees no change. The week the season ends,
-      # seasonIsComplete() starts returning true, the generated CSVs gain a
-      # year, and it lands in the database on its own.
-      #
-      # Import replaces rather than merges, so re-running it is not additive.
+      # Completed-season identities/results are regenerated from the archive;
+      # mid-season this is idempotent and leaves current identities intact.
       - name: Rebuild league history
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run history:refresh
 
-      # Free-agent ownership snapshot. Runs BEFORE the commit, with the other
-      # database writes, so a kona_player_info outage fails the week loudly and
-      # writes nothing -- the same contract as everything else here. Placing it
-      # after the data commit instead would mean a failure leaves the site
-      # serving stale data, which is the worse of the two outcomes.
-      #
-      # Unlike the main load this is not gated on week completeness: a waiver
-      # trend mid-week is the entire point, and there is nothing to be final
-      # about. Two snapshots are needed before any trend exists.
       - name: Capture free-agent ownership
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
@@ -145,14 +105,10 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run models:refresh
 
-      # Only reached if every data step above succeeded. The archive is
-      # append-only history: raw payloads exactly as ESPN served them. Vercel is
-      # intentionally not touched here; the controlled deploy workflow picks up
-      # this commit at the next 08:00 America/Chicago release window.
       - name: Commit raw data
         id: commit
         run: |
-          git config user.name  'grudge-pipeline[bot]'
+          git config user.name 'grudge-pipeline[bot]'
           git config user.email 'grudge-pipeline[bot]@users.noreply.github.com'
           git add data/
           if git diff --cached --quiet; then
@@ -166,9 +122,6 @@ jobs:
             git push
           fi
 
-      # Scheduled Tuesdays send automatically. Manual runs are opt-in so a
-      # historical backfill or troubleshooting retry cannot surprise the league
-      # with an old recap. Every recipient receives a private, individual email.
       - name: Send weekly recap
         if: github.event_name == 'schedule' || inputs.send_recap == true
         env:
@@ -184,20 +137,6 @@ jobs:
             npm run recap -- --skip-if-empty
           fi
 
-      # A FAILED TUESDAY IS INVISIBLE WITHOUT THIS.
-      #
-      # This pipeline once failed on its very first database connection and
-      # went on failing for weeks. Nobody noticed, because a workflow that
-      # fails on a schedule tells no one -- there is no red X anywhere a person
-      # actually looks. The site just quietly served last week's numbers.
-      #
-      # curl rather than a node script on purpose: the failure being reported
-      # may BE `npm ci` or the test step, so this cannot depend on node_modules
-      # existing. curl and jq are on the runner image regardless.
-      #
-      # Fires for manual runs too. A retry you fired and walked away from is
-      # exactly when you want the mail, and it means the first manual run also
-      # proves the alert path works.
       - name: Alert on failure
         if: failure()
         env:
@@ -208,7 +147,7 @@ jobs:
           TRIGGER: ${{ github.event_name }}
         run: |
           if [ -z "$RESEND_API_KEY" ] || [ -z "$RECAP_FROM_EMAIL" ] || [ -z "$ALERT_EMAIL" ]; then
-            echo "::warning::Pipeline failed and NO ALERT WAS SENT. Set the PIPELINE_ALERT_EMAIL repository variable and make sure RESEND_API_KEY is present."
+            echo "::warning::Pipeline failed and NO ALERT WAS SENT. Set PIPELINE_ALERT_EMAIL and RESEND_API_KEY."
             exit 0
           fi
           body=$(jq -n \
@@ -216,8 +155,7 @@ jobs:
             --arg to "$ALERT_EMAIL" \
             --arg subject "Grudge pipeline FAILED ($TRIGGER) -- $(date -u +'%a %-d %b')" \
             --arg url "$RUN_URL" \
-            '{from: $from, to: [$to], subject: $subject,
-              text: ("The weekly Grudge pipeline failed.\n\nUntil it succeeds the site keeps serving whatever it had before this run -- standings, power rankings, odds and the trade tab will be a week stale, and no recap went out.\n\nLogs: " + $url + "\n\nThe run is safe to repeat: every write is an upsert. Fix the cause, then re-run it from the Actions tab.")}')
+            '{from: $from, to: [$to], subject: $subject, text: ("The weekly Grudge pipeline failed. The site remains on the previous successful data snapshot.\n\nLogs: " + $url)}')
           code=$(curl -sS -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H 'Content-Type: application/json' \
@@ -232,6 +170,7 @@ jobs:
             echo "### Weekly pipeline"
             echo ""
             echo "- Result: **${{ job.status }}**"
+            echo "- Schema contract checked before writes: **yes**"
             echo "- New raw data committed: **${{ steps.commit.outputs.changed || 'no' }}**"
             echo "- Recap requested: **${{ github.event_name == 'schedule' || inputs.send_recap == true }}**"
             echo "- Run: \`$(date -u +'%Y-%m-%d %H:%M UTC')\`"

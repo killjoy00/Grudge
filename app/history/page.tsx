@@ -1,3 +1,4 @@
+import { MetricBars } from '../../components/MetricBars.tsx';
 import SortableTable, { type SortColumn, type SortRow } from '../../components/SortableTable.tsx';
 import { getCachedRichChampions } from '../../lib/history-cache.ts';
 import { franchiseHref, managerHref, record, seasonHref, winRate } from '../../lib/history-format.ts';
@@ -129,8 +130,6 @@ export default async function History({
     };
   };
 
-  // A historical slice should show everyone who managed during that slice;
-  // "current" versus "former" is only meaningful on the all-time directory.
   const currentManagerRows = (hasRange
     ? managers
     : managers.filter((row) => currentManagerKeys.has(row.manager_key))).map(managerRow);
@@ -163,6 +162,11 @@ export default async function History({
     };
   });
 
+  const chartLabel = hasRange ? `${rangeFrom}–${rangeTo}` : 'All settled seasons';
+  const winLeaders = [...franchises].sort((a, b) => b.regular_wins - a.regular_wins || a.current_name.localeCompare(b.current_name)).slice(0, 10);
+  const titleLeaders = [...franchises].filter((row) => row.championships > 0)
+    .sort((a, b) => b.championships - a.championships || a.current_name.localeCompare(b.current_name));
+
   return (
     <>
       <div className="page-hero">
@@ -172,7 +176,7 @@ export default async function History({
       </div>
 
       <div className="stat-strip">
-        <div><strong>{first && last ? `${first}–${last}` : '—'}</strong><span>League span</span></div>
+        <div><strong>{first && last ? `${first}–${last}` : '—'}</strong><span>Completed league span</span></div>
         <div><strong>{champions.length}</strong><span>Seasons played</span></div>
         <div><strong>{franchises.length}</strong><span>Permanent franchises</span></div>
         <div><strong>{managers.length}</strong><span>Managers on record</span></div>
@@ -182,7 +186,35 @@ export default async function History({
         <a className="btn btn-quiet" href="/history/rivalries">Manager grudges →</a>
         <a className="btn btn-quiet" href="/history/drafts">Draft history →</a>
         <a className="btn btn-quiet" href="/history/records">Record book →</a>
+        <a className="btn btn-quiet" href="/players/records">Player records →</a>
       </nav>
+
+      <h2>Franchise record charts</h2>
+      <p className="sub">{chartLabel}. These charts use settled franchise-season results; the live {currentSeason} identity is kept separate until results exist.</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <div className="card">
+          <strong>Regular-season wins</strong>
+          <div style={{ marginTop: 14 }}><MetricBars rows={winLeaders.map((row) => ({
+            key: row.franchise_key,
+            label: row.current_name,
+            value: row.regular_wins,
+            display: `${row.regular_wins} wins`,
+            href: franchiseHref(row.franchise_key),
+            detail: record(row.regular_wins, row.regular_losses, row.regular_ties),
+          }))} /></div>
+        </div>
+        <div className="card">
+          <strong>League championships</strong>
+          <div style={{ marginTop: 14 }}><MetricBars rows={titleLeaders.map((row) => ({
+            key: row.franchise_key,
+            label: row.current_name,
+            value: row.championships,
+            display: `${row.championships} title${row.championships === 1 ? '' : 's'}`,
+            href: franchiseHref(row.franchise_key),
+            detail: row.title_seasons ?? undefined,
+          }))} empty="No championships in this range." /></div>
+        </div>
+      </div>
 
       <form className="card" method="get" style={{ marginBottom: 24 }}>
         <strong style={{ fontSize: 14 }}>Filter franchise and manager records</strong>
@@ -202,8 +234,8 @@ export default async function History({
         </div>
         <p className="note" style={{ margin: '10px 0 0' }}>
           {hasRange
-            ? `Showing ${rangeFrom}–${rangeTo} in the franchise and manager tables below. The season archive remains complete.`
-            : 'Defaults to full history. Leave “Through” blank for the latest completed season.'}
+            ? `Showing ${rangeFrom}–${rangeTo} in the charts and franchise/manager tables below. The season archive remains complete.`
+            : 'Defaults to full completed history. Leave “Through” blank for the latest settled season.'}
         </p>
       </form>
 
@@ -227,7 +259,7 @@ export default async function History({
       <div className="card">
         <SortableTable columns={archiveColumns} rows={archiveRows} rank={false} />
         <p className="note" style={{ margin: '10px 2px 0' }}>
-          Source: 2005–2017 season results come from the commissioner archive; 2018–2025 season results come from ESPN&rsquo;s archived league records.
+          Source: 2005–2017 settled results come from the commissioner archive; 2018–2025 come from ESPN&rsquo;s archived league records; {currentSeason} onward is captured by the live ESPN pipeline and enters this completed-season table only when a season settles.
         </p>
       </div>
 

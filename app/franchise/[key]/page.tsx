@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { EspnTeamLink } from '../../../components/EspnLink.tsx';
 import { HistoryNav } from '../../../components/HistoryNav.tsx';
+import { MetricBars } from '../../../components/MetricBars.tsx';
 import { espnTeamUrl } from '../../../lib/espn-links.ts';
 import { getCachedFranchiseByKey } from '../../../lib/history-cache.ts';
 import { finish, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
@@ -10,6 +11,8 @@ import {
   getFranchiseSeasonMetrics,
   type HistoryGameMoment,
 } from '../../../lib/history-profile-queries.ts';
+import { playerHref } from '../../../lib/player-data.ts';
+import { getFranchisePlayerLeaders } from '../../../lib/player-intelligence.ts';
 import { getCurrentSeason } from '../../../lib/queries.ts';
 import { getCachedRegularSeasonChampions } from '../../../lib/regular-season-history.ts';
 
@@ -43,11 +46,12 @@ function receipt(label: string, row: HistoryGameMoment | undefined) {
 
 export default async function FranchisePage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
-  const [[identity, bySeason, managers, keyPlayers], regularSeasonChampions, metrics, moments] = await Promise.all([
+  const [[identity, bySeason, managers, keyPlayers], regularSeasonChampions, metrics, moments, playerLeaders] = await Promise.all([
     getCachedFranchiseByKey(key),
     getCachedRegularSeasonChampions(),
     getFranchiseSeasonMetrics(key),
     getFranchiseGameMoments(key),
+    getFranchisePlayerLeaders(key),
   ]);
   if (!identity || bySeason.length === 0) notFound();
 
@@ -148,6 +152,23 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
         </>
       )}
 
+      {playerLeaders.length > 0 && (
+        <>
+          <h2>Franchise players</h2>
+          <p className="sub">Most tracked points actually started for this permanent franchise. Weekly lineup evidence begins in 2018 and excludes consolation games.</p>
+          <div className="card">
+            <MetricBars rows={playerLeaders.map((row) => ({
+              key: row.player_key,
+              label: `${row.full_name} · ${row.position}`,
+              value: Number(row.points),
+              display: `${Number(row.points).toFixed(1)} pts`,
+              href: playerHref(row.player_key, row.latest_season),
+              detail: `${row.starts} starts · ${row.seasons} season${row.seasons === 1 ? '' : 's'}`,
+            }))} />
+          </div>
+        </>
+      )}
+
       <h2>Identity &amp; eras</h2>
       <p className="sub">Names belong to seasons; managers belong to tenures; the franchise record persists through both.</p>
       <div className="card">
@@ -207,8 +228,8 @@ export default async function FranchisePage({ params }: { params: Promise<{ key:
                       {(playersBySeason.get(season.season) ?? []).length > 0 && (
                         <span className="tsub block">
                           {(playersBySeason.get(season.season) ?? []).map((player, index) => (
-                            <span key={`${player.full_name}-${index}`}>
-                              {index > 0 && ' · '}{player.full_name}
+                            <span key={player.player_key}>
+                              {index > 0 && ' · '}<a href={playerHref(player.player_key, player.season)}>{player.full_name}</a>
                               {player.position_id !== null && POSITIONS[player.position_id] ? ` (${POSITIONS[player.position_id]})` : ''} <strong>{player.points}</strong>
                             </span>
                           ))}

@@ -7,6 +7,9 @@ const signed = (value: number | string) => {
 };
 
 const slotLabel = (slot: number) => `1.${String(slot).padStart(2, '0')}`;
+const span = (rows: Array<{ first_season: number; last_season: number }>) => rows.length
+  ? `${Math.min(...rows.map((row) => row.first_season))}–${Math.max(...rows.map((row) => row.last_season))}`
+  : '—';
 
 export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
   const bestValueSlot = records.performance.reduce((best, row) => (
@@ -22,6 +25,9 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       : best
   ), records.performance[0]);
   const outcomesBySlot = new Map(records.outcomes.map((row) => [row.draft_slot, row]));
+  const performanceRange = span(records.performance);
+  const outcomeRange = span(records.outcomes);
+  const draftRange = span(records.franchises);
 
   return (
     <>
@@ -60,15 +66,15 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       </table></div></div>
 
       <p className="note">
-        Draft-quality columns use complete, published ten-team drafts from 2008 onward, excluding 2020.
+        Draft-quality columns use complete, published ten-team drafts from {performanceRange}, excluding 2020.
         “Best draft” and “worst draft” mean the highest and lowest class value in that season; exact value ties count for each tied class.
-        Reg. Champ. and Champ use every recovered draft slot from 2005–2025, excluding 2020, and match the History page&rsquo;s regular-season champion and championship records.
+        Reg. Champ. and Champ use settled season outcomes from {outcomeRange}, excluding 2020. A live draft is not added to those denominators until its season result exists.
       </p>
 
       <h3>Franchise draft-order history</h3>
       <p className="sub">
-        Most common slot and 1.01 counts use every recovered first round from 2005–2025. The league had eight teams in 2005,
-        and the 2006 archive is missing the row for overall pick #8, so a few franchises have 19 observed slots instead of 20.
+        Most common slot and 1.01 counts use every recovered first round from {draftRange}. This can include the current season&rsquo;s draft as soon as the board is captured.
+        The league had eight teams in 2005, and the 2006 archive is missing the row for overall pick #8, so a few franchises have one fewer observed slot.
       </p>
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>Franchise</th><th>Most common slot</th><th className="num">Times there</th><th className="num">1.01s</th><th className="num">Draft slots on file</th></tr></thead>
