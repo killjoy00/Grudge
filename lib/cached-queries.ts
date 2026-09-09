@@ -12,13 +12,15 @@ import { allTimeTradeRecords, seasonTrades } from './trade-history-queries.ts';
 import {
   getLuck,
   getPlayedSeasons,
-  getPreseasonTeams,
   getPlayoffOdds,
-  getPowerRankings,
-  getSeasonChampions,
   getSeasonStandings,
   getStandings,
 } from './queries.ts';
+import {
+  getIdentityPowerRankings,
+  getIdentitySeasonField,
+  getIdentitySeasonList,
+} from './season-identity-queries.ts';
 
 export const getCachedPlayedSeasons = unstable_cache(
   getPlayedSeasons,
@@ -32,30 +34,30 @@ export const getCachedStandings = unstable_cache(
   { revalidate: 3600 }
 );
 
-/** A season's standings plus the score-derived schedule-luck index. */
+/** A settled season's standings plus the score-derived schedule-luck index. */
 export const getCachedSeasonTable = unstable_cache(
   async (season: number) => Promise.all([getSeasonStandings(season), getLuck(season)]),
   ['season-table'],
   { revalidate: 3600 }
 );
 
-/** The ten teams of a season that has not kicked off yet, at 0-0. */
+/** The franchise field of a season, valid before its first result. */
 export const getCachedPreseasonTeams = unstable_cache(
-  getPreseasonTeams,
-  ['preseason-teams'],
+  getIdentitySeasonField,
+  ['season-identity-field-v2'],
   { revalidate: 3600 }
 );
 
-/** Every season on record, newest first. */
+/** Every canonical franchise season, including a current season with no results. */
 export const getCachedSeasonList = unstable_cache(
-  getSeasonChampions,
-  ['season-list'],
-  { revalidate: 86400 }
+  getIdentitySeasonList,
+  ['season-identity-list-v2'],
+  { revalidate: 3600 }
 );
 
 export const getCachedPowerRankings = unstable_cache(
-  getPowerRankings,
-  ['power-rankings'],
+  getIdentityPowerRankings,
+  ['power-rankings-identity-v2'],
   { revalidate: 3600 }
 );
 
