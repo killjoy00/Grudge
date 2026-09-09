@@ -85,6 +85,6 @@ export const getCachedSeasonTrades = unstable_cache(
 
 export const getCachedTradeRecords = unstable_cache(
   allTimeTradeRecords,
-  ['trade-records-v3'],
+  ['trade-records-v4-canonical-franchises'],
   { revalidate: 3600 }
 );
