@@ -84,9 +84,10 @@ if (dryRun) {
   process.exit(0);
 }
 
-// Historical manager-season attribution is authoritative, but manager identities
-// themselves are durable and may be referenced by provider crosswalks.
-const prune = historyImportPruneStatements(managers.length > 0, managerSeasons.length > 0);
+// Historical attribution is authoritative only for the settled/imported season
+// set. Durable manager identities and newer identity-only season assignments
+// (for example 2026 before results exist) must survive this refresh.
+const prune = historyImportPruneStatements(managerSeasons);
 
 const seasonTeams = seasons.map(({ season, franchise_key, team_name, espn_team_id }) => ({
   season, franchise_key, team_name, espn_team_id,
