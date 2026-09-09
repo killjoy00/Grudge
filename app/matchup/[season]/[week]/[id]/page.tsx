@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation';
 
 import { EspnMatchupLink } from '../../../../../components/EspnLink.tsx';
 import { getMatchupTeamContext } from '../../../../../lib/game-context.ts';
+import { franchiseHref } from '../../../../../lib/history-format.ts';
 import { getManagerGrudgeForTeams, type ManagerGrudgeGame } from '../../../../../lib/rivalry-queries.ts';
+import { getSeasonFranchiseMap } from '../../../../../lib/season-identity-queries.ts';
 import {
   getTeamStars,
   getWeekMatchups,
@@ -46,13 +48,15 @@ export default async function MatchupPreview({
   const matchup = matchups.find((row) => row.espn_matchup_id === matchupId);
   if (!matchup) notFound();
 
-  const [contexts, projectionRows, starRows, grudge] = await Promise.all([
+  const [contexts, projectionRows, starRows, grudge, seasonIdentities] = await Promise.all([
     getMatchupTeamContext(season, week, matchup.home_team_id, matchup.away_team_id),
     getWeekProjections(season, week),
     getTeamStars(season, week),
     getManagerGrudgeForTeams(season, matchup.away_team_id, matchup.home_team_id),
+    getSeasonFranchiseMap(season),
   ]);
 
+  const franchiseByTeam = new Map(seasonIdentities.map((row) => [row.espn_team_id, row.franchise_key]));
   const byTeam = new Map(contexts.map((row) => [row.espn_team_id, row]));
   const away = byTeam.get(matchup.away_team_id);
   const home = byTeam.get(matchup.home_team_id);
@@ -86,31 +90,36 @@ export default async function MatchupPreview({
     ? `/grudge/${encodeURIComponent(awayManager.manager_key)}/${encodeURIComponent(homeManager.manager_key)}`
     : '/history/rivalries';
 
-  const teamCard = (teamId: number, name: string, ctx: typeof away) => (
-    <div style={{ flex: '1 1 260px' }}>
-      <div className="section-kicker">{name}</div>
-      <h2 style={{ marginTop: 4 }}><a href={`/team/${teamId}`}>{name}</a></h2>
-      <div className="stat-strip three">
-        <div><span>Record entering week</span><strong>{ctx ? record(ctx.wins, ctx.losses, ctx.ties) : '0-0'}</strong></div>
-        <div><span>Points for</span><strong>{ctx?.points_for ?? '0.0'}</strong></div>
-        <div><span>Power rank</span><strong>{ctx?.power_rank ? `#${ctx.power_rank}` : '—'}</strong></div>
-      </div>
-      {(stars.get(teamId) ?? []).length > 0 && (
-        <div className="card" style={{ marginTop: 12 }}>
-          <strong style={{ fontSize: 14 }}>{starBasis === 'draft' ? 'Draft anchors' : 'Top starters so far'}</strong>
-          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
-            {(stars.get(teamId) ?? []).map((player) => (
-              <li key={player.espn_player_id} style={{ marginBottom: 6 }}>
-                <strong>{POSITIONS[player.default_position_id ?? 0] ?? '—'}</strong>{' '}
-                {player.full_name ?? 'Unknown player'}
-                <span className="tsub"> · {player.detail}</span>
-              </li>
-            ))}
-          </ul>
+  const teamCard = (teamId: number, name: string, ctx: typeof away) => {
+    const franchiseKey = franchiseByTeam.get(teamId);
+    return (
+      <div style={{ flex: '1 1 260px' }}>
+        <div className="section-kicker">{name}</div>
+        <h2 style={{ marginTop: 4 }}>
+          {franchiseKey ? <a href={franchiseHref(franchiseKey)}>{name}</a> : name}
+        </h2>
+        <div className="stat-strip three">
+          <div><span>Record entering week</span><strong>{ctx ? record(ctx.wins, ctx.losses, ctx.ties) : '0-0'}</strong></div>
+          <div><span>Points for</span><strong>{ctx?.points_for ?? '0.0'}</strong></div>
+          <div><span>Power rank</span><strong>{ctx?.power_rank ? `#${ctx.power_rank}` : '—'}</strong></div>
         </div>
-      )}
-    </div>
-  );
+        {(stars.get(teamId) ?? []).length > 0 && (
+          <div className="card" style={{ marginTop: 12 }}>
+            <strong style={{ fontSize: 14 }}>{starBasis === 'draft' ? 'Draft anchors' : 'Top starters so far'}</strong>
+            <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+              {(stars.get(teamId) ?? []).map((player) => (
+                <li key={player.espn_player_id} style={{ marginBottom: 6 }}>
+                  <strong>{POSITIONS[player.default_position_id ?? 0] ?? '—'}</strong>{' '}
+                  {player.full_name ?? 'Unknown player'}
+                  <span className="tsub"> · {player.detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
