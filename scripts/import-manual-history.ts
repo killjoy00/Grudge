@@ -12,7 +12,8 @@ import {
 } from '../lib/manual-history.ts';
 import { parseFranchiseIdMap } from '../lib/history-archive.ts';
 import { attachEspnTeamIds } from '../lib/history-id-map.ts';
-import { connect, runTransaction, stmt, upsert } from '../pipeline/db.ts';
+import { historyImportPruneStatements } from '../lib/history-import.ts';
+import { connect, runTransaction, upsert } from '../pipeline/db.ts';
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -83,13 +84,10 @@ if (dryRun) {
   process.exit(0);
 }
 
-/** Manager attribution is authoritative, not additive. */
-const prune = managers.length > 0 && managerSeasons.length > 0
-  ? [
-    stmt('delete from public.manager_franchise_seasons'),
-    stmt('delete from public.managers'),
-  ]
-  : [];
+// Historical attribution is authoritative only for the settled/imported season
+// set. Durable manager identities and newer identity-only season assignments
+// (for example 2026 before results exist) must survive this refresh.
+const prune = historyImportPruneStatements(managerSeasons);
 
 const seasonTeams = seasons.map(({ season, franchise_key, team_name, espn_team_id }) => ({
   season, franchise_key, team_name, espn_team_id,
