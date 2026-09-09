@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { modelDatabase, execute } from '../tests/models/database.ts';
-import { observedPlayerWeeks, scoreStatements } from './player-week.ts';
+import { canonicalPlayerKey, observedPlayerWeeks, scoreStatements } from './player-week.ts';
 import { tradeWriteStatements } from './trade-identity.ts';
 import { detectTrades } from './trade-history.ts';
 import { loadTradeContext, type ModelQuery } from './model-context.ts';
@@ -15,6 +15,13 @@ test('canonical scoring, trade reconciliation and publication execute in Postgre
   const db = await modelDatabase();
   const query: ModelQuery = async (sql, params = []) => (await db.query(sql, params)).rows as never;
   try {
+    for (const espnPlayerId of [10, 20, 30]) {
+      const playerKey = canonicalPlayerKey(espnPlayerId);
+      await db.query('insert into nfl_players(player_key) values($1) on conflict do nothing', [playerKey]);
+      await db.query(`insert into nfl_player_aliases(season,espn_player_id,player_key) values(2025,$1,$2)
+        on conflict (season,espn_player_id) do update set player_key=excluded.player_key`, [espnPlayerId, playerKey]);
+    }
+
     await t.test('scoring is independent of ownership, idempotent, and never hides conflicts', async () => {
       const scores = observedPlayerWeeks([
         { season:2025,week:1,espn_player_id:10,applied_points:10 },
@@ -44,11 +51,16 @@ test('canonical scoring, trade reconciliation and publication execute in Postgre
     await t.test('old IDs, votes and manual corrections survive rebuilds', async () => {
       await db.exec(`insert into seasons values(2025,4,2,false);
         insert into trades(season,trade_id,effective_week,team_a,team_b) values(2025,'old-sequence-id',3,1,2);
-        insert into trade_players values(2025,'old-sequence-id',10,1,2),(2025,'old-sequence-id',20,2,1);
         insert into trade_votes values('member',2025,'old-sequence-id',1);`);
+      await db.query(`insert into trade_players(season,trade_id,player_key,espn_player_id,from_team_id,to_team_id)
+        values(2025,'old-sequence-id',$1,10,1,2),(2025,'old-sequence-id',$2,20,2,1)`,
+      [canonicalPlayerKey(10), canonicalPlayerKey(20)]);
       await execute(db,tradeWriteStatements(2025,[trade]));
-      let rows = (await db.query<{trade_id:string;evidence_status:string}>('select trade_id,evidence_status from trades')).rows;
+      let rows = (await db.query<{trade_id:string;evidence_status:string;revision_hash:string|null}>('select trade_id,evidence_status,revision_hash from trades')).rows;
       assert.equal(rows.length,1); assert.equal(rows[0]!.trade_id,'old-sequence-id');
+      assert.ok(rows[0]!.revision_hash,'rebuild must stamp a canonical trade revision');
+      const tradePlayers = (await db.query<{espn_player_id:number;player_key:string}>('select espn_player_id,player_key from trade_players order by espn_player_id')).rows;
+      assert.deepEqual(tradePlayers.map((p)=>[Number(p.espn_player_id),p.player_key]), [[10,canonicalPlayerKey(10)],[20,canonicalPlayerKey(20)]]);
       await execute(db,tradeWriteStatements(2025,[]));
       assert.equal((await db.query<{evidence_status:string}>('select evidence_status from trades')).rows[0]!.evidence_status,'needs_review');
       assert.equal((await db.query('select * from trade_votes')).rows.length,1);
@@ -73,6 +85,7 @@ test('canonical scoring, trade reconciliation and publication execute in Postgre
       assert.equal(production.graded,true); assert.equal(production.b.playerWeeks,0);
       assert.equal(loaded.context.points.find((p)=>p.espn_player_id===10)?.points,10);
       const saved=(await db.query<{revision_hash:string}>('select revision_hash from trades')).rows[0]!;
+      assert.ok(saved.revision_hash,'publication requires the persisted canonical trade revision');
       await execute(db,tradePublicationStatements(2025,[{...trade,trade_id:'old-sequence-id',revision_hash:saved.revision_hash}],loaded.context,loaded.fingerprintInput,loaded.evidence));
       assert.equal((await db.query(PUBLISHED_TRADE_SQL)).rows.length,1);
       await db.exec("update trades set revision_hash='corrected'");
