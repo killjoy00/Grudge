@@ -52,9 +52,9 @@ export const PLAYER_HISTORY_SQL = `with aliases as (
   union all
   select 'trade:'||t.season||':'||t.trade_id, t.season, t.effective_week, null, 'trade',
     p.to_team_id, p.from_team_id, t.trade_id, t.accepted_at, t.confidence
-  from public.trade_players p join aliases a using (season, espn_player_id)
+  from public.trade_players p
     join public.trades t on t.season = p.season and t.trade_id = p.trade_id
-  where t.evidence_status = 'active'
+  where p.player_key = $1 and t.evidence_status = 'active'
   union all
   select 'transaction:'||t.espn_transaction_id||':'||i.item_index, t.season, t.week, null,
     case when i.item_type = 'DROP' then 'drop' when t.type = 'WAIVER' then 'waiver' else 'add' end,
@@ -97,10 +97,12 @@ order by e.season desc, coalesce(e.week, case when e.kind = 'draft' then 0 else 
 
 export const PLAYER_CONTRIBUTIONS_SQL = `select r.season, tf.team_name, tf.franchise_key,
   count(*)::int as roster_weeks, count(*) filter (where r.is_starter)::int as starts,
-  case when count(*) filter (where r.is_starter) = count(r.applied_points) filter (where r.is_starter)
-    then round(coalesce(sum(r.applied_points) filter (where r.is_starter), 0), 2)::text end as points
+  case when count(*) filter (where r.is_starter) = count(s.points) filter (where r.is_starter)
+    then round(coalesce(sum(s.points) filter (where r.is_starter), 0), 2)::text end as points
   from public.roster_entries r join public.nfl_player_aliases a using (season, espn_player_id)
   join public.weeks w on w.season = r.season and w.week = r.week and w.results_complete
+  left join public.player_week_scores s
+    on s.season = r.season and s.week = r.week and s.player_key = a.player_key
   left join public.team_franchise tf on tf.season = r.season and tf.espn_team_id = r.espn_team_id
   where a.player_key = $1 and exists (select 1 from public.matchups m where m.season = r.season and m.week = r.week
     and r.espn_team_id in (m.home_team_id, m.away_team_id) and ${trackedMatchupSql('m')})
