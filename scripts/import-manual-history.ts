@@ -67,7 +67,7 @@ for (const row of managerSeasons) {
     throw new Error(`${row.manager_key}: manager is missing from the manager file.`);
   }
   if (!seasonKeys.has(`${row.season}:${row.franchise_key}`)) {
-    throw new Error(`${row.season} ${row.franchise_key}: manager assignment has no season result.`);
+    throw new Error(`${row.season} ${row.franchise_key}: manager assignment has no franchise-season identity.`);
   }
 }
 
@@ -83,19 +83,20 @@ if (dryRun) {
   process.exit(0);
 }
 
-/**
- * The manager files are authoritative, not additive: the derive step emits
- * every assignment the archive knows about, so a manager the league stops
- * crediting has to disappear rather than linger from an earlier import. Both
- * tables are therefore replaced, in the one transaction, and only when a
- * non-empty pair was supplied -- a missing or empty file prunes nothing.
- */
+/** Manager attribution is authoritative, not additive. */
 const prune = managers.length > 0 && managerSeasons.length > 0
   ? [
     stmt('delete from public.manager_franchise_seasons'),
     stmt('delete from public.managers'),
   ]
   : [];
+
+const seasonTeams = seasons.map(({ season, franchise_key, team_name, espn_team_id }) => ({
+  season, franchise_key, team_name, espn_team_id,
+}));
+const seasonResults = seasons.map(({
+  team_name: _teamName, espn_team_id: _espnTeamId, ...result
+}) => result);
 
 const statements = [
   ...prune,
@@ -112,14 +113,19 @@ const statements = [
     ['manager_key']
   ),
   upsert(
-    'public.franchise_seasons',
+    'public.franchise_season_teams',
+    ['season', 'franchise_key', 'team_name', 'espn_team_id'],
+    seasonTeams,
+    ['season', 'franchise_key']
+  ),
+  upsert(
+    'public.franchise_season_results',
     [
-      'season', 'franchise_key', 'team_name', 'espn_team_id', 'regular_wins',
-      'regular_losses', 'regular_ties', 'regular_points_for', 'regular_points_against',
-      'playoff_wins', 'playoff_losses', 'final_place', 'is_champion',
-      'is_runner_up', 'source', 'source_note',
+      'season', 'franchise_key', 'regular_wins', 'regular_losses', 'regular_ties',
+      'regular_points_for', 'regular_points_against', 'playoff_wins', 'playoff_losses',
+      'final_place', 'is_champion', 'is_runner_up', 'source', 'source_note',
     ],
-    seasons,
+    seasonResults,
     ['season', 'franchise_key']
   ),
   upsert(
@@ -131,4 +137,4 @@ const statements = [
 ].filter((statement) => statement !== null);
 
 await runTransaction(connect(), statements);
-console.log('League history imported in one transaction.');
+console.log('League history identities and results imported in one transaction.');
