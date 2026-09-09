@@ -1,17 +1,22 @@
 import { stmt, type Stmt } from '../pipeline/db.ts';
 
 /**
- * Historical manager attribution is authoritative, but manager identities are
- * durable. Refreshing the commissioner-authored season assignments therefore
- * replaces manager_franchise_seasons without deleting rows from managers.
+ * Historical manager attribution is authoritative only for the seasons being
+ * imported. Manager identities are durable, and live/current-season manager
+ * assignments can exist before a season has settled.
  *
- * This is especially important once provider crosswalks such as
- * manager_espn_members reference those durable manager keys.
+ * Refreshing commissioner-authored history therefore replaces attribution only
+ * inside the imported season set. It never deletes rows from managers and never
+ * wipes a newer identity-only season such as 2026.
  */
 export function historyImportPruneStatements(
-  hasManagers: boolean,
-  hasManagerSeasons: boolean
+  managerSeasons: Array<{ season: number }>
 ): Stmt[] {
-  if (!hasManagers || !hasManagerSeasons) return [];
-  return [stmt('delete from public.manager_franchise_seasons')];
+  const seasons = [...new Set(managerSeasons.map((row) => row.season))].sort((a, b) => a - b);
+  if (seasons.length === 0) return [];
+  const placeholders = seasons.map((_, index) => `$${index + 1}`).join(', ');
+  return [stmt(
+    `delete from public.manager_franchise_seasons where season in (${placeholders})`,
+    seasons
+  )];
 }
