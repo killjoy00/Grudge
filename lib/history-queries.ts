@@ -35,6 +35,7 @@ export interface PlayerWeekRecordRow {
 export interface FranchiseSeasonRow {
   season: number;
   team_name: string;
+  espn_team_id: number | null;
   wins: number;
   losses: number;
   ties: number;
@@ -69,7 +70,7 @@ export interface FranchiseManagerRow {
 
 export async function getFranchiseSeasonsByKey(franchiseKey: string) {
   return asPublic<FranchiseSeasonRow>(
-    `select fs.season, fs.team_name,
+    `select fs.season, fs.team_name, fs.espn_team_id,
             fs.regular_wins as wins, fs.regular_losses as losses, fs.regular_ties as ties,
             round(fs.regular_points_for, 1)::text as points_for,
             round(fs.regular_points_against, 1)::text as points_against,
