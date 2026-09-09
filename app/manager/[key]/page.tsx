@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { HistoryNav } from '../../../components/HistoryNav.tsx';
+import { MetricBars } from '../../../components/MetricBars.tsx';
 import { getCachedManagerFile } from '../../../lib/history-cache.ts';
 import { finish, franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
 import {
@@ -9,9 +10,11 @@ import {
   getManagerSeasonMetrics,
   type HistoryGameMoment,
 } from '../../../lib/history-profile-queries.ts';
+import { playerHref } from '../../../lib/player-data.ts';
+import { getManagerPlayerLeaders } from '../../../lib/player-intelligence.ts';
 import { getManagerGrudges } from '../../../lib/rivalry-queries.ts';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 function signed(value: string | null) {
   if (value === null) return '—';
@@ -37,12 +40,13 @@ function receipt(label: string, row: HistoryGameMoment | undefined) {
 
 export default async function ManagerPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
-  const [[profile, seasons], metrics, moments, regularTitles, grudges] = await Promise.all([
+  const [[profile, seasons], metrics, moments, regularTitles, grudges, playerLeaders] = await Promise.all([
     getCachedManagerFile(key),
     getManagerSeasonMetrics(key),
     getManagerGameMoments(key),
     getManagerRegularSeasonTitleSeasons(key),
     getManagerGrudges(key),
+    getManagerPlayerLeaders(key),
   ]);
   if (!profile || seasons.length === 0) notFound();
 
@@ -109,6 +113,23 @@ export default async function ManagerPage({ params }: { params: Promise<{ key: s
             {receipt('Highest score', momentByKind.get('highest_score'))}
             {receipt('Biggest win', momentByKind.get('biggest_win'))}
             {receipt('Closest game', momentByKind.get('closest_game'))}
+          </div>
+        </>
+      )}
+
+      {playerLeaders.length > 0 && (
+        <>
+          <h2>Career players</h2>
+          <p className="sub">Most tracked points actually started for this manager, across every franchise they controlled. Weekly lineup evidence begins in 2018 and excludes consolation games.</p>
+          <div className="card">
+            <MetricBars rows={playerLeaders.map((row) => ({
+              key: row.player_key,
+              label: `${row.full_name} · ${row.position}`,
+              value: Number(row.points),
+              display: `${Number(row.points).toFixed(1)} pts`,
+              href: playerHref(row.player_key, row.latest_season),
+              detail: `${row.starts} starts · ${row.seasons} season${row.seasons === 1 ? '' : 's'}`,
+            }))} />
           </div>
         </>
       )}
