@@ -1,14 +1,6 @@
 import 'server-only';
 
-/**
- * Reads for the public trade tab.
- *
- * SQL and shaping only. The valuation model is pipeline/trade-value.ts and the
- * reconstruction is pipeline/trade-history.ts -- both pure, both tested. The
- * split is the same one the trade board uses and for the same reason: a
- * `server-only` module cannot be loaded by a test, so nothing with a judgement
- * in it belongs here.
- */
+/** Reads for the public trade tab. */
 import { asPublic, asUser } from './db.ts';
 import { publishedTrades, unpublishedTrade } from './published-trades.ts';
 import {
@@ -27,14 +19,13 @@ export interface TradeRow {
   team_b: number;
   accepted_at: string | null;
   espn_transaction_id: string | null;
-  /** How the trade was established. See pipeline/trade-history.ts. */
   confidence: 'ledger' | 'reciprocal' | 'manual';
-  /** Votes are accepted until this moment. Null on trades imported by hand. */
   voting_closes_at: string | null;
 }
 
 export interface TradePlayerRow {
   trade_id: string;
+  player_key: string;
   espn_player_id: number;
   full_name: string | null;
   default_position_id: number | null;
@@ -45,23 +36,14 @@ export interface TradePlayerRow {
 export interface TradeCard {
   trade: TradeRow;
   teamNames: Record<number, string>;
-  /** What each side received, in the order the page reads them out. */
   received: Record<number, TradePlayerRow[]>;
   value: TradeValue;
 }
 
-/**
- * Whether a trade is still open for votes.
- *
- * Deliberately NOT computed inside seasonTrades: that result is cached for an
- * hour, and a boolean baked at cache time would keep a closed trade open until
- * the entry expired. The closing timestamp is cacheable; the comparison is not.
- */
 export function votingOpen(trade: Pick<TradeRow, 'voting_closes_at'>): boolean {
   return trade.voting_closes_at !== null && Date.parse(trade.voting_closes_at) > Date.now();
 }
 
-/** Seasons with at least one reconstructed trade, newest first. */
 export async function tradeSeasons(): Promise<number[]> {
   const rows = await asPublic<{ season: number }>(
     "select distinct season from public.trades where evidence_status = 'active' order by season desc"
@@ -80,19 +62,14 @@ async function tradesOf(season?: number): Promise<TradeRow[]> {
   );
 }
 
-/** Value every trade in a season. Returns an empty map for a season with none. */
-async function valueSeason(
-  season: number, trades: TradeRow[]
-): Promise<Map<string, TradeValue>> {
+async function valueSeason(season: number, trades: TradeRow[]): Promise<Map<string, TradeValue>> {
   const mine = trades.filter((t) => t.season === season);
   if (mine.length === 0) return new Map();
-
   const published = new Map((await publishedTrades(season)).map((r) => [r.trade_id, r.fit]));
   return new Map(mine.map((t) => [t.trade_id,
     published.get(t.trade_id) ?? unpublishedTrade(t.team_a, t.team_b)]));
 }
 
-/** Every trade in a season, valued, newest first. */
 export async function seasonTrades(season: number): Promise<TradeCard[]> {
   const trades = await tradesOf(season);
   if (trades.length === 0) return [];
@@ -100,20 +77,17 @@ export async function seasonTrades(season: number): Promise<TradeCard[]> {
   const [values, players, teams] = await Promise.all([
     valueSeason(season, trades),
     asPublic<TradePlayerRow>(
-      `select tp.trade_id, tp.espn_player_id, coalesce(profile.full_name, p.full_name) as full_name,
-              coalesce(profile.position_id, p.default_position_id) as default_position_id,
-              tp.from_team_id, tp.to_team_id
+      `select tp.trade_id, pi.player_key, tp.espn_player_id, pi.full_name,
+              pi.position_id as default_position_id, tp.from_team_id, tp.to_team_id
          from public.trade_players tp
-         left join public.players p using (espn_player_id)
-         left join public.player_season_profiles profile
-           on profile.season = tp.season and profile.espn_player_id = tp.espn_player_id
+         join public.player_identity pi
+           on pi.season = tp.season and pi.espn_player_id = tp.espn_player_id
         where tp.season = $1
-        order by tp.trade_id, p.default_position_id nulls last, p.full_name`,
+        order by tp.trade_id, pi.position_id nulls last, pi.full_name`,
       [season]
     ),
     asPublic<{ espn_team_id: number; name: string }>(
-      'select espn_team_id, name from public.teams where season = $1',
-      [season]
+      'select espn_team_id, name from public.teams where season = $1', [season]
     ),
   ]);
 
@@ -132,13 +106,6 @@ export async function seasonTrades(season: number): Promise<TradeCard[]> {
   });
 }
 
-/**
- * All-time trade standing, folded together by franchise so a manager who has
- * been three different team names is still one row.
- *
- * Reads immutable published results, then folds them by franchise. Historical
- * rosters and counterfactual lineups are computed only by the refresh pipeline.
- */
 export async function allTimeTradeRecords(): Promise<FranchiseTradeRecord[]> {
   const trades = await tradesOf();
   if (trades.length === 0) return [];
@@ -172,20 +139,10 @@ export async function allTimeTradeRecords(): Promise<FranchiseTradeRecord[]> {
 }
 
 export interface VoteState {
-  /** The team this member voted for, or null. */
   mine: number | null;
-  /** Tally, visible only once you have voted. Empty otherwise. */
   tally: Record<number, number>;
 }
 
-/**
- * This member's votes and, for trades they have voted on, the league tally.
- *
- * The tally is hidden until you vote, which is a database policy and not a
- * decision made here -- an unvoted trade returns no other rows no matter what
- * this function asks for. The same rule the predictions page runs on: read the
- * room afterwards, not before.
- */
 export async function tradeVotes(season: number): Promise<Record<string, VoteState>> {
   const [mine, tallies] = await asUser<Record<string, unknown>>((q) => [
     q(`select trade_id, voted_team_id
