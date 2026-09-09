@@ -22,6 +22,7 @@ export default async function PlayersPage({ searchParams }: {searchParams: Promi
   return <>
     <section className="page-hero compact-hero"><div className="eyebrow">The player ledger</div>
       <h1>Every player. Every chapter.</h1><p>NFL production and the Grudge history behind it. Find a player, compare a stretch of weeks, or follow a career through the league.</p>
+      <p style={{ marginTop: 14 }}><a className="btn btn-quiet" href="/players/records">Grudge player records →</a></p>
     </section>
     <PlayerFilters key={JSON.stringify(filters)} filters={filters} seasons={seasons} />
     <div className="player-results-heading"><div><h2>{filters.season} {filters.position || 'All players'}</h2>
