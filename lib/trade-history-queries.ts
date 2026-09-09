@@ -36,6 +36,7 @@ export interface TradePlayerRow {
 export interface TradeCard {
   trade: TradeRow;
   teamNames: Record<number, string>;
+  teamFranchises: Record<number, string>;
   received: Record<number, TradePlayerRow[]>;
   value: TradeValue;
 }
@@ -77,26 +78,37 @@ export async function seasonTrades(season: number): Promise<TradeCard[]> {
   const [values, players, teams] = await Promise.all([
     valueSeason(season, trades),
     asPublic<TradePlayerRow>(
-      `select tp.trade_id, pi.player_key, tp.espn_player_id, pi.full_name,
+      `select tp.trade_id, tp.player_key, tp.espn_player_id, np.full_name,
               pi.position_id as default_position_id, tp.from_team_id, tp.to_team_id
          from public.trade_players tp
-         join public.player_identity pi
+         join public.nfl_players np on np.player_key = tp.player_key
+         left join public.player_identity pi
            on pi.season = tp.season and pi.espn_player_id = tp.espn_player_id
+          and pi.player_key = tp.player_key
         where tp.season = $1
-        order by tp.trade_id, pi.position_id nulls last, pi.full_name`,
+        order by tp.trade_id, pi.position_id nulls last, np.full_name`,
       [season]
     ),
-    asPublic<{ espn_team_id: number; name: string }>(
-      'select espn_team_id, name from public.teams where season = $1', [season]
+    asPublic<{ espn_team_id: number; name: string; franchise_key: string | null }>(
+      `select t.espn_team_id, t.name, fst.franchise_key
+         from public.teams t
+         left join public.franchise_season_teams fst
+           on fst.season = t.season and fst.espn_team_id = t.espn_team_id
+        where t.season = $1`,
+      [season]
     ),
   ]);
 
   const teamNames = Object.fromEntries(teams.map((t) => [t.espn_team_id, t.name]));
+  const teamFranchises = Object.fromEntries(
+    teams.filter((t) => t.franchise_key !== null).map((t) => [t.espn_team_id, t.franchise_key!])
+  );
   return trades.map((trade) => {
     const mine = players.filter((p) => p.trade_id === trade.trade_id);
     return {
       trade,
       teamNames,
+      teamFranchises,
       received: {
         [trade.team_a]: mine.filter((p) => p.to_team_id === trade.team_a),
         [trade.team_b]: mine.filter((p) => p.to_team_id === trade.team_b),
