@@ -17,8 +17,9 @@ test('canonical scoring, trade reconciliation and publication execute in Postgre
   try {
     for (const espnPlayerId of [10, 20, 30]) {
       const playerKey = canonicalPlayerKey(espnPlayerId);
-      await db.query('insert into nfl_players(player_key) values($1) on conflict do nothing', [playerKey]);
-      await db.query(`insert into nfl_player_aliases(season,espn_player_id,player_key) values(2025,$1,$2)
+      await db.query(`insert into nfl_players(player_key,full_name,position,bio)
+        values($1,$2,'RB','{}') on conflict do nothing`, [playerKey, `Player ${espnPlayerId}`]);
+      await db.query(`insert into nfl_player_aliases(season,espn_player_id,player_key,match_method) values(2025,$1,$2,'provider_id')
         on conflict (season,espn_player_id) do update set player_key=excluded.player_key`, [espnPlayerId, playerKey]);
     }
 
