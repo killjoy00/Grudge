@@ -126,11 +126,11 @@ export async function allTimeTradeRecords(): Promise<FranchiseTradeRecord[]> {
   const [perSeason, franchises] = await Promise.all([
     Promise.all(seasons.map((s) => valueSeason(s, trades))),
     asPublic<{
-      season: number; espn_team_id: number; franchise_key: string | null;
+      season: number; espn_team_id: number; franchise_key: string;
       current_name: string | null; team_name: string;
     }>(
-      `select tf.season, tf.espn_team_id, tf.franchise_key, f.current_name, tf.team_name
-         from public.team_franchise tf
+      `select fst.season, fst.espn_team_id, fst.franchise_key, f.current_name, fst.team_name
+         from public.franchise_season_teams fst
          left join public.franchises f using (franchise_key)`
     ),
   ]);
@@ -143,7 +143,7 @@ export async function allTimeTradeRecords(): Promise<FranchiseTradeRecord[]> {
     trades.map((t) => ({ trade_id: `${t.season}:${t.trade_id}`, value: values.get(`${t.season}:${t.trade_id}`)! })),
     (season, teamId) => {
       const f = byTeam.get(`${season}:${teamId}`);
-      if (!f?.franchise_key) return null;
+      if (!f) return null;
       return { key: f.franchise_key, name: f.current_name ?? f.team_name };
     },
     (tradeId) => seasonOf.get(tradeId) ?? 0
