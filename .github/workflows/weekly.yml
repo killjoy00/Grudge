@@ -3,6 +3,13 @@ name: Weekly pipeline
 on:
   schedule:
     - cron: '0 12 * * 2'
+  # A marker update gives the mobile/agent workflow a safe current-season retry
+  # path. The pipeline's own data commit does not match this path, so it cannot
+  # recursively trigger itself. Push-triggered runs never send a recap.
+  push:
+    branches: [main]
+    paths:
+      - '.weekly-pipeline-request'
   workflow_dispatch:
     inputs:
       season:
