@@ -38,17 +38,22 @@ export default async function Standings({
           <div className="eyebrow">{season} season</div>
           <h1>The table</h1>
         </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+          <a className="btn btn-quiet" href={seasonHref(season)}>Open the {season} season file</a>
+          <a className="btn btn-quiet" href="/history/records">League records</a>
+        </div>
         <div className="card">
           <div className="scroll">
             <table>
               <thead><tr><th className="rank">#</th><th>Team</th><th className="num">Record</th><th className="num">Games</th></tr></thead>
               <tbody>
-                {teams.map((team, index) => (
-                  <tr key={team.espn_team_id}>
-                    <td className="rank">{index + 1}</td>
+                {teams.map((team) => (
+                  <tr key={team.franchise_key}>
+                    <td className="rank">—</td>
                     <td>
-                      <a href={`/team/${team.espn_team_id}`} className="tname">{team.name}</a>
-                      <EspnTeamLink teamId={team.espn_team_id} season={season} />
+                      <a href={franchiseHref(team.franchise_key)} className="tname">{team.name}</a>
+                      {team.espn_team_id !== null && <EspnTeamLink teamId={team.espn_team_id} season={season} />}
+                      {team.name !== team.current_name && <span className="tsub block">now {team.current_name}</span>}
                     </td>
                     <td className="num">0-0</td>
                     <td className="num">{team.games}</td>
@@ -57,7 +62,7 @@ export default async function Standings({
               </tbody>
             </table>
           </div>
-          <p className="note">Nobody has played yet, so this is the field and schedule rather than a completed historical table.</p>
+          <p className="note">Nobody has played yet, so this is the canonical franchise field and schedule rather than a completed historical table.</p>
         </div>
         <RecapArchive season={season} />
         <SeasonPicker seasons={seasons.map((x) => x.season)} current={season} basePath="/standings" />
