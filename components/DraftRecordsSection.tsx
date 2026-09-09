@@ -71,6 +71,8 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
   const range = (years: number[]) => years.length ? `${years[0]}–${years.at(-1)}` : 'Awaiting complete coverage';
   const boardRange = range(records.coverage.board_seasons);
   const gradeRange = range(records.coverage.graded_seasons);
+  const productiveYears = [...new Set(records.productiveMisses.map((row) => row.season))].sort((a, b) => a - b);
+  const productiveRange = range(productiveYears);
   const firstRoundTotal = records.firstRoundPositions.reduce((sum, row) => sum + row.picks, 0);
   const positionTotal = records.positionSummary.reduce((sum, row) => sum + row.picks, 0);
   const firstPickTotal = records.positionSummary.reduce((sum, row) => sum + row.first_picks, 0);
@@ -127,12 +129,12 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
 
       <h3>Biggest misses who stayed on the field</h3>
       <p className="sub">
-        The five lowest-value modern-era picks who still scored in at least eight different weeks.
+        The five lowest-value picks in the available weekly-roster era who still scored in at least eight different weeks.
         The main bust list grades the outcome, including injuries; this companion list highlights players
-        who had a sustained opportunity to produce. This companion list uses the era with archived ESPN weekly rosters.
+        who had a sustained opportunity to produce. Its coverage expands automatically as completed seasons become gradable.
       </p>
       <div style={{ maxWidth: 720 }}>
-        <PickTable title="Available-season misses · 2018–2025" rows={records.productiveMisses} positive={false} />
+        <PickTable title={`Available-season misses · ${productiveRange}`} rows={records.productiveMisses} positive={false} />
       </div>
 
       <h2>Draft habits</h2>
@@ -179,30 +181,16 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
           return (
             <tr key={row.franchise_key}>
               <td><a className="tname" href={franchiseHref(row.franchise_key)}>{row.team_name}</a></td>
-              <td>
-                <strong>{positionLabel(row.most_drafted_position_id)}</strong>
-                <span className="tsub block">{row.most_drafted_picks ?? 0} of {row.total_picks} picks</span>
-              </td>
-              <td>
-                <strong>{positionLabel(row.first_pick_position_id)}</strong>
-                <span className="tsub block">{row.first_pick_times ?? 0} of {row.drafts_on_file} drafts</span>
-              </td>
-              <td className={bestValue == null ? undefined : bestValue > 0 ? 'up' : bestValue < 0 ? 'down' : undefined}>
-                <strong>{positionLabel(row.best_value_position_id)}{bestValue == null ? '' : ` ${signed(bestValue)}`}</strong>
-                <span className="tsub block">{row.best_graded_picks ?? 0} graded picks</span>
-              </td>
-              <td className={worstValue == null ? undefined : worstValue > 0 ? 'up' : worstValue < 0 ? 'down' : undefined}>
-                <strong>{positionLabel(row.worst_value_position_id)}{worstValue == null ? '' : ` ${signed(worstValue)}`}</strong>
-                <span className="tsub block">{row.worst_graded_picks ?? 0} graded picks</span>
-              </td>
+              <td><strong>{positionLabel(row.most_drafted_position_id)}</strong><span className="tsub block">{row.most_drafted_picks ?? 0} of {row.total_picks} picks</span></td>
+              <td><strong>{positionLabel(row.first_pick_position_id)}</strong><span className="tsub block">{row.first_pick_times ?? 0} of {row.drafts_on_file} drafts</span></td>
+              <td className={bestValue == null ? undefined : bestValue > 0 ? 'up' : bestValue < 0 ? 'down' : undefined}><strong>{positionLabel(row.best_value_position_id)}{bestValue == null ? '' : ` ${signed(bestValue)}`}</strong><span className="tsub block">{row.best_graded_picks ?? 0} graded picks</span></td>
+              <td className={worstValue == null ? undefined : worstValue > 0 ? 'up' : worstValue < 0 ? 'down' : undefined}><strong>{positionLabel(row.worst_value_position_id)}{worstValue == null ? '' : ` ${signed(worstValue)}`}</strong><span className="tsub block">{row.worst_graded_picks ?? 0} graded picks</span></td>
             </tr>
           );
         })}</tbody>
       </table></div></div>
 
-      <p className="note">
-        Want the receipts? Open any season&rsquo;s draft link above for the complete round-by-round ESPN board. Grades use ESPN data wherever the archive still has it; reconstructed point totals are labeled on individual steal/bust rows.
-      </p>
+      <p className="note">Want the receipts? Open any season&rsquo;s draft link above for the complete round-by-round ESPN board. Grades use ESPN data wherever the archive still has it; reconstructed point totals are labeled on individual steal/bust rows.</p>
     </>
   );
 }
