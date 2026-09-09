@@ -14,6 +14,8 @@ on:
       - 'data/player-name-aliases.json'
       - 'data/derived/players/**'
       - '.github/workflows/refresh-players.yml'
+      - 'lib/schema-contract.ts'
+      - 'scripts/verify-schema.ts'
 
 concurrency:
   group: weekly-pipeline
@@ -37,6 +39,10 @@ jobs:
       - run: npm ci
       - name: Validate committed backfill
         run: node --import tsx scripts/import-player-data.ts --dry-run
+      - name: Verify production schema contract
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run schema:verify
       - name: Refresh current and prior NFL seasons
         run: |
           NFL_SEASON=$(python3 -c 'import datetime; d=datetime.date.today(); print(d.year-int(d.month<3))')
