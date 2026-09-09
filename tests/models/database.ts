@@ -31,6 +31,13 @@ export async function modelDatabase() {
     create function trade_voting_window() returns interval language sql immutable as $$ select interval '7 days' $$;
   `);
   await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-12-model-evidence.sql', import.meta.url), 'utf8'));
+  await db.exec(`create view player_identity as
+    select a.season,a.espn_player_id,a.player_key,null::text as full_name,
+           coalesce(psp.position_id,p.default_position_id) as position_id,
+           coalesce(psp.eligible_slots,p.eligible_slots) as eligible_slots
+      from nfl_player_aliases a
+      left join player_season_profiles psp on psp.season=a.season and psp.espn_player_id=a.espn_player_id
+      left join players p on p.espn_player_id=a.espn_player_id;`);
   await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-17-canonical-trade-players.sql', import.meta.url), 'utf8'));
   await db.exec(readFileSync(new URL('../../scripts/migrations/2026-09-18-canonical-draft-grade-players.sql', import.meta.url), 'utf8'));
   return db;
