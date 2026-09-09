@@ -1,13 +1,8 @@
 name: Controlled Vercel deploy
 
-# Vercel's Git integration is disabled in vercel.json. Production is deployed
-# only through the existing deploy hook:
-#   1. once each morning at 08:00 America/Chicago, if main has changed since
-#      the last successful deploy-hook request;
-#   2. manually from the Actions tab; or
-#   3. when .vercel-deploy-request changes on the vercel-deploy-request branch,
-#      which gives external automation (including ChatGPT via GitHub) a
-#      deliberate deploy trigger without changing main.
+# Production is deliberately decoupled from Vercel Git auto-deploys. A deploy
+# is considered successful only after the exact main commit is serving the
+# canonical database schema and the representative public routes are healthy.
 on:
   schedule:
     - cron: '0 8 * * *'
@@ -25,11 +20,12 @@ concurrency:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v7
@@ -43,24 +39,89 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-
           main_sha=$(git rev-parse HEAD)
           marker_sha=$(git ls-remote origin refs/heads/vercel-deployed | cut -f1 || true)
-
           echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
           echo "marker_sha=${marker_sha:-none}" >> "$GITHUB_OUTPUT"
-
-          # Scheduled runs are change-aware: no code/data change means no Vercel
-          # request and therefore no wasted deployment quota. Manual triggers are
-          # intentionally forceful because a person explicitly asked for a deploy.
           if [ "$EVENT_NAME" = "schedule" ] && [ -n "$marker_sha" ] && [ "$main_sha" = "$marker_sha" ]; then
             echo "deploy=false" >> "$GITHUB_OUTPUT"
-            echo "reason=main already matches last requested production SHA" >> "$GITHUB_OUTPUT"
+            echo "reason=main already matches last verified production SHA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "reason=$EVENT_NAME trigger" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v7
+        if: steps.gate.outputs.deploy == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deploy checks
+        if: steps.gate.outputs.deploy == 'true'
+        run: npm ci
+
+      - name: Verify production schema before deploy
+        if: steps.gate.outputs.deploy == 'true'
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run schema:verify
+
+      # A main commit that changes the mobile/agent weekly-pipeline request marker
+      # explicitly asked for a live pipeline proof. Do not race that run: wait
+      # for the exact push-triggered Weekly pipeline to finish successfully.
+      # Ordinary UI/code commits do not change the marker and are unaffected.
+      - name: Require requested weekly pipeline proof
+        if: steps.gate.outputs.deploy == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          parent=$(git rev-parse "$MAIN_SHA^1" 2>/dev/null || true)
+          if [ -z "$parent" ] || git diff --quiet "$parent" "$MAIN_SHA" -- .weekly-pipeline-request; then
+            echo "This main commit did not request a weekly pipeline proof."
             exit 0
           fi
 
-          echo "deploy=true" >> "$GITHUB_OUTPUT"
-          echo "reason=$EVENT_NAME trigger" >> "$GITHUB_OUTPUT"
+          echo "This main commit changed .weekly-pipeline-request; exact-head pipeline success is required."
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/weekly.yml/runs?event=push&head_sha=${MAIN_SHA}&per_page=10"
+
+          for attempt in $(seq 1 240); do
+            code=$(curl -sS \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              -o /tmp/weekly-runs.json \
+              -w '%{http_code}' \
+              "$api")
+            if [ "$code" != "200" ]; then
+              echo "::error::GitHub weekly-pipeline lookup failed with HTTP $code"
+              exit 1
+            fi
+
+            count=$(jq '.workflow_runs | length' /tmp/weekly-runs.json)
+            if [ "$count" -gt 0 ]; then
+              status=$(jq -r '.workflow_runs[0].status // "unknown"' /tmp/weekly-runs.json)
+              conclusion=$(jq -r '.workflow_runs[0].conclusion // ""' /tmp/weekly-runs.json)
+              run_url=$(jq -r '.workflow_runs[0].html_url // ""' /tmp/weekly-runs.json)
+              echo "Weekly pipeline: status=$status conclusion=${conclusion:-pending}"
+              if [ "$status" = "completed" ]; then
+                if [ "$conclusion" = "success" ]; then
+                  echo "Exact-head weekly pipeline proof passed: $run_url"
+                  exit 0
+                fi
+                echo "::error::Exact-head weekly pipeline finished with conclusion '$conclusion': $run_url"
+                exit 1
+              fi
+            else
+              echo "Waiting for exact-head Weekly pipeline run to appear..."
+            fi
+            sleep 5
+          done
+
+          echo "::error::Timed out waiting for exact-head weekly pipeline success."
+          exit 1
 
       - name: Trigger Vercel production deploy
         if: steps.gate.outputs.deploy == 'true'
@@ -68,26 +129,76 @@ jobs:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
           set -euo pipefail
-
           if [ -z "$HOOK" ]; then
-            echo "::error::VERCEL_DEPLOY_HOOK_URL is not set. The controlled deploy gate cannot reach Vercel."
+            echo "::error::VERCEL_DEPLOY_HOOK_URL is not set."
             exit 1
           fi
-
           code=$(curl -sS -X POST -o /tmp/deploy.json -w '%{http_code}' "$HOOK")
           echo "Vercel responded $code"
           cat /tmp/deploy.json || true
-
           if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
             echo "::error::Vercel deploy hook failed with HTTP $code"
             exit 1
           fi
 
-      # This branch is only a durable marker for the SHA whose deploy hook was
-      # accepted. It is not Vercel's production branch and never receives code
-      # changes of its own. A failed hook request never advances it, so the next
-      # scheduled run will retry the same main SHA.
-      - name: Record requested production SHA
+      - name: Wait for exact production commit and schema
+        if: steps.gate.outputs.deploy == 'true'
+        env:
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          CONFIGURED_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+        run: |
+          set -euo pipefail
+          site="${CONFIGURED_SITE_URL:-https://grudge.planitnow.us}"
+          site="${site%/}"
+          for attempt in $(seq 1 90); do
+            code=$(curl -sS -o /tmp/health.json -w '%{http_code}' "$site/api/health?expected=$MAIN_SHA" || true)
+            if [ "$code" = "200" ]; then
+              cat /tmp/health.json
+              echo "Production is serving $MAIN_SHA with the required schema."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Production never reported the requested commit and schema as healthy."
+          cat /tmp/health.json || true
+          exit 1
+
+      - name: Smoke test canonical public routes
+        if: steps.gate.outputs.deploy == 'true'
+        env:
+          CONFIGURED_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+        run: |
+          set -euo pipefail
+          site="${CONFIGURED_SITE_URL:-https://grudge.planitnow.us}"
+          site="${site%/}"
+          paths=(
+            "/history/2026"
+            "/standings?season=2026"
+            "/rankings?season=2026"
+            "/history"
+            "/history/2005"
+            "/history/records"
+            "/history/rivalries"
+            "/history/drafts"
+            "/trades"
+            "/players"
+            "/players/records"
+            "/players/gsis%3A00-0033873?season=2025"
+            "/franchise/cte-deniers"
+            "/manager/ryan-mindell"
+          )
+          for path in "${paths[@]}"; do
+            code=$(curl -L -sS -o /dev/null -w '%{http_code}' "$site$path")
+            echo "$code $path"
+            if [ "$code" != "200" ]; then
+              echo "::error::$path returned HTTP $code"
+              exit 1
+            fi
+          done
+
+      # Advance the marker only after the exact commit is live and every smoke
+      # route passes. A failed build/runtime check therefore retries next time.
+      - name: Record verified production SHA
         if: steps.gate.outputs.deploy == 'true'
         run: git push origin HEAD:refs/heads/vercel-deployed --force
 
@@ -99,7 +210,8 @@ jobs:
             echo ""
             echo "- Trigger: **${{ github.event_name }}**"
             echo "- Vercel requested: **${{ steps.gate.outputs.deploy || 'false' }}**"
-            echo "- Reason: ${{ steps.gate.outputs.reason || 'gate did not complete' }}"
             echo "- Main SHA: \`${{ steps.gate.outputs.main_sha || 'unknown' }}\`"
-            echo "- Previous marker: \`${{ steps.gate.outputs.marker_sha || 'unknown' }}\`"
+            echo "- Previous verified marker: \`${{ steps.gate.outputs.marker_sha || 'unknown' }}\`"
+            echo "- Requested weekly-pipeline proofs must succeed before Vercel is contacted."
+            echo "- Marker advances only after exact-commit health + route smoke tests."
           } >> "$GITHUB_STEP_SUMMARY"
