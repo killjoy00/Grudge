@@ -8,9 +8,11 @@ Grudge deliberately does **not** deploy to Vercel on every Git push.
 
 The controlled deploy workflow checks once each day at **08:00 America/Chicago**. GitHub Actions' timezone-aware schedule keeps that release window fixed across daylight-saving changes.
 
-A scheduled run compares `main` with the `vercel-deployed` marker branch. If they point to the same commit, the workflow exits without contacting Vercel. If `main` has advanced, it calls the production deploy hook once and moves `vercel-deployed` to that SHA after Vercel accepts the hook request.
+A scheduled run compares `main` with the `vercel-deployed` marker branch. If they point to the same commit, the workflow exits without contacting Vercel. If `main` has advanced, it verifies the production schema contract before requesting a deployment.
 
-This means normal coding, pull requests, merges, and the Tuesday data pipeline can create as many Git commits as needed without consuming Vercel deployment quota. At most one changed `main` is sent to Vercel in the daily release window.
+If the exact `main` commit changed `.weekly-pipeline-request`, that commit explicitly requested a live weekly-pipeline proof. The deploy workflow waits for the push-triggered **Weekly pipeline** run on that exact SHA and refuses to contact Vercel unless the run completes successfully. Ordinary UI/code commits do not change that marker and are not forced through a production-write pipeline run.
+
+This keeps source-control cadence separate from production-release cadence while preventing a deliberately requested live-data verification from racing a deployment.
 
 ## On-demand preview
 
@@ -28,17 +30,21 @@ If the preview contains data or functionality that should not be public, enable 
 
 There are two intentional manual paths:
 
-1. Run **Controlled Vercel deploy** from the GitHub Actions tab. Manual runs always call Vercel, even when `main` matches the marker.
+1. Run **Controlled Vercel deploy** from the GitHub Actions tab.
 2. Change `.vercel-deploy-request` on the `vercel-deploy-request` branch. This exists so an authorized automation such as ChatGPT's GitHub connection can deliberately request a production release without changing `main`. The workflow is path-scoped to that file so ordinary movement or maintenance of the control branch does not deploy anything.
 
-Both paths use the same deploy hook and the same concurrency group, so they cannot overlap with the scheduled release.
+Both paths use the same deploy hook and the same concurrency group, so they cannot overlap with the scheduled release. They also run the same schema, exact-commit health, and public-route smoke checks. If the exact `main` commit requested a weekly-pipeline proof, manual release paths must wait for that proof too.
 
-## Marker semantics
+## Verified production marker
 
-`vercel-deployed` means "Vercel accepted a deploy-hook request for this SHA." It does not prove that the subsequent Vercel build reached `READY`. Build status should still be checked after an important manual production release.
+`vercel-deployed` means the exact commit completed the controlled release flow: Vercel served the requested SHA, `/api/health` confirmed the required schema contract, and the representative public-route smoke suite returned HTTP 200.
 
-If the deploy hook itself fails or is rate-limited before returning a successful HTTP response, the marker is not advanced. The next scheduled run will retry the same `main` SHA.
+The marker is advanced only after those checks pass. A failed hook, build, schema check, weekly-pipeline proof, health check, or smoke test leaves the marker unchanged so a later run can retry safely.
+
+## Vercel connector fallback
+
+The normal ChatGPT/Vercel connector is preferred for status, logs, and deployment inspection. If connector access is unavailable, the same safe pattern used by VotePredict can be adopted here: keep `VERCEL_TOKEN` only in GitHub Actions secrets and route narrowly scoped Vercel operations through an owner-only GitHub Actions bridge. Never put a Vercel token in repository files, issue bodies, workflow inputs, or chat.
 
 ## Why this exists
 
-The Vercel Hobby deployment quota can be exhausted by a burst of otherwise harmless Git activity. The controlled gate separates source-control cadence from production-release cadence: GitHub can stay active, while Vercel is contacted only at the daily release window, through the one opt-in preview branch, or after an explicit manual production request.
+The controlled gate separates source-control cadence from production-release cadence, reduces unnecessary Vercel deployments, and makes production advancement contingent on the checks that matter for the kind of change being released.
