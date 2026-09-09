@@ -89,7 +89,7 @@ export async function getFranchisePlayerLeaders(franchiseKey: string, limit = 8)
      where c.franchise_key = $1
      group by p.player_key, p.full_name, p.position
      ${CONTRIBUTION_HAVING}
-     order by sum(c.points) filter (where c.is_starter) desc, c.player_key
+     order by sum(c.points) filter (where c.is_starter) desc, p.player_key
      limit $2`,
     [franchiseKey, limit]
   );
@@ -104,7 +104,7 @@ export async function getManagerPlayerLeaders(managerKey: string, limit = 8) {
      where ms.manager_key = $1
      group by p.player_key, p.full_name, p.position
      ${CONTRIBUTION_HAVING}
-     order by sum(c.points) filter (where c.is_starter) desc, c.player_key
+     order by sum(c.points) filter (where c.is_starter) desc, p.player_key
      limit $2`,
     [managerKey, limit]
   );
@@ -117,7 +117,7 @@ export async function getPlayerRecordLeaders(limit = 10) {
        ${CONTRIBUTION_SELECT}
        group by p.player_key, p.full_name, p.position
        ${CONTRIBUTION_HAVING}
-       order by sum(c.points) filter (where c.is_starter) desc, c.player_key
+       order by sum(c.points) filter (where c.is_starter) desc, p.player_key
        limit $1`,
       [limit]
     ),
