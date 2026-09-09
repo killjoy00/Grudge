@@ -33,6 +33,24 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      # Push-triggered workflows are parsed from the branch that received the
+      # push, not from the checked-out ref. Fail closed if the request branch's
+      # workflow has drifted from main so it can never silently run an older
+      # release policy again.
+      - name: Verify request-branch deploy policy is current
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin \
+            refs/heads/vercel-deploy-request:refs/remotes/origin/vercel-deploy-request
+          main_policy=$(git rev-parse 'HEAD:.github/workflows/deploy-vercel.yml')
+          request_policy=$(git rev-parse 'refs/remotes/origin/vercel-deploy-request:.github/workflows/deploy-vercel.yml')
+          if [ "$main_policy" != "$request_policy" ]; then
+            echo "::error::vercel-deploy-request has a stale deploy workflow. Sync it from main before requesting production."
+            exit 1
+          fi
+          echo "Request-branch deploy policy matches main."
+
       - name: Decide whether to deploy
         id: gate
         env:
@@ -67,25 +85,36 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run schema:verify
 
-      # A main commit that changes the mobile/agent weekly-pipeline request marker
-      # explicitly asked for a live pipeline proof. Do not race that run: wait
-      # for the exact push-triggered Weekly pipeline to finish successfully.
-      # Ordinary UI/code commits do not change the marker and are unaffected.
+      # Look across every unverified commit, not only main's immediate parent.
+      # The weekly pipeline can append a raw-data commit after its proof succeeds;
+      # that follow-up commit must not hide the request marker that caused the
+      # proof. The newest request since the last verified production SHA wins.
       - name: Require requested weekly pipeline proof
+        id: proof
         if: steps.gate.outputs.deploy == 'true'
         env:
           MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
+          MARKER_SHA: ${{ steps.gate.outputs.marker_sha }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          parent=$(git rev-parse "$MAIN_SHA^1" 2>/dev/null || true)
-          if [ -z "$parent" ] || git diff --quiet "$parent" "$MAIN_SHA" -- .weekly-pipeline-request; then
-            echo "This main commit did not request a weekly pipeline proof."
+
+          range="$MAIN_SHA"
+          if [ "$MARKER_SHA" != "none" ] && git cat-file -e "$MARKER_SHA^{commit}" 2>/dev/null; then
+            if git merge-base --is-ancestor "$MARKER_SHA" "$MAIN_SHA"; then
+              range="$MARKER_SHA..$MAIN_SHA"
+            fi
+          fi
+
+          proof_sha=$(git log --full-history -1 --format=%H "$range" -- .weekly-pipeline-request || true)
+          echo "proof_sha=${proof_sha:-none}" >> "$GITHUB_OUTPUT"
+          if [ -z "$proof_sha" ]; then
+            echo "No weekly pipeline proof was requested in the unverified commit range."
             exit 0
           fi
 
-          echo "This main commit changed .weekly-pipeline-request; exact-head pipeline success is required."
-          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/weekly.yml/runs?event=push&head_sha=${MAIN_SHA}&per_page=10"
+          echo "Weekly pipeline proof required for request commit $proof_sha."
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/weekly.yml/runs?event=push&head_sha=${proof_sha}&per_page=10"
 
           for attempt in $(seq 1 240); do
             code=$(curl -sS \
@@ -108,19 +137,19 @@ jobs:
               echo "Weekly pipeline: status=$status conclusion=${conclusion:-pending}"
               if [ "$status" = "completed" ]; then
                 if [ "$conclusion" = "success" ]; then
-                  echo "Exact-head weekly pipeline proof passed: $run_url"
+                  echo "Requested weekly pipeline proof passed: $run_url"
                   exit 0
                 fi
-                echo "::error::Exact-head weekly pipeline finished with conclusion '$conclusion': $run_url"
+                echo "::error::Requested weekly pipeline finished with conclusion '$conclusion': $run_url"
                 exit 1
               fi
             else
-              echo "Waiting for exact-head Weekly pipeline run to appear..."
+              echo "Waiting for requested Weekly pipeline run to appear..."
             fi
             sleep 5
           done
 
-          echo "::error::Timed out waiting for exact-head weekly pipeline success."
+          echo "::error::Timed out waiting for requested weekly pipeline success."
           exit 1
 
       - name: Trigger Vercel production deploy
@@ -212,6 +241,7 @@ jobs:
             echo "- Vercel requested: **${{ steps.gate.outputs.deploy || 'false' }}**"
             echo "- Main SHA: \`${{ steps.gate.outputs.main_sha || 'unknown' }}\`"
             echo "- Previous verified marker: \`${{ steps.gate.outputs.marker_sha || 'unknown' }}\`"
+            echo "- Required weekly proof commit: \`${{ steps.proof.outputs.proof_sha || 'none' }}\`"
             echo "- Requested weekly-pipeline proofs must succeed before Vercel is contacted."
             echo "- Marker advances only after exact-commit health + route smoke tests."
           } >> "$GITHUB_STEP_SUMMARY"
