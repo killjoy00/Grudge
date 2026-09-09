@@ -23,6 +23,10 @@ for (const year of [2005,2024,2025,2026]) await execute(db,playerSeasonStatement
 // old ID reuse, co-owners, missing points and consolation exclusions separately.
 await db.exec('insert into seasons (season,regular_season_weeks) values (2024,14)');
 await db.exec(`insert into draft_picks values (2024,40,4,10,4,3139477);
+  insert into franchises values ('the-penguins','The Penguins'),('brightleaf-yuppies','Brightleaf Yuppies');
+  insert into franchise_season_teams values
+    (2024,'the-penguins',4,'The Penguins'),
+    (2024,'brightleaf-yuppies',8,'Brightleaf Yuppies');
   insert into team_franchise values (2024,4,'the-penguins','The Penguins'),(2024,8,'brightleaf-yuppies','Brightleaf Yuppies');
   insert into managers values ('michael-chepul','Michael Chepul'),('jonathan-crisp','Jonathan Crisp');
   insert into manager_franchise_seasons values (2024,'the-penguins','michael-chepul',true),(2024,'brightleaf-yuppies','jonathan-crisp',true);
