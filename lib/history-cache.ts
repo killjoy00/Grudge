@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { unstable_cache } from 'next/cache';
-import { getSeasonStandings } from './queries.ts';
 import {
   getAllSeasonRecords,
   getFranchiseManagersByKey,
@@ -10,13 +9,16 @@ import {
   getManagerSeasonsByKey,
   getRichChampions,
   getSeasonManagers,
-  getSeasonPlayoffGames,
 } from './history-queries.ts';
 import {
   getFranchiseIdentity,
   getFranchiseKeyForEspnId,
   getFranchiseKeyPlayersByKey,
 } from './history-identity-queries.ts';
+import {
+  getHistorySeasonPlayoffGames,
+  getHistorySeasonStandings,
+} from './history-season-queries.ts';
 import { getTrackedGameRecords, getTrackedSeasonHighlights } from './tracked-game-queries.ts';
 
 export const getCachedFranchiseByKey = unstable_cache(
@@ -47,13 +49,13 @@ export const getCachedManagerFile = unstable_cache(
 
 export const getCachedHistorySeason = unstable_cache(
   async (season: number) => Promise.all([
-    getSeasonStandings(season),
+    getHistorySeasonStandings(season),
     getSeasonManagers(season),
-    getSeasonPlayoffGames(season),
+    getHistorySeasonPlayoffGames(season),
     getTrackedSeasonHighlights(season),
   ]),
-  ['history-season-file-v2'],
-  { revalidate: 86400 }
+  ['history-season-file-v3'],
+  { revalidate: 3600 }
 );
 
 export const getCachedRichChampions = unstable_cache(
