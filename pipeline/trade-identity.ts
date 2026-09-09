@@ -60,11 +60,15 @@ export function tradeWriteStatements(season: number, trades: DetectedTrade[]): S
       where p.season = t.season and p.trade_id = t.trade_id
         and t.season = i.season and t.identity_key = i.identity_key
         and not t.manually_corrected and t.evidence_status = 'active'`, params),
-    stmt(`${INPUT} insert into public.trade_players (season, trade_id, espn_player_id, from_team_id, to_team_id)
-      select t.season, t.trade_id, p.espn_player_id, p.from_team_id, p.to_team_id
-        from incoming i join public.trades t on t.season = i.season and t.identity_key = i.identity_key
+    stmt(`${INPUT} insert into public.trade_players
+      (season, trade_id, player_key, espn_player_id, from_team_id, to_team_id)
+      select t.season, t.trade_id, a.player_key, p.espn_player_id, p.from_team_id, p.to_team_id
+        from incoming i
+        join public.trades t on t.season = i.season and t.identity_key = i.identity_key
         cross join lateral jsonb_to_recordset(i.players)
           as p(espn_player_id bigint, from_team_id int, to_team_id int)
+        join public.nfl_player_aliases a
+          on a.season = t.season and a.espn_player_id = p.espn_player_id
        where not t.manually_corrected and t.evidence_status = 'active'`, params),
     stmt(`update public.trades t set voting_closes_at = now() + public.trade_voting_window()
       where t.season = $1 and t.voting_closes_at is null and t.evidence_status = 'active'
