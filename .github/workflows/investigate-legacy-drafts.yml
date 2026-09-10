@@ -1,0 +1,37 @@
+name: Investigate legacy draft grades
+
+on:
+  push:
+    branches: [feat/status-draft-history-hardening]
+    paths:
+      - '.github/workflows/investigate-legacy-drafts.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Probe 2005-2007 with the canonical builder
+        shell: bash
+        run: |
+          cp scripts/build-draft-performance.py /tmp/build-draft-performance.py
+          sed -i "s/if year < 2008 or year == 2020:/if year == 2020:/" scripts/build-draft-performance.py
+          set +e
+          python3 scripts/build-draft-performance.py --cache-dir /tmp/grudge-draft-sources > legacy-draft-investigation.txt 2>&1
+          status=$?
+          set -e
+          cat legacy-draft-investigation.txt
+          echo "builder_exit=$status" >> legacy-draft-investigation.txt
+          mv /tmp/build-draft-performance.py scripts/build-draft-performance.py
+      - uses: actions/upload-artifact@v7
+        with:
+          name: legacy-draft-investigation
+          path: legacy-draft-investigation.txt
+          retention-days: 2
