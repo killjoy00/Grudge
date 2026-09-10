@@ -66,7 +66,7 @@ export default async function AdminStatusPage() {
         />
         <StatusCard
           label="ESPN league data"
-          value={db ? `${db.current_season}${db.latest_completed_team_week ? ` · week ${db.latest_completed_team_week}` : ' · preseason'}` : 'Unavailable'}
+          value={db ? `${db.current_season}${db.latest_completed_team_week ? ` · completed week ${db.latest_completed_team_week}` : ' · no completed week'}` : 'Unavailable'}
           detail={db ? <>Season snapshot {when(db.season_updated_at)} · ownership {db.ownership_week ? `week ${db.ownership_week}, ` : ''}{when(db.latest_ownership_capture)}</> : 'Database status query returned no row.'}
         />
         <StatusCard
