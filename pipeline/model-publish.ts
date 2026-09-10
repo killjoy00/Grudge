@@ -16,8 +16,17 @@ export function draftInputsFromScores(bases: DraftPerformanceSeason[], scores: P
   const seasons = bases.map((base) => {
     const reasons = new Set<string>();
     const board = boards.filter((b) => b.season === base.season);
+    const expectedBoard = base.board ?? [];
+    const excludedBoard = base.excluded_board ?? [];
     const actualBoard = new Set(board.map((b) => `${b.overall_pick}:${b.espn_team_id}:${b.espn_player_id}`));
-    if (board.length !== base.total_picks || base.board?.some((p) => !actualBoard.has(p.join(':')))
+    const coveredCoordinates = new Set([
+      ...expectedBoard.map((p) => p[0]),
+      ...excludedBoard.map((p) => p.overall_pick),
+    ]);
+    const coordinatesComplete = coveredCoordinates.size === base.total_picks
+      && Array.from({ length: base.total_picks }, (_, i) => i + 1).every((pick) => coveredCoordinates.has(pick));
+    if (!coordinatesComplete || expectedBoard.length + excludedBoard.length !== base.total_picks
+      || board.length !== expectedBoard.length || expectedBoard.some((p) => !actualBoard.has(p.join(':')))
       || base.picks.some((p) => !actualBoard.has(`${p.overall_pick}:${p.espn_team_id}:${p.espn_player_id}`))) reasons.add('draft_board_mismatch');
     function production(key: string) {
       const rows: PlayerWeekScore[] = [];

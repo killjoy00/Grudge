@@ -18,6 +18,7 @@ export interface DraftPerformanceSeason {
   team_count: number;
   total_picks: number;
   board?: [number, number, number][];
+  excluded_board?: { overall_pick: number; espn_team_id: number; position: 'DST' | 'K'; evidence: string }[];
   slot_counts: Record<string, number>;
   /** All NFL offensive players, including undrafted/free-agent production. */
   pool: [string, number, number][];

@@ -1,5 +1,5 @@
 {
-  "description": "Reviewed historical ESPN draft identities absent from the upstream crosswalk. ESPN athlete profiles establish the fantasy player name and position; nflverse weekly/player-registry evidence establishes the GSIS identity. Namesakes are matched by season and position. These overrides are evidence, not guesses.",
+  "description": "Reviewed historical ESPN draft identities absent from the upstream crosswalk. Modern ESPN athlete profiles or the authenticated legacy season player catalog establish the fantasy player name and position; nflverse weekly/player-registry evidence establishes the GSIS identity. Namesakes are matched by season and position. These overrides are evidence, not guesses.",
   "players": [
     {"espn_id": 276, "name": "Keenan McCardell", "position": "WR", "gsis_id": "00-0010668"},
     {"espn_id": 726, "name": "Jeff Wilkins", "position": "K", "gsis_id": "00-0017693"},
@@ -17,8 +17,27 @@
     {"espn_id": 4551, "name": "Chris Brown", "position": "RB", "gsis_id": "00-0022092"},
     {"espn_id": 5551, "name": "Chris Perry", "position": "RB", "gsis_id": "00-0022926"},
     {"espn_id": 8487, "name": "Vernand Morency", "position": "RB", "gsis_id": "00-0023508"},
-    {"espn_id": 8497, "name": "Chris Henry", "position": "WR", "gsis_id": "00-0023518"}
+    {"espn_id": 8497, "name": "Chris Henry", "position": "WR", "gsis_id": "00-0023518"},
+    {"espn_id": 1867957, "name": "Kerry Collins", "position": "QB", "gsis_id": "00-0003292"},
+    {"espn_id": 1868359, "name": "Jake Plummer", "position": "QB", "gsis_id": "00-0013042"},
+    {"espn_id": 1868367, "name": "Priest Holmes", "position": "RB", "gsis_id": "00-0007661"},
+    {"espn_id": 1868405, "name": "Marcus Robinson", "position": "WR", "gsis_id": "00-0013888"},
+    {"espn_id": 1868992, "name": "Marshall Faulk", "position": "RB", "gsis_id": "00-0005092"},
+    {"espn_id": 1869693, "name": "Ricky Williams", "position": "RB", "gsis_id": "00-0017915"},
+    {"espn_id": 1869694, "name": "Donovan McNabb", "position": "QB", "gsis_id": "00-0011022"},
+    {"espn_id": 1869892, "name": "Brandon Stokley", "position": "WR", "gsis_id": "00-0015754"},
+    {"espn_id": 1870428, "name": "Bubba Franks", "position": "TE", "gsis_id": "00-0019644"},
+    {"espn_id": 1870431, "name": "Sebastian Janikowski", "position": "K", "gsis_id": "00-0019646"},
+    {"espn_id": 1921396, "name": "Michael Vick", "position": "QB", "gsis_id": "00-0020245"},
+    {"espn_id": 1951343, "name": "Jason McAddley", "position": "WR", "gsis_id": "00-0021094"},
+    {"espn_id": 1951644, "name": "Domanick Davis", "position": "RB", "gsis_id": "00-0021979"},
+    {"espn_id": 1953735, "name": "Nate Burleson", "position": "WR", "gsis_id": "00-0021999"},
+    {"espn_id": 1954423, "name": "Doug Jolley", "position": "TE", "gsis_id": "00-0021183"},
+    {"espn_id": 1962369, "name": "Carnell Williams", "position": "RB", "gsis_id": "00-0023440"},
+    {"espn_id": 2014162, "name": "Eric Johnson", "position": "TE", "gsis_id": "00-0020455"},
+    {"espn_id": 2129297, "name": "J.J. Arrington", "position": "RB", "gsis_id": "00-0023479"}
   ],
   "espn_source_template": "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/athletes/{espn_id}?lang=en&region=us",
+  "espn_legacy_source_template": "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/{league_id}?seasonId={year}&view=kona_player_info",
   "nfl_source_template": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{year}.csv"
 }
