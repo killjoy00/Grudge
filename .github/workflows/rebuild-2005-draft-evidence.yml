@@ -1,0 +1,46 @@
+name: Rebuild 2005 draft evidence
+
+on:
+  push:
+    branches: [fix/grade-2005-draft]
+    paths:
+      - '.github/workflows/rebuild-2005-draft-evidence.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/grade-2005-draft
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Apply source patch
+        run: node scripts/apply-2005-draft-evidence-patch.mjs
+      - name: Rebuild canonical model evidence
+        run: npm run models:build-data
+      - name: Validate model
+        run: npm run models:validate
+      - name: Run typecheck and tests
+        run: |
+          npm run typecheck
+          npm test
+      - name: Remove one-time helpers and commit
+        run: |
+          git rm scripts/apply-2005-draft-evidence-patch.mjs .github/workflows/rebuild-2005-draft-evidence.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/build-draft-performance.py pipeline/draft-model.ts pipeline/model-publish.ts data/draft-excluded-pick-overrides.json data/derived
+          git commit -m "Grade complete 2005 offensive draft board"
+          git push origin HEAD:fix/grade-2005-draft
