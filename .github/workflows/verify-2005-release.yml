@@ -1,0 +1,39 @@
+name: Verify 2005 release
+
+on:
+  push:
+    branches: [ops/verify-2005-release]
+    paths:
+      - '.github/workflows/verify-2005-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ops/verify-2005-release
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Verify publication and canonical score identities
+        env:
+          NEON_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          node scripts/neon-sql.mjs -c "do \$verify\$ declare status05 text; grades05 int; begin select coverage_status into status05 from public.model_publications where model_kind='draft' and season=2005; if status05 is distinct from 'ready' then raise exception '2005 publication not ready: %', status05; end if; select count(*) into grades05 from public.draft_grade_results r join public.model_publications p on p.model_kind='draft' and p.season=2005 and p.run_id=r.run_id where r.season=2005; if grades05 <> 110 then raise exception '2005 grade count %, expected 110', grades05; end if; if exists(select 1 from public.model_publications where model_kind='draft' and season=2006 and coverage_status='ready') then raise exception '2006 must remain withheld'; end if; if exists(select 1 from public.player_week_scores where season=2005 and source <> 'superseded_historical' and ((espn_player_id=13103 and player_key<>'gsis:00-0020514') or (espn_player_id=13370 and player_key<>'gsis:00-0020446') or (espn_player_id=13376 and player_key<>'gsis:00-0020498') or (espn_player_id=13554 and player_key<>'gsis:00-0020536'))) then raise exception '2005 provider collision still active'; end if; if exists(select 1 from public.player_week_scores where season=2005 and player_key in ('gsis:00-0026857','gsis:00-0027503','gsis:00-0027248') and source <> 'superseded_historical') then raise exception 'stale collision score identity still active'; end if; end \$verify\$;"
+          node scripts/neon-sql.mjs -c "select p.season,p.coverage_status,count(r.*) as current_grades from public.model_publications p left join public.draft_grade_results r on r.run_id=p.run_id and r.season=p.season where p.model_kind='draft' and p.season in (2005,2006,2007) group by p.season,p.coverage_status order by p.season"
+      - name: Repair only known empty-profile collision remnants
+        env:
+          NEON_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          node scripts/neon-sql.mjs -c "update public.nfl_players set full_name='Dannell Ellerbe',position='LB' where player_key='gsis:00-0026857' and full_name='Michael Bennett' and position='RB' and bio='{}'::jsonb; update public.nfl_players set full_name='Josh Gordy',position='DB' where player_key='gsis:00-0027503' and full_name='Chris Chambers' and position='WR' and bio='{}'::jsonb; update public.nfl_players set full_name='Jermelle Cudjo',position='DT' where player_key='gsis:00-0027248' and full_name='LaDainian Tomlinson' and position='RB' and bio='{}'::jsonb;"
+      - name: Verify repaired display identities
+        env:
+          NEON_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          node scripts/neon-sql.mjs -c "do \$verify\$ begin if not exists(select 1 from public.nfl_players where player_key='gsis:00-0026857' and full_name='Dannell Ellerbe' and position='LB') then raise exception 'Dannell Ellerbe profile not repaired'; end if; if not exists(select 1 from public.nfl_players where player_key='gsis:00-0027503' and full_name='Josh Gordy' and position='DB') then raise exception 'Josh Gordy profile not repaired'; end if; if not exists(select 1 from public.nfl_players where player_key='gsis:00-0027248' and full_name='Jermelle Cudjo' and position='DT') then raise exception 'Jermelle Cudjo profile not repaired'; end if; end \$verify\$;"
+          node scripts/neon-sql.mjs -c "select player_key,full_name,position,bio from public.nfl_players where player_key in ('gsis:00-0026857','gsis:00-0027503','gsis:00-0027248') order by player_key"
