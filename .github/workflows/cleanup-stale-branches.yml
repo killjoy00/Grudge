@@ -1,0 +1,65 @@
+name: One-shot stale branch cleanup
+
+on:
+  push:
+    branches:
+      - vercel-deploy-request
+    paths:
+      - '.github/workflows/cleanup-stale-branches.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: vercel-deploy-request
+          fetch-depth: 0
+
+      - name: Delete reviewed stale branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            'claude/player-database-review-yfez3g'
+            'feat/live-season-player-intelligence'
+            'feat/player-explorer'
+            'fix/deploy-gate-follow-up-commits'
+            'fix/history-refresh-release-gate'
+            'fix-trade-and-draft-models'
+            'refactor/canonical-identities'
+            'vercel-preview'
+          )
+
+          for branch in "${branches[@]}"; do
+            case "$branch" in
+              main|vercel-deploy-request|vercel-deployed)
+                echo "Refusing to delete protected operational branch: $branch" >&2
+                exit 1
+                ;;
+            esac
+
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              echo "Deleting $branch"
+              git push origin --delete "$branch"
+            else
+              echo "Already absent: $branch"
+            fi
+          done
+
+          echo 'Remaining remote branches:'
+          git ls-remote --heads origin | sed 's#.*refs/heads/##' | sort
+
+      - name: Remove this one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'grudge-maintenance[bot]'
+          git config user.email 'grudge-maintenance[bot]@users.noreply.github.com'
+          git rm .github/workflows/cleanup-stale-branches.yml
+          git commit -m 'Remove one-shot stale branch cleanup workflow'
+          git push origin HEAD:vercel-deploy-request
