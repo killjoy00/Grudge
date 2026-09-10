@@ -195,7 +195,7 @@ export async function getAdminOperationalStatus(): Promise<AdminOperationalStatu
     getDatabaseStatus(),
     githubJson<GitHubBranchResponse>('/branches/main'),
     githubJson<GitHubBranchResponse>('/branches/vercel-deployed'),
-    githubJson<GitHubRunsResponse>('/actions/runs?per_page=50'),
+    githubJson<GitHubRunsResponse>('/actions/runs?per_page=100'),
   ]);
   const runs = runsResponse?.workflow_runs ?? [];
   const workflows = {

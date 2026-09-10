@@ -23,7 +23,7 @@ Grudge distinguishes authoritative league results from recovered supporting evid
 | 2018–2025 | ESPN archive supplies standings, weekly player lineups, transactions, matchups and recovered draft boards. |
 | 2026 onward | Live ESPN pipeline captures the current league and maintains derived data. |
 
-The league did not play in 2020. Never invent data to fill an evidence gap. See `docs/LEAGUE-HISTORY.md`, `docs/HISTORICAL-TRANSACTIONS.md` and `docs/LEGACY-TRADE-EVIDENCE.md` before changing historical behavior.
+The league did not play in 2020. Draft performance grades begin with the complete 2007 board; the recovered 2005–2006 boards remain source history only because they are incomplete. Never invent data to fill an evidence gap. See `docs/LEAGUE-HISTORY.md`, `docs/HISTORICAL-TRANSACTIONS.md` and `docs/LEGACY-TRADE-EVIDENCE.md` before changing historical behavior.
 
 ## Identity rules
 

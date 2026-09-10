@@ -29,6 +29,8 @@ history implementation assumed:
 - historical team names and stable ESPN team slots;
 - draft recap boards back to 2005.
 
+Draft-board recovery is not the same as grade completeness. The 2007 board is complete and now supports the canonical performance model. The recovered 2005 board contains 119 of 128 overall-pick rows and 2006 contains 129 of 160, so both remain visible as source history but are deliberately withheld from performance grading.
+
 The recovery also established the limits:
 
 - **transactions:** every scoring period in 2005–2017 was queried and ESPN
