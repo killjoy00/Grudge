@@ -69,7 +69,8 @@ test('draft publication carries the committed canonical key before a season alia
     assert.equal(published.rows.length, 4);
     assert.deepEqual(published.rows.map((row) => row.player_key), Array(4).fill(playerKey));
     assert.deepEqual(published.rows.map((row) => row.result_player_key), Array(4).fill(playerKey));
-    assert.equal((await db.query('select count(*)::int as n from nfl_player_aliases')).rows[0]?.n, 0);
+    const aliases = await db.query<{ n: number }>('select count(*)::int as n from nfl_player_aliases');
+    assert.equal(aliases.rows[0]?.n, 0);
   } finally {
     await db.close();
   }
