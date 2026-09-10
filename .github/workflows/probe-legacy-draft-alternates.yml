@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/probe-legacy-draft-alternates.yml'
       - 'scripts/probe-legacy-draft-alternates.mjs'
+      - 'scripts/probe-legacy-transactions.mjs'
 
 permissions:
   contents: read
@@ -24,8 +25,15 @@ jobs:
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
           ESPN_S2: ${{ secrets.ESPN_S2 }}
         run: node scripts/probe-legacy-draft-alternates.mjs
+      - name: Probe filtered legacy transactions
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: node scripts/probe-legacy-transactions.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: legacy-draft-probe
-          path: legacy-draft-probe.json
+          path: |
+            legacy-draft-probe.json
+            legacy-transaction-probe.json
           retention-days: 1
