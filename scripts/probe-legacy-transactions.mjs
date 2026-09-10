@@ -6,11 +6,11 @@ const SWID = process.env.ESPN_SWID;
 const ESPN_S2 = process.env.ESPN_S2;
 if (!SWID || !ESPN_S2) throw new Error('ESPN credentials are required');
 
-const filter = JSON.stringify({
-  transactions: {
-    filterType: { value: ['FREEAGENT', 'WAIVER', 'WAIVER_ERROR', 'TRADE'] },
-  },
-});
+const transactionTypes = [
+  'DRAFT', 'FREEAGENT', 'WAIVER', 'WAIVER_ERROR', 'ROSTER', 'RETRO_ROSTER', 'FUTURE_ROSTER',
+  'TRADE_ACCEPT', 'TRADE_PROPOSAL', 'TRADE_UPHOLD', 'TRADE_DECLINE', 'TRADE_VETO', 'TRADE_ERROR',
+];
+const filter = JSON.stringify({ transactions: { filterType: { value: transactionTypes } } });
 const headers = {
   accept: 'application/json',
   'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36',
@@ -26,7 +26,7 @@ async function fetchPeriod(season, period) {
   const url = `${BASE}/leagueHistory/${LEAGUE_ID}?seasonId=${season}&view=mTransactions2&scoringPeriodId=${period}`;
   const response = await fetch(url, { headers });
   const text = await response.text();
-  if (!response.ok) return { status: response.status, transactions: [], error: text.slice(0, 200) };
+  if (!response.ok) return { status: response.status, transactions: [], error: text.slice(0, 500) };
   const data = unwrap(JSON.parse(text));
   return { status: response.status, transactions: data?.transactions ?? [] };
 }
@@ -40,6 +40,8 @@ function summarizeTransaction(transaction) {
     processDate: transaction.processDate ?? null,
     proposedDate: transaction.proposedDate ?? null,
     scoringPeriodId: transaction.scoringPeriodId ?? null,
+    teamId: transaction.teamId ?? null,
+    relatedTransactionId: transaction.relatedTransactionId ?? null,
     bidAmount: transaction.bidAmount ?? null,
     items: (transaction.items ?? []).map((item) => ({
       playerId: item.playerId ?? null,
@@ -74,8 +76,8 @@ for (const season of [2005, 2006]) {
   for (const row of periods.filter((row) => row.count || row.status !== 200)) {
     console.log(`  period ${row.period}: status=${row.status} returned=${row.count}${row.error ? ` error=${row.error}` : ''}`);
   }
-  for (const transaction of transactions.slice(0, 20)) {
-    console.log(`  tx ${transaction.id} type=${transaction.type} status=${transaction.status} period=${transaction.scoringPeriodId} items=${transaction.items.map((i) => `${i.type}:${i.playerId}:${i.fromTeamId}->${i.toTeamId}`).join(',')}`);
+  for (const transaction of transactions.slice(0, 40)) {
+    console.log(`  tx ${transaction.id} type=${transaction.type} status=${transaction.status} team=${transaction.teamId} period=${transaction.scoringPeriodId} items=${transaction.items.map((i) => `${i.type}:${i.playerId}:${i.fromTeamId}->${i.toTeamId}`).join(',')}`);
   }
 }
 
