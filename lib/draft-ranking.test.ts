@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GRADED_DRAFT_CTE } from './draft-ranking.ts';
+import { DRAFT_PICK_SORT, GRADED_DRAFT_CTE } from './draft-ranking.ts';
 import { DRAFT_MODEL_VERSION } from '../pipeline/draft-model.ts';
 import { modelDatabase } from '../tests/models/database.ts';
 
@@ -41,5 +41,47 @@ test('published draft SQL executes, preserves canonical identity, verified zero,
     await db.exec('update draft_picks set espn_player_id=20 where overall_pick=2');
     await db.exec("update model_publications set coverage_status='blocked'");
     assert.equal((await read()).rows.length, 0);
+  } finally { await db.close(); }
+});
+
+test('draft record ordering stays numeric even when displayed values are text', async () => {
+  const db = await modelDatabase();
+  try {
+    const values = [-48.60, -9.24, -0.08, 9.24, 110.87];
+    await db.exec(`
+      insert into team_franchise values (2024,1,'one','One');
+      insert into model_runs(run_id,model_kind,model_version,input_hash,coverage)
+        values ('sort','draft','${DRAFT_MODEL_VERSION}','h','{}');
+      insert into model_publications(model_kind,season,run_id) values ('draft',2024,'sort');
+    `);
+    for (let index = 0; index < values.length; index += 1) {
+      const pick = index + 1;
+      const player = 100 + pick;
+      const value = values[index]!;
+      await db.query(`insert into nfl_players(player_key,full_name,position,bio)
+        values($1,$2,'RB','{}')`, [`espn:${player}`, `Player ${player}`]);
+      await db.query('insert into draft_picks values (2024,$1,1,$1,1,$2)', [pick, player]);
+      await db.query(`insert into draft_grade_results
+        (run_id,season,overall_pick,espn_team_id,espn_player_id,player_key,result)
+        values ('sort',2024,$1,1,$2,$3,$4)`, [pick, player, `espn:${player}`, JSON.stringify({
+        total_picks: values.length,
+        full_name: `Player ${player}`,
+        position: 2,
+        fantasy_points: 100 + pick,
+        active_weeks: 10,
+        performance_source: 'nflverse',
+        production_score: 50,
+        draft_capital_score: 50 - value,
+        value_delta: value,
+      })]);
+    }
+
+    const busts = await db.query<{ value_delta: string }>(`${GRADED_DRAFT_CTE}
+      select value_delta::text as value_delta from graded order by ${DRAFT_PICK_SORT.busts}`);
+    const steals = await db.query<{ value_delta: string }>(`${GRADED_DRAFT_CTE}
+      select value_delta::text as value_delta from graded order by ${DRAFT_PICK_SORT.steals}`);
+
+    assert.deepEqual(busts.rows.map((row) => Number(row.value_delta)), [-48.60, -9.24, -0.08, 9.24, 110.87]);
+    assert.deepEqual(steals.rows.map((row) => Number(row.value_delta)), [110.87, 9.24, -0.08, -9.24, -48.60]);
   } finally { await db.close(); }
 });
