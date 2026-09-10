@@ -133,7 +133,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
              active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
-       order by value_delta desc, fantasy_points desc, overall_pick desc
+       order by graded.value_delta desc, graded.fantasy_points desc, graded.overall_pick desc
        limit 10`),
     asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
@@ -141,7 +141,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
              active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
-       order by value_delta asc, overall_pick asc, fantasy_points asc
+       order by graded.value_delta asc, graded.overall_pick asc, graded.fantasy_points asc
        limit 10`),
     asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
@@ -151,7 +151,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
              value_delta::text
         from graded
        where active_weeks >= 8 and season >= 2018
-       order by value_delta asc, overall_pick asc, fantasy_points asc
+       order by graded.value_delta asc, graded.overall_pick asc, graded.fantasy_points asc
        limit 5`),
     asPublic<RepeatDraftRow>(`
       select tf.franchise_key,
@@ -318,4 +318,4 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
   };
 }
 
-export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.5'], { revalidate: 3600 });
+export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.6'], { revalidate: 3600 });
