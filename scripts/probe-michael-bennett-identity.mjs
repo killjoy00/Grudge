@@ -11,19 +11,18 @@ function parseCsv(text) {
 }
 async function csv(url){ const r=await fetch(url,{headers:{'user-agent':'Grudge historical identity audit'}}); if(!r.ok)throw new Error(`${url} ${r.status}`); return parseCsv(await r.text()); }
 
+const espnIds = new Set(['13103','13370','13376','13554']);
+const gsisIds = new Set(['00-0020514','00-0026857','00-0020446','00-0027503','00-0020498','00-0027725','00-0020536','00-0027248']);
 const ids = await csv('https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv');
-for (const row of ids.filter((r) => r.espn_id === '13103' || ['00-0020514','00-0026857'].includes(r.gsis_id))) {
-  console.log('CROSSWALK', JSON.stringify(row));
-}
+for (const row of ids.filter((r) => espnIds.has(r.espn_id) || gsisIds.has(r.gsis_id))) console.log('CROSSWALK', JSON.stringify(row));
 
-for (const year of [2004,2005,2006,2007,2008,2009,2010]) {
+for (const year of [2005,2009,2010,2011]) {
   const stats = await csv(`https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_${year}.csv`);
-  const rows = stats.filter((r) => ['00-0020514','00-0026857'].includes(r.player_id));
+  const rows = stats.filter((r) => gsisIds.has(r.player_id));
   const by = new Map();
   for (const row of rows) {
-    const key = row.player_id;
-    if (!by.has(key)) by.set(key,{year,gsis:key,name:row.player_display_name,position:row.position,team:row.recent_team,weeks:0,rushYards:0,recYards:0});
-    const x=by.get(key); x.weeks += 1; x.rushYards += Number(row.rushing_yards||0); x.recYards += Number(row.receiving_yards||0);
+    if (!by.has(row.player_id)) by.set(row.player_id,{year,gsis:row.player_id,name:row.player_display_name,position:row.position,team:row.recent_team,weeks:0});
+    by.get(row.player_id).weeks += 1;
   }
   for (const x of by.values()) console.log('STATS', JSON.stringify(x));
 }
