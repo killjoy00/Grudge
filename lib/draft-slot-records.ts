@@ -73,7 +73,7 @@ async function draftSlotRecordsRaw(): Promise<DraftSlotRecords> {
         select d.season, d.espn_team_id, d.overall_pick::int as draft_slot
           from public.draft_picks d
          where d.round = 1
-           and d.season >= 2008
+           and d.season >= 2007
            and d.season <> 2020
       ), slot_classes as (
         select slots.draft_slot, class_ranked.*
@@ -191,4 +191,4 @@ async function draftSlotRecordsRaw(): Promise<DraftSlotRecords> {
   return { performance, outcomes, franchises };
 }
 
-export const getDraftSlotRecords = unstable_cache(draftSlotRecordsRaw, ['draft-slot-records-2026.5'], { revalidate: 3600 });
+export const getDraftSlotRecords = unstable_cache(draftSlotRecordsRaw, ['draft-slot-records-2026.6'], { revalidate: 3600 });
