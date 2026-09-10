@@ -1,2 +1,2 @@
-Deploy main f411807328f3c32ce39949f7179ecf29588560f6 after PRs #74-#79 status hardening, 2005 draft recovery, season-aware historical identities and no-delete score reconciliation.
+Deploy main 8676dcba875573b95d8ff8837b289e4523e6353f after PR #80 restores verified 2005 grades to public Draft History and fixes discontinuous coverage labels.
 Requested 2026-09-10.
