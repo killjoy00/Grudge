@@ -1,4 +1,5 @@
 name: Rebuild season-aware historical identity
+# Rerun after recording all four verified 2005 provider-ID collisions.
 
 on:
   push:
@@ -50,7 +51,7 @@ jobs:
           pattern = r'Across \*\*[0-9,]+ picks in [0-9]+ held-out seasons\*\*, pick expectation had \*\*MAE [0-9.]+ / RMSE [0-9.]+\*\*, compared with \*\*[0-9.]+ / [0-9.]+\*\* for a constant prior-season production expectation\.'
           replacement = f"Across **{p['n']:,} picks in {len(v['held_out_seasons'])} held-out seasons**, pick expectation had **MAE {p['mae']:.4f} / RMSE {p['rmse']:.4f}**, compared with **{b['mae']:.4f} / {b['rmse']:.4f}** for a constant prior-season production expectation."
           new, n = re.subn(pattern, replacement, text)
-          if n != 1: raise SystemExit(f'Expected one validation paragraph match, found {n}')
+          if n != 1: raise SystemExit(f'{path}: expected one validation paragraph match, found {n}')
           path.write_text(new)
           PY
       - name: Run typecheck and full tests
