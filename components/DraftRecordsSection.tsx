@@ -20,6 +20,27 @@ function sourceLabel(source: string) {
   return source;
 }
 
+/** Compact real league seasons without pretending the unplayed 2020 season is a coverage gap. */
+function coverageRange(years: number[]) {
+  if (!years.length) return 'Awaiting complete coverage';
+  const sorted = [...new Set(years)].sort((a, b) => a - b);
+  const spans: Array<[number, number]> = [];
+  let start = sorted[0]!;
+  let previous = start;
+
+  for (const year of sorted.slice(1)) {
+    const adjacentLeagueSeason = year === previous + 1 || (previous === 2019 && year === 2021);
+    if (!adjacentLeagueSeason) {
+      spans.push([start, previous]);
+      start = year;
+    }
+    previous = year;
+  }
+  spans.push([start, previous]);
+
+  return spans.map(([first, last]) => first === last ? `${first}` : `${first}–${last}`).join(', ');
+}
+
 function ClassTable({ title, rows }: { title: string; rows: DraftClassRow[] }) {
   return (
     <div className="card">
@@ -68,11 +89,10 @@ function PickTable({ title, rows, positive }: { title: string; rows: DraftPickVa
 }
 
 export function DraftRecordsSection({ records, full = false }: { records: DraftRecords; full?: boolean }) {
-  const range = (years: number[]) => years.length ? `${years[0]}–${years.at(-1)}` : 'Awaiting complete coverage';
-  const boardRange = range(records.coverage.board_seasons);
-  const gradeRange = range(records.coverage.graded_seasons);
+  const boardRange = coverageRange(records.coverage.board_seasons);
+  const gradeRange = coverageRange(records.coverage.graded_seasons);
   const productiveYears = [...new Set(records.productiveMisses.map((row) => row.season))].sort((a, b) => a - b);
-  const productiveRange = range(productiveYears);
+  const productiveRange = coverageRange(productiveYears);
   const firstRoundTotal = records.firstRoundPositions.reduce((sum, row) => sum + row.picks, 0);
   const positionTotal = records.positionSummary.reduce((sum, row) => sum + row.picks, 0);
   const firstPickTotal = records.positionSummary.reduce((sum, row) => sum + row.first_picks, 0);

@@ -4,7 +4,7 @@ import { DRAFT_PICK_SORT, GRADED_DRAFT_CTE } from './draft-ranking.ts';
 import { DRAFT_MODEL_VERSION } from '../pipeline/draft-model.ts';
 import { modelDatabase } from '../tests/models/database.ts';
 
-test('published draft SQL executes, preserves canonical identity, verified zero, and gates incomplete boards', async () => {
+test('published draft SQL trusts ready coverage, preserves canonical identity, verified zero, and gates changed boards', async () => {
   const db = await modelDatabase();
   try {
     await db.exec(`
@@ -22,7 +22,9 @@ test('published draft SQL executes, preserves canonical identity, verified zero,
       await db.query(`insert into draft_grade_results
         (run_id,season,overall_pick,espn_team_id,espn_player_id,player_key,result)
         values ('r',2025,$1,$2,$3,$4,$5)`, [pick,team,player,`espn:${player}`,JSON.stringify({
-        total_picks: 2, full_name: `Player ${player}`, position: 2, fantasy_points: points,
+        // The full board has one explicitly-accounted excluded slot that is not
+        // a graded player row. A ready publication remains visible anyway.
+        total_picks: 3, full_name: `Player ${player}`, position: 2, fantasy_points: points,
         active_weeks: points ? 13 : 0, performance_source: points ? 'nflverse' : 'no_regular_season_stats',
         production_score: points ? 50 : 0, draft_capital_score: points ? 30 : 40, value_delta: value,
       })]);
@@ -33,11 +35,11 @@ test('published draft SQL executes, preserves canonical identity, verified zero,
     assert.equal(rows[0]!.player_key, 'espn:10');
     assert.equal(Number(rows[0]!.fantasy_points), 0);
     assert.equal(Number(rows[0]!.value_delta), -40);
-    // No player or ownership row exists: neither is required for known production.
+    // A published graded pick disappearing or changing still invalidates the season.
     await db.exec('delete from draft_picks where overall_pick = 2');
     assert.equal((await read()).rows.length, 0);
     await db.exec('insert into draft_picks values (2025,2,1,2,2,999)');
-    assert.equal((await read()).rows.length, 0, 'a same-size but changed board is not the published board');
+    assert.equal((await read()).rows.length, 0, 'a changed board is not the published board');
     await db.exec('update draft_picks set espn_player_id=20 where overall_pick=2');
     await db.exec("update model_publications set coverage_status='blocked'");
     assert.equal((await read()).rows.length, 0);

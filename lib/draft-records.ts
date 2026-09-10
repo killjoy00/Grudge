@@ -318,4 +318,4 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
   };
 }
 
-export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.6'], { revalidate: 3600 });
+export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.7'], { revalidate: 3600 });

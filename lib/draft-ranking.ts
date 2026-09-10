@@ -15,7 +15,15 @@ export const DRAFT_PICK_SORT = {
   productiveMisses: 'graded.value_delta asc, graded.overall_pick asc, graded.fantasy_points asc',
 } as const;
 
-/** Read one published model generation; never derive production from ownership. */
+/**
+ * Read one published model generation; never derive production from ownership.
+ *
+ * A `ready` model publication is the authority for board completeness. Some
+ * reviewed legacy boards can be complete even when excluded K/DST coordinates
+ * are represented as evidence rather than rows in `draft_picks` (2005 is the
+ * first such season). Consumers still fail closed if any published graded pick
+ * no longer maps exactly to the stored draft row.
+ */
 export const GRADED_DRAFT_CTE = `
 with published as (
   select r.*
@@ -25,17 +33,16 @@ with published as (
    where p.model_kind = 'draft' and p.coverage_status = 'ready'
      and m.model_version = '${DRAFT_MODEL_VERSION}'
 ), eligible_seasons as (
-  select s.season from published s group by s.season
-  having (select count(*) from public.draft_picks d where d.season = s.season)
-           = max((s.result->>'total_picks')::int)
-     and not exists (
-       select 1 from published x where x.season = s.season and not exists (
-         select 1 from public.draft_picks d
-         join public.team_franchise tf on tf.season = d.season and tf.espn_team_id = d.espn_team_id
-         where d.season = x.season and d.overall_pick = x.overall_pick
-           and d.espn_player_id = x.espn_player_id and d.espn_team_id = x.espn_team_id
-       )
+  select distinct s.season
+    from published s
+   where not exists (
+     select 1 from published x where x.season = s.season and not exists (
+       select 1 from public.draft_picks d
+       join public.team_franchise tf on tf.season = d.season and tf.espn_team_id = d.espn_team_id
+       where d.season = x.season and d.overall_pick = x.overall_pick
+         and d.espn_player_id = x.espn_player_id and d.espn_team_id = x.espn_team_id
      )
+   )
 ), graded as (
   select d.season, d.overall_pick, d.round, d.round_pick, d.espn_team_id, d.espn_player_id,
          r.player_key,
