@@ -10,6 +10,7 @@ on:
       - 'scripts/probe-roster-draft-diff.mjs'
       - 'scripts/probe-2005-player-catalog.mjs'
       - 'scripts/probe-2005-gsis.mjs'
+      - 'scripts/probe-michael-bennett-identity.mjs'
 
 permissions:
   contents: read
@@ -45,6 +46,8 @@ jobs:
         run: node scripts/probe-2005-player-catalog.mjs
       - name: Map recovered names to GSIS identities
         run: node scripts/probe-2005-gsis.mjs
+      - name: Probe Michael Bennett identity collision
+        run: node scripts/probe-michael-bennett-identity.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: legacy-draft-probe
