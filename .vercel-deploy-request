@@ -1,2 +1,2 @@
-Deploy main 2d099ef21b9a880623c2e47459e88ba90e31b6b5 after PR #73 team records, player tables and draft ranking fixes.
+Deploy main f411807328f3c32ce39949f7179ecf29588560f6 after PRs #74-#79 status hardening, 2005 draft recovery, season-aware historical identities and no-delete score reconciliation.
 Requested 2026-09-10.
