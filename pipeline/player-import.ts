@@ -85,3 +85,19 @@ export function playerSeasonStatements(s: PlayerSeasonArtifact, hash: string): S
       JSON.stringify(s.scoring_items), s.scoring_hash, JSON.stringify(s.validation), JSON.stringify(s.sources)]));
   return statements;
 }
+
+
+/**
+ * Seed canonical identities required by reproducible historical scoring.
+ * This is intentionally insert-only: the modern player pipeline may already
+ * have a richer name, position, or bio and historical evidence must not erase it.
+ */
+export function historicalPlayerRegistryStatements(players: PlayerProfile[]): Stmt[] {
+  const statements: Stmt[] = [];
+  for (let i = 0; i < players.length; i += 500) statements.push(stmt(`
+    insert into public.nfl_players (player_key, full_name, position, bio)
+    select player_key, full_name, position, bio from jsonb_to_recordset($1::jsonb)
+      as x(player_key text, full_name text, position text, bio jsonb)
+    on conflict (player_key) do nothing`, [JSON.stringify(players.slice(i, i + 500))]));
+  return statements;
+}
