@@ -74,7 +74,7 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       <h3>Franchise draft-order history</h3>
       <p className="sub">
         Most common slot and 1.01 counts use every recovered first round from {draftRange}. This can include the current season&rsquo;s draft as soon as the board is captured.
-        The league had eight teams in 2005, and the 2006 archive is missing the row for overall pick #8, so a few franchises have one fewer observed slot.
+        The league had eight teams in 2005. The 2006 archive is incomplete and is missing the 1.08 row; draft-order history keeps the first-round slots that are actually observed, while performance grading refuses that incomplete board.
       </p>
       <div className="card"><div className="scroll"><table>
         <thead><tr><th>Franchise</th><th>Most common slot</th><th className="num">Times there</th><th className="num">1.01s</th><th className="num">Draft slots on file</th></tr></thead>
