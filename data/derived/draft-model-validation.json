@@ -3,6 +3,7 @@
   "target": "Regular-season production above replacement, normalized by average league starter production.",
   "evaluation": "Expanding chronological holdouts; at least three prior seasons. Fixed log-pick kernel bandwidth 0.35.",
   "held_out_seasons": [
+    2009,
     2010,
     2011,
     2012,
@@ -20,35 +21,35 @@
     2025
   ],
   "pick_expectation": {
-    "n": 2197,
-    "mae": 13.5573,
-    "rmse": 18.9611
+    "n": 2346,
+    "mae": 13.4417,
+    "rmse": 18.8404
   },
   "constant_prior_seasons_baseline": {
-    "n": 2197,
-    "mae": 16.6404,
-    "rmse": 21.7559
+    "n": 2346,
+    "mae": 16.4505,
+    "rmse": 21.6842
   },
   "position_residuals": [
     {
       "position": 1,
-      "n": 259,
-      "mean_value": 2.1587
+      "n": 280,
+      "mean_value": 2.6849
     },
     {
       "position": 2,
-      "n": 809,
-      "mean_value": 0.7245
+      "n": 866,
+      "mean_value": 1.327
     },
     {
       "position": 3,
-      "n": 894,
-      "mean_value": -0.5672
+      "n": 952,
+      "mean_value": -0.1379
     },
     {
       "position": 4,
-      "n": 235,
-      "mean_value": -0.8952
+      "n": 248,
+      "mean_value": -0.7278
     }
   ],
   "limits": [

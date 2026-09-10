@@ -90,6 +90,13 @@ def main():
     overrides = ROOT / 'data/draft-player-identities.json'
     for row in json.loads(overrides.read_text())['players']:
         by_espn[row['espn_id']] = row
+    excluded_overrides_path = ROOT / 'data/draft-excluded-pick-overrides.json'
+    excluded_data = json.loads(excluded_overrides_path.read_text())
+    if excluded_data.get('schema_version') != 1:
+        raise ValueError('Unsupported excluded draft-pick override schema')
+    excluded_overrides = {(row['season'], row['overall_pick']): row for row in excluded_data.get('excluded_picks', [])}
+    if len(excluded_overrides) != len(excluded_data.get('excluded_picks', [])):
+        raise ValueError('Duplicate excluded draft-pick override')
     archives = {}
     metadata = {}
     for directory in ['history', 'seasons']:
@@ -113,21 +120,47 @@ def main():
     for year, (directory, data) in sorted(archives.items()):
         if year < 2005 or year == 2020:
             continue
-        picks = [p for p in data.get('draftDetail', {}).get('picks', []) if p.get('playerId') and p.get('teamId', 0) > 0]
+        raw_picks = [p for p in data.get('draftDetail', {}).get('picks', [])
+                     if p.get('teamId', 0) > 0 and p.get('overallPickNumber')]
+        picks = [p for p in raw_picks if p.get('playerId')]
         regular = data['settings']['scheduleSettings']['matchupPeriodCount']
         completed = {w for w in range(1, regular + 1)
                      if len([m for m in data.get('schedule', []) if m['matchupPeriodId'] == w
                              and m.get('winner') in ('HOME', 'AWAY', 'TIE') and m.get('home') and m.get('away')])
                      == len(data['teams']) // 2}
-        if not picks or not set(range(1, regular + 1)).issubset(completed):
+        if not raw_picks or not set(range(1, regular + 1)).issubset(completed):
             continue
-        max_pick = max(p['overallPickNumber'] for p in picks)
-        present_picks = {p['overallPickNumber'] for p in picks}
+        max_pick = max(p['overallPickNumber'] for p in raw_picks)
+        present_picks = {p['overallPickNumber'] for p in raw_picks}
         missing_picks = sorted(set(range(1, max_pick + 1)) - present_picks)
-        if missing_picks:
+        excluded_board = []
+        unresolved_zero_picks = []
+        used_overrides = set()
+        for pick in raw_picks:
+            if pick.get('playerId'):
+                continue
+            key = (year, pick['overallPickNumber'])
+            override = excluded_overrides.get(key)
+            if pick.get('lineupSlotId') == 16:
+                excluded_board.append({'overall_pick': pick['overallPickNumber'], 'espn_team_id': pick['teamId'],
+                                       'position': 'DST', 'evidence': 'espn_lineup_slot_16'})
+            elif override and override.get('position') == 'DST':
+                used_overrides.add(key)
+                excluded_board.append({'overall_pick': pick['overallPickNumber'], 'espn_team_id': pick['teamId'],
+                                       'position': 'DST', 'evidence': override.get('evidence', 'manual_review')})
+            else:
+                unresolved_zero_picks.append(pick['overallPickNumber'])
+        unused_overrides = sorted(pick for pick in excluded_overrides if pick[0] == year and pick not in used_overrides)
+        if unused_overrides:
+            raise ValueError(f'{year}: excluded draft-pick overrides do not match zero-ID source rows: {unused_overrides}')
+        if missing_picks or unresolved_zero_picks:
             skipped_boards.append({'season': year, 'recorded_picks': len(picks),
-                                   'max_overall_pick': max_pick, 'missing_overall_picks': missing_picks})
-            print(f'{year}: skipped incomplete draft board; missing overall picks {missing_picks}', flush=True)
+                                   'raw_pick_slots': len(raw_picks), 'max_overall_pick': max_pick,
+                                   'missing_overall_picks': missing_picks,
+                                   'excluded_pick_slots': [p['overall_pick'] for p in excluded_board],
+                                   'unresolved_zero_player_picks': unresolved_zero_picks})
+            blocked = sorted(set(missing_picks + unresolved_zero_picks))
+            print(f'{year}: skipped incomplete draft evidence; unresolved overall picks {blocked}', flush=True)
             continue
         rows = source(f'{year}.csv', STATS_URL.format(year))
         if len(rows) < 1000 or max(int(r['week']) for r in rows if r['season_type'] == 'REG') < regular:
@@ -256,6 +289,7 @@ def main():
         seasons.append({'season': year, 'regular_weeks': regular, 'team_count': len(data['teams']),
                         'total_picks': max_pick,
                         'board': [[p['overallPickNumber'], p['teamId'], p['playerId']] for p in picks],
+                        'excluded_board': excluded_board,
                         'slot_counts': data['settings']['rosterSettings']['lineupSlotCounts'],
                         'pool': pool, 'picks': results})
         espn_by_gsis = {gsis: player_id for player_id, gsis in id_map.items()}
@@ -278,6 +312,7 @@ def main():
         'sources': sources, 'archives': archive_sources, 'checks': checks,
         'skipped_incomplete_boards': skipped_boards,
         'identity_overrides_sha256': hashlib.sha256(overrides.read_bytes()).hexdigest(),
+        'excluded_pick_overrides_sha256': hashlib.sha256(excluded_overrides_path.read_bytes()).hexdigest(),
         'limitation': 'NFL reconstruction omits the 40+ yard touchdown bonus flags; ESPN weekly scores override reconstructed points wherever available.',
     }, indent=2) + '\n')
     scoring = json.dumps({'schema_version': 1,
