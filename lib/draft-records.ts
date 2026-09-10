@@ -2,7 +2,7 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 
 import { asPublic } from './db.ts';
-import { GRADED_DRAFT_CTE } from './draft-ranking.ts';
+import { DRAFT_PICK_SORT, GRADED_DRAFT_CTE } from './draft-ranking.ts';
 
 export interface DraftClassRow {
   season: number;
@@ -133,7 +133,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
              active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
-       order by graded.value_delta desc, graded.fantasy_points desc, graded.overall_pick desc
+       order by ${DRAFT_PICK_SORT.steals}
        limit 10`),
     asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
@@ -141,7 +141,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
              round(fantasy_points, 1)::text as fantasy_points, performance_source,
              active_weeks, production_score::text, draft_capital_score::text, value_delta::text
         from graded
-       order by graded.value_delta asc, graded.overall_pick asc, graded.fantasy_points asc
+       order by ${DRAFT_PICK_SORT.busts}
        limit 10`),
     asPublic<DraftPickValueRow>(`${GRADED_DRAFT_CTE}
       select season, overall_pick, round, round_pick, franchise_key, team_name,
@@ -151,7 +151,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
              value_delta::text
         from graded
        where active_weeks >= 8 and season >= 2018
-       order by graded.value_delta asc, graded.overall_pick asc, graded.fantasy_points asc
+       order by ${DRAFT_PICK_SORT.productiveMisses}
        limit 5`),
     asPublic<RepeatDraftRow>(`
       select tf.franchise_key,
