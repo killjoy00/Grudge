@@ -9,6 +9,7 @@ export interface PlayerContributionRow {
   position: string;
   seasons: number;
   starts: number;
+  franchises: number;
   points: string;
   latest_season: number;
 }
@@ -73,6 +74,7 @@ const CONTRIBUTION_SELECT = `
   select p.player_key, p.full_name, p.position,
          count(distinct c.season)::int as seasons,
          count(*) filter (where c.is_starter)::int as starts,
+         count(distinct c.franchise_key) filter (where c.is_starter)::int as franchises,
          round(sum(c.points) filter (where c.is_starter), 2)::text as points,
          max(c.season)::int as latest_season
     from credited c
@@ -111,13 +113,35 @@ export async function getManagerPlayerLeaders(managerKey: string, limit = 8) {
 }
 
 export async function getPlayerRecordLeaders(limit = 10) {
-  const [starterPoints, drafted, traded] = await Promise.all([
+  const [starterPoints, mostStarts, mostFranchises, drafted, traded] = await Promise.all([
     asPublic<PlayerContributionRow>(
       `${CREDITED}
        ${CONTRIBUTION_SELECT}
        group by p.player_key, p.full_name, p.position
        ${CONTRIBUTION_HAVING}
        order by sum(c.points) filter (where c.is_starter) desc, p.player_key
+       limit $1`,
+      [limit]
+    ),
+    asPublic<PlayerContributionRow>(
+      `${CREDITED}
+       ${CONTRIBUTION_SELECT}
+       group by p.player_key, p.full_name, p.position
+       ${CONTRIBUTION_HAVING}
+       order by count(*) filter (where c.is_starter) desc,
+                sum(c.points) filter (where c.is_starter) desc,
+                p.player_key
+       limit $1`,
+      [limit]
+    ),
+    asPublic<PlayerContributionRow>(
+      `${CREDITED}
+       ${CONTRIBUTION_SELECT}
+       group by p.player_key, p.full_name, p.position
+       ${CONTRIBUTION_HAVING}
+       order by count(distinct c.franchise_key) filter (where c.is_starter) desc,
+                count(*) filter (where c.is_starter) desc,
+                p.player_key
        limit $1`,
       [limit]
     ),
@@ -148,5 +172,5 @@ export async function getPlayerRecordLeaders(limit = 10) {
       [limit]
     ),
   ]);
-  return { starterPoints, drafted, traded };
+  return { starterPoints, mostStarts, mostFranchises, drafted, traded };
 }
