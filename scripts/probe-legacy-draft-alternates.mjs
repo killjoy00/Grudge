@@ -30,12 +30,20 @@ async function fetchJson(url) {
 
 function pickSummary(pick) {
   return {
+    id: pick.id ?? null,
     overallPickNumber: pick.overallPickNumber ?? null,
     roundId: pick.roundId ?? null,
     roundPickNumber: pick.roundPickNumber ?? null,
     teamId: pick.teamId ?? null,
     playerId: pick.playerId ?? null,
+    lineupSlotId: pick.lineupSlotId ?? null,
+    autoDraftTypeId: pick.autoDraftTypeId ?? null,
+    nominatingTeamId: pick.nominatingTeamId ?? null,
+    owningTeamIds: pick.owningTeamIds ?? null,
+    memberId: pick.memberId ?? null,
+    reservedForKeeper: Boolean(pick.reservedForKeeper),
     keeper: Boolean(pick.keeper),
+    tradeLocked: Boolean(pick.tradeLocked),
     keys: Object.keys(pick).sort(),
   };
 }
@@ -129,6 +137,9 @@ for (const [season, info] of Object.entries(output.seasons)) {
   for (const source of info.sources) {
     console.log(`${source.url}: status=${source.status} picks=${source.pickCount} zeroPlayers=${source.zeroPlayerCount}`);
     console.log(` zero picks: ${source.zeroPicks.map((p) => p.overallPickNumber).join(',')}`);
+    for (const pick of source.zeroPicks) {
+      console.log(`  pick ${pick.overallPickNumber} r${pick.roundId} team=${pick.teamId} slot=${pick.lineupSlotId} auto=${pick.autoDraftTypeId} id=${pick.id} keeper=${pick.keeper} reserved=${pick.reservedForKeeper} owners=${JSON.stringify(pick.owningTeamIds)}`);
+    }
   }
   for (const snapshot of info.rosterSnapshots) {
     const count = snapshot.teams.reduce((sum, team) => sum + team.entries.length, 0);
