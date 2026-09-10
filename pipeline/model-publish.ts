@@ -57,7 +57,14 @@ export function draftInputsFromScores(bases: DraftPerformanceSeason[], scores: P
 export function draftPublicationStatements(seasons: DraftPerformanceSeason[], coverage: Record<string, unknown>): Stmt[] {
   const inputHash = digest([seasons, coverage]);
   const runId = digest(['draft', DRAFT_MODEL_VERSION, inputHash]);
-  const grades = gradeDrafts(seasons);
+  // The committed identity artifact is already the authority used to find each
+  // pick's canonical scoring rows. Carry that same identity into publication.
+  // Do not depend on nfl_player_aliases already having been backfilled for a
+  // newly recovered season: publication may be the first writer to use it.
+  const grades = gradeDrafts(seasons).map((grade) => ({
+    ...grade,
+    player_key: canonicalPlayerKey(grade.espn_player_id),
+  }));
   const out = [stmt(`insert into public.model_runs (run_id, model_kind, model_version, input_hash, coverage)
     values ($1, 'draft', $2, $3, $4::jsonb) on conflict do nothing`,
   [runId, DRAFT_MODEL_VERSION, inputHash, JSON.stringify(coverage)])];
@@ -65,10 +72,7 @@ export function draftPublicationStatements(seasons: DraftPerformanceSeason[], co
     insert into public.draft_grade_results
       (run_id, season, overall_pick, espn_team_id, espn_player_id, player_key, result)
     select $1, (x->>'season')::int, (x->>'overall_pick')::int, (x->>'espn_team_id')::int,
-      (x->>'espn_player_id')::bigint,
-      (select a.player_key from public.nfl_player_aliases a
-        where a.season = (x->>'season')::int and a.espn_player_id = (x->>'espn_player_id')::bigint),
-      x
+      (x->>'espn_player_id')::bigint, x->>'player_key', x
       from jsonb_array_elements($2::jsonb) x
     on conflict do nothing`, [runId, JSON.stringify(grades.slice(i, i + 500))]));
   for (const season of seasons) {
