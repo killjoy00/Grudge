@@ -10,6 +10,8 @@ export interface PlayerWeekScore {
   position_id: number | null; points: number | null; evidence: ScoringEvidence;
   source: string; scoring_version: string; input_hash: string;
 }
+export const SUPERSEDED_HISTORICAL_SOURCE = 'superseded_historical';
+
 export function digest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
@@ -75,14 +77,29 @@ export function scoreStatements(rows: PlayerWeekScore[]): Stmt[] {
   return out;
 }
 
-
-/** Replace only the reproducible historical regular-season layer for one season. */
+/**
+ * Reconcile the reproducible historical regular-season layer without granting
+ * the pipeline DELETE. Existing derived rows are first retired in place: this
+ * frees provider IDs that were historically reused while preserving an audit
+ * tombstone. Canonical rows in the new artifact are then reactivated by the
+ * normal score upsert; stale identities remain inert and are excluded from
+ * model publication reads.
+ */
 export function replaceHistoricalScoreStatements(season: number, rows: PlayerWeekScore[]): Stmt[] {
   if (rows.some((row) => row.season !== season || !['historical_espn', 'nflverse'].includes(row.source))) {
     throw new Error(`Invalid historical score replacement for ${season}`);
   }
   return [
-    stmt(`delete from public.player_week_scores where season = $1 and source in ('historical_espn', 'nflverse')`, [season]),
+    stmt(`update public.player_week_scores
+      set espn_player_id = null,
+          position_id = null,
+          points = null,
+          evidence = 'missing',
+          source = $2,
+          scoring_version = 'superseded',
+          input_hash = 'superseded',
+          updated_at = now()
+      where season = $1 and source in ('historical_espn', 'nflverse')`, [season, SUPERSEDED_HISTORICAL_SOURCE]),
     ...scoreStatements(rows),
   ];
 }
