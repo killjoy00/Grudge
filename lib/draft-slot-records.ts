@@ -191,4 +191,4 @@ async function draftSlotRecordsRaw(): Promise<DraftSlotRecords> {
   return { performance, outcomes, franchises };
 }
 
-export const getDraftSlotRecords = unstable_cache(draftSlotRecordsRaw, ['draft-slot-records-2026.4'], { revalidate: 3600 });
+export const getDraftSlotRecords = unstable_cache(draftSlotRecordsRaw, ['draft-slot-records-2026.5'], { revalidate: 3600 });

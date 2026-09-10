@@ -2,11 +2,9 @@ import type { ReactNode } from 'react';
 
 import { DraftRecordsSection } from '../../../components/DraftRecordsSection.tsx';
 import { HistoryNav } from '../../../components/HistoryNav.tsx';
-import { PlayerCareerRecordsSection } from '../../../components/PlayerCareerRecordsSection.tsx';
 import { getDraftRecords } from '../../../lib/draft-records.ts';
 import { getCachedHistoryRecords } from '../../../lib/history-cache.ts';
 import { franchiseHref, managerHref, pointsPerGame, record, seasonHref, winRate } from '../../../lib/history-format.ts';
-import { playerHref } from '../../../lib/player-data.ts';
 import type { AllSeasonRecordRow, MatchupRecordRow } from '../../../lib/history-queries.ts';
 import {
   getFinalPowerSeasonRecords,
@@ -16,8 +14,7 @@ import {
   type PowerSeasonRecordRow,
   type SeasonLuckRecordRow,
 } from '../../../lib/history-record-insights.ts';
-import { getTrackedTopPlayerWeeks, getTrackedTopScoringWeeks } from '../../../lib/tracked-game-queries.ts';
-import { POSITIONS } from '../../../pipeline/trade.ts';
+import { getTrackedTopScoringWeeks } from '../../../lib/tracked-game-queries.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,10 +115,9 @@ function LuckTable({ title, rows }: { title: string; rows: SeasonLuckRecordRow[]
 }
 
 export default async function RecordsPage() {
-  const [[seasons, games], topWeeks, topPlayers, powerSeasons, powerChampions, luckiest, unluckiest, draftRecords] = await Promise.all([
+  const [[seasons, games], topWeeks, powerSeasons, powerChampions, luckiest, unluckiest, draftRecords] = await Promise.all([
     getCachedHistoryRecords(),
     getTrackedTopScoringWeeks(10),
-    getTrackedTopPlayerWeeks(10),
     getFinalPowerSeasonRecords(),
     getPowerRankingChampions(),
     getLuckiestSeasons(10),
@@ -142,7 +138,7 @@ export default async function RecordsPage() {
       <div className="page-hero">
         <div className="eyebrow">The record book</div>
         <h1>League records</h1>
-        <p>Season achievements, game marks, player careers, draft archaeology, power champions and schedule luck in one place.</p>
+        <p>Season achievements, game marks, draft archaeology, power champions and schedule luck in one place.</p>
       </div>
 
       <HistoryNav current="records" />
@@ -192,24 +188,6 @@ export default async function RecordsPage() {
           </tr>
         ))}</tbody>
       </table></div></div>
-
-      <h2>Highest individual player weeks</h2>
-      <p className="sub">Player-level lineup entries survive from 2018 onward. Bench performances are intentionally included and labeled.</p>
-      <div className="card"><div className="scroll"><table>
-        <thead><tr><th>#</th><th>Player</th><th>Team</th><th className="num">Points</th><th>Week</th><th>Lineup</th></tr></thead>
-        <tbody>{topPlayers.map((row, index) => (
-          <tr key={`${row.season}-${row.week}-${row.player_key}`} className={index === 0 ? 'title-row' : undefined}>
-            <td>{index + 1}</td>
-            <td><a className="tname" href={playerHref(row.player_key, row.season)}>{row.full_name ?? `ESPN player #${row.espn_player_id}`}</a><span className="tsub block">{POSITIONS[row.default_position_id ?? 0] ?? '—'}</span></td>
-            <td><a href={franchiseHref(row.franchise_key)}>{row.team}</a></td>
-            <td className="num"><strong>{row.points}</strong></td>
-            <td><a href={seasonHref(row.season)}>{row.season} wk {row.week}</a>{row.playoff_tier && <span className="tag era">postseason</span>}</td>
-            <td>{row.is_starter ? 'Starter' : <span className="tag worst">Bench</span>}</td>
-          </tr>
-        ))}</tbody>
-      </table></div></div>
-
-      <PlayerCareerRecordsSection />
 
       <DraftRecordsSection records={draftRecords} />
 
