@@ -35,7 +35,7 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       <p className="sub">
         This is draft order, not player position: 1.01 means the team that picked first overall,
         1.02 the team that picked second, and so on. Each team&rsquo;s full draft class is graded with
-        the same position-adjusted value metric used above, then ranked against the other classes from that season.
+        the current production-above-replacement minus historical pick-expectation model, then ranked against the other classes from that season.
       </p>
 
       {bestValueSlot && worstValueSlot && mostBestDraftsSlot && (
@@ -53,7 +53,7 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
           return (
             <tr key={row.draft_slot}>
               <td><strong>{slotLabel(row.draft_slot)}</strong><span className="tsub block">#{row.draft_slot} overall</span></td>
-              <td className={`num ${Number(row.avg_class_value) > 0 ? 'up' : Number(row.avg_class_value) < 0 ? 'down' : ''}`}><strong>{signed(row.avg_class_value)}</strong><span className="tsub block">positional slots / pick</span></td>
+              <td className={`num ${Number(row.avg_class_value) > 0 ? 'up' : Number(row.avg_class_value) < 0 ? 'down' : ''}`}><strong>{signed(row.avg_class_value)}</strong><span className="tsub block">value points / graded pick</span></td>
               <td className="num"><strong>{Number(row.avg_class_rank).toFixed(2)}</strong><span className="tsub block">1 = best class</span></td>
               <td className="num"><strong>{row.best_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.best_draft_pct).toFixed(1)}%</span></td>
               <td className="num"><strong>{row.top3_drafts}/{row.graded_drafts}</strong><span className="tsub block">{Number(row.top3_pct).toFixed(1)}%</span></td>
@@ -66,7 +66,7 @@ export function DraftSlotSection({ records }: { records: DraftSlotRecords }) {
       </table></div></div>
 
       <p className="note">
-        Draft-quality columns use complete, published ten-team drafts from {performanceRange}, excluding 2020.
+        Draft-quality columns use complete, published ten-team drafts from {performanceRange}, excluding 2020, and read the currently published draft-model results.
         “Best draft” and “worst draft” mean the highest and lowest class value in that season; exact value ties count for each tied class.
         Reg. Champ. and Champ use settled season outcomes from {outcomeRange}, excluding 2020. A live draft is not added to those denominators until its season result exists.
       </p>
