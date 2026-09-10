@@ -8,6 +8,7 @@ on:
       - 'scripts/probe-legacy-draft-alternates.mjs'
       - 'scripts/probe-legacy-transactions.mjs'
       - 'scripts/probe-roster-draft-diff.mjs'
+      - 'scripts/probe-2005-player-catalog.mjs'
 
 permissions:
   contents: read
@@ -36,6 +37,11 @@ jobs:
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
           ESPN_S2: ${{ secrets.ESPN_S2 }}
         run: node scripts/probe-roster-draft-diff.mjs
+      - name: Probe 2005 legacy player catalog
+        env:
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: node scripts/probe-2005-player-catalog.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: legacy-draft-probe
