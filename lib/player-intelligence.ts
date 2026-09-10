@@ -137,6 +137,7 @@ export async function getPlayerRecordLeaders(limit = 10) {
     asPublic<PlayerContributionRow>(
       `${CREDITED}
        ${CONTRIBUTION_SELECT}
+       where p.position <> 'D/ST'
        group by p.player_key, p.full_name, p.position
        ${CONTRIBUTION_HAVING}
        order by count(distinct c.franchise_key) filter (where c.is_starter) desc,
