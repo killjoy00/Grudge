@@ -20,10 +20,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Audit collision rows and role privileges
+      - name: Audit role membership
         env:
           NEON_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: |
-          node scripts/neon-sql.mjs -c "select current_user, has_table_privilege(current_user,'public.player_week_scores','DELETE') as can_delete, has_table_privilege(current_user,'public.player_week_scores','UPDATE') as can_update, has_table_privilege(current_user,'public.nfl_players','UPDATE') as can_update_players"
-          node scripts/neon-sql.mjs -c "select season,week,player_key,espn_player_id,position_id,points,evidence,source from public.player_week_scores where season=2005 and (espn_player_id in (13103,13370,13376,13554) or player_key in ('gsis:00-0020514','gsis:00-0026857','gsis:00-0020446','gsis:00-0027503','gsis:00-0020498','gsis:00-0027725','gsis:00-0020536','gsis:00-0027248')) order by espn_player_id,week,player_key"
-          node scripts/neon-sql.mjs -c "select player_key,full_name,position,bio from public.nfl_players where player_key in ('gsis:00-0026857','gsis:00-0027503','gsis:00-0027725','gsis:00-0027248','gsis:00-0020514','gsis:00-0020446','gsis:00-0020498','gsis:00-0020536') order by player_key"
+          node scripts/neon-sql.mjs -c "select current_user, r.rolsuper, r.rolbypassrls, pg_has_role(current_user,'neon_superuser','member') as neon_superuser_member, pg_has_role(current_user,'neondb_owner','member') as owner_member from pg_roles r where r.rolname=current_user"
