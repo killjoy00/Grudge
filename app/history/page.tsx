@@ -1,4 +1,3 @@
-import { MetricBars } from '../../components/MetricBars.tsx';
 import SortableTable, { type SortColumn, type SortRow } from '../../components/SortableTable.tsx';
 import { getCachedRichChampions } from '../../lib/history-cache.ts';
 import { franchiseHref, managerHref, record, seasonHref, winRate } from '../../lib/history-format.ts';
@@ -162,11 +161,6 @@ export default async function History({
     };
   });
 
-  const chartLabel = hasRange ? `${rangeFrom}–${rangeTo}` : 'All settled seasons';
-  const winLeaders = [...franchises].sort((a, b) => b.regular_wins - a.regular_wins || a.current_name.localeCompare(b.current_name)).slice(0, 10);
-  const titleLeaders = [...franchises].filter((row) => row.championships > 0)
-    .sort((a, b) => b.championships - a.championships || a.current_name.localeCompare(b.current_name));
-
   return (
     <>
       <div className="page-hero">
@@ -189,33 +183,6 @@ export default async function History({
         <a className="btn btn-quiet" href="/players/records">Player records →</a>
       </nav>
 
-      <h2>Franchise record charts</h2>
-      <p className="sub">{chartLabel}. These charts use settled franchise-season results; the live {currentSeason} identity is kept separate until results exist.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <div className="card">
-          <strong>Regular-season wins</strong>
-          <div style={{ marginTop: 14 }}><MetricBars rows={winLeaders.map((row) => ({
-            key: row.franchise_key,
-            label: row.current_name,
-            value: row.regular_wins,
-            display: `${row.regular_wins} wins`,
-            href: franchiseHref(row.franchise_key),
-            detail: record(row.regular_wins, row.regular_losses, row.regular_ties),
-          }))} /></div>
-        </div>
-        <div className="card">
-          <strong>League championships</strong>
-          <div style={{ marginTop: 14 }}><MetricBars rows={titleLeaders.map((row) => ({
-            key: row.franchise_key,
-            label: row.current_name,
-            value: row.championships,
-            display: `${row.championships} title${row.championships === 1 ? '' : 's'}`,
-            href: franchiseHref(row.franchise_key),
-            detail: row.title_seasons ?? undefined,
-          }))} empty="No championships in this range." /></div>
-        </div>
-      </div>
-
       <form className="card" method="get" style={{ marginBottom: 24 }}>
         <strong style={{ fontSize: 14 }}>Filter franchise and manager records</strong>
         <div style={{ display: 'flex', alignItems: 'end', flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
@@ -234,7 +201,7 @@ export default async function History({
         </div>
         <p className="note" style={{ margin: '10px 0 0' }}>
           {hasRange
-            ? `Showing ${rangeFrom}–${rangeTo} in the charts and franchise/manager tables below. The season archive remains complete.`
+            ? `Showing ${rangeFrom}–${rangeTo} in the franchise and manager tables below. The season archive remains complete.`
             : 'Defaults to full completed history. Leave “Through” blank for the latest settled season.'}
         </p>
       </form>
