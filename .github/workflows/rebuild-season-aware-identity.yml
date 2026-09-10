@@ -1,5 +1,5 @@
 name: Rebuild season-aware historical identity
-# Rerun after recording all four verified 2005 provider-ID collisions.
+# Rerun after recording all four verified 2005 provider-ID collisions and fixing the typed test fixtures.
 
 on:
   push:
@@ -29,6 +29,8 @@ jobs:
       - run: npm ci
       - name: Apply season-aware identity patch
         run: node scripts/apply-season-aware-identity-patch.mjs
+      - name: Apply typed test fixture fixes
+        run: node scripts/apply-season-aware-test-fixes.mjs
       - name: Rebuild canonical evidence
         run: npm run models:build-data
       - name: Validate model
@@ -60,7 +62,7 @@ jobs:
           npm test
       - name: Remove one-time helpers and commit
         run: |
-          git rm scripts/apply-season-aware-identity-patch.mjs scripts/audit-draft-alias-conflicts.mjs .github/workflows/rebuild-season-aware-identity.yml
+          git rm scripts/apply-season-aware-identity-patch.mjs scripts/apply-season-aware-test-fixes.mjs scripts/audit-draft-alias-conflicts.mjs .github/workflows/rebuild-season-aware-identity.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/draft-player-season-identities.json data/derived pipeline scripts/build-draft-performance.py scripts/refresh-model-results.ts docs/MODEL-EVIDENCE.md
