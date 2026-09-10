@@ -10,7 +10,6 @@ import {
 import { UNGRADED_POSITIONS, type SideValue } from '../../pipeline/trade-value.ts';
 import type { ProductionSide } from '../../pipeline/trade-production.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
-import { MetricBars } from '../../components/MetricBars.tsx';
 import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
 import { TradeVote } from '../../components/TradeVote.tsx';
@@ -203,8 +202,6 @@ export default async function Trades({ searchParams }: { searchParams: Promise<{
     getAllTimeTradeProductionRecords(),
   ]);
   const votes: Record<string, VoteState> = userId ? await tradeVotes(season).catch(() => ({})) : {};
-  const teamFitChart = [...records].sort((a, b) => b.net - a.net || a.name.localeCompare(b.name));
-  const productionChart = [...productionRecords].sort((a, b) => b.net - a.net || a.name.localeCompare(b.name));
 
   return (
     <>
@@ -226,33 +223,6 @@ export default async function Trades({ searchParams }: { searchParams: Promise<{
 
       {(records.length > 0 || productionRecords.length > 0) && (
         <>
-          <h2>All-time trade charts</h2>
-          <p className="sub">Live from the same published trade grades as the cards and ledgers below. Positive is net value gained relative to trade partners; zero is the midpoint.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginBottom: 14 }}>
-            <div className="card">
-              <strong>Team fit · net lineup impact</strong>
-              <div style={{ marginTop: 14 }}><MetricBars signed rows={teamFitChart.map((row) => ({
-                key: row.franchiseKey,
-                label: row.name,
-                value: row.net,
-                display: signed(row.net),
-                href: franchiseHref(row.franchiseKey),
-                detail: `${row.trades} trade${row.trades === 1 ? '' : 's'} · ${row.won}–${row.lost}${row.even ? `–${row.even}` : ''}`,
-              }))} /></div>
-            </div>
-            <div className="card">
-              <strong>Player value · net above replacement</strong>
-              <div style={{ marginTop: 14 }}><MetricBars signed rows={productionChart.map((row) => ({
-                key: row.franchiseKey,
-                label: row.name,
-                value: row.net,
-                display: signed(row.net),
-                href: franchiseHref(row.franchiseKey),
-                detail: `${row.trades} trade${row.trades === 1 ? '' : 's'} · ${row.won}–${row.lost}${row.even ? `–${row.even}` : ''}`,
-              }))} /></div>
-            </div>
-          </div>
-
           <h2>All-time trade ledgers</h2>
           <p className="sub">Same trades, two different questions. Neither rating is treated as the one true answer.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(390px, 1fr))', gap: 14 }}>
