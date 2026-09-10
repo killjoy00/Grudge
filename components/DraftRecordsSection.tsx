@@ -108,7 +108,7 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
       </div>
 
       <div className="callout" style={{ marginBottom: 18 }}>
-        <strong>Coverage and sources.</strong> Every season uses the Grudge regular-season window, including player production while unrostered. ESPN weekly scores take priority; missing weeks and the older seasons are reconstructed from NFL statistics under that year&rsquo;s scoring rules. Reconstructed weeks omit the old long-touchdown bonus and are labeled estimates. Missing identity or scoring evidence blocks the entire season&rsquo;s grades. 2005–2007 remain board-only because their older player-ID namespace is unresolved. Model 2026.3 keeps each published result for comparison.
+        <strong>Coverage and sources.</strong> Every season uses the Grudge regular-season window, including player production while unrostered. ESPN weekly scores take priority; missing weeks and the older seasons are reconstructed from NFL statistics under that year&rsquo;s scoring rules. Reconstructed weeks omit the old long-touchdown bonus and are labeled estimates. Missing identity or scoring evidence blocks the entire season&rsquo;s grades. The complete 2007 board is graded after reviewed historical player-identity recovery. The 2005 and 2006 archives remain board-only because their recovered boards themselves are incomplete (119 of 128 and 129 of 160 pick rows respectively); those seasons stay withheld even where individual identities can be resolved. Model 2026.3 keeps each published result for comparison.
       </div>
 
       {records.coverage.blocked_seasons.length > 0 && <p className="note">

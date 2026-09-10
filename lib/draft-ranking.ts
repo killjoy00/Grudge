@@ -1,6 +1,20 @@
 import { DRAFT_MODEL_VERSION } from '../pipeline/draft-model.ts';
 export { DRAFT_VALUE_METHOD } from '../pipeline/draft-model.ts';
 
+/**
+ * Pick-record ordering must stay on the numeric columns exposed by `graded`.
+ *
+ * Do not order by a display alias such as `value_delta::text`: PostgreSQL then
+ * sorts lexicographically, which can make -0.08 appear worse than -48.60.
+ * Keeping the clauses here lets the query tests exercise the exact ordering
+ * used by the public Draft History tables.
+ */
+export const DRAFT_PICK_SORT = {
+  steals: 'graded.value_delta desc, graded.fantasy_points desc, graded.overall_pick desc',
+  busts: 'graded.value_delta asc, graded.overall_pick asc, graded.fantasy_points asc',
+  productiveMisses: 'graded.value_delta asc, graded.overall_pick asc, graded.fantasy_points asc',
+} as const;
+
 /** Read one published model generation; never derive production from ownership. */
 export const GRADED_DRAFT_CTE = `
 with published as (

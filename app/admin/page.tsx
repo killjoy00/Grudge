@@ -34,6 +34,14 @@ export default async function AdminOverview() {
 
       <div className="card admin-shortcut">
         <div>
+          <div className="section-kicker">Operations</div>
+          <strong>Check production, data refreshes, models, recaps, and deployment health</strong>
+        </div>
+        <a href="/admin/status" className="btn">System status</a>
+      </div>
+
+      <div className="card admin-shortcut">
+        <div>
           <div className="section-kicker">Membership</div>
           <strong>Add members, assign teams, and send Clerk invitations</strong>
         </div>

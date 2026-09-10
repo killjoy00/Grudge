@@ -107,10 +107,11 @@ def main():
     score_seasons = []
     all_identities = {}
     checks = []
+    skipped_boards = []
     archive_sources = []
     unresolved = []
     for year, (directory, data) in sorted(archives.items()):
-        if year < 2008 or year == 2020:
+        if year < 2005 or year == 2020:
             continue
         picks = [p for p in data.get('draftDetail', {}).get('picks', []) if p.get('playerId') and p.get('teamId', 0) > 0]
         regular = data['settings']['scheduleSettings']['matchupPeriodCount']
@@ -119,6 +120,14 @@ def main():
                              and m.get('winner') in ('HOME', 'AWAY', 'TIE') and m.get('home') and m.get('away')])
                      == len(data['teams']) // 2}
         if not picks or not set(range(1, regular + 1)).issubset(completed):
+            continue
+        max_pick = max(p['overallPickNumber'] for p in picks)
+        present_picks = {p['overallPickNumber'] for p in picks}
+        missing_picks = sorted(set(range(1, max_pick + 1)) - present_picks)
+        if missing_picks:
+            skipped_boards.append({'season': year, 'recorded_picks': len(picks),
+                                   'max_overall_pick': max_pick, 'missing_overall_picks': missing_picks})
+            print(f'{year}: skipped incomplete draft board; missing overall picks {missing_picks}', flush=True)
             continue
         rows = source(f'{year}.csv', STATS_URL.format(year))
         if len(rows) < 1000 or max(int(r['week']) for r in rows if r['season_type'] == 'REG') < regular:
@@ -245,7 +254,7 @@ def main():
                        'mean_absolute_error': round(sum(errors) / len(errors), 4) if errors else None,
                        'max_absolute_error': round(max(errors), 4) if errors else None})
         seasons.append({'season': year, 'regular_weeks': regular, 'team_count': len(data['teams']),
-                        'total_picks': max(p['overallPickNumber'] for p in picks),
+                        'total_picks': max_pick,
                         'board': [[p['overallPickNumber'], p['teamId'], p['playerId']] for p in picks],
                         'slot_counts': data['settings']['rosterSettings']['lineupSlotCounts'],
                         'pool': pool, 'picks': results})
@@ -267,6 +276,7 @@ def main():
     output.write_text(json.dumps({'schema_version': 1, 'horizon': 'grudge_regular_season', 'seasons': seasons}, separators=(',', ':')) + '\n')
     (output.parent / 'draft-performance-provenance.json').write_text(json.dumps({
         'sources': sources, 'archives': archive_sources, 'checks': checks,
+        'skipped_incomplete_boards': skipped_boards,
         'identity_overrides_sha256': hashlib.sha256(overrides.read_bytes()).hexdigest(),
         'limitation': 'NFL reconstruction omits the 40+ yard touchdown bonus flags; ESPN weekly scores override reconstructed points wherever available.',
     }, indent=2) + '\n')

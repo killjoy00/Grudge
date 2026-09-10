@@ -1,13 +1,23 @@
 {
-  "description": "Historical ESPN IDs absent from the upstream crosswalk. ESPN athlete profiles establish name/position; nflverse weekly files establish GSIS identity. Namesakes are matched by position.",
+  "description": "Reviewed historical ESPN draft identities absent from the upstream crosswalk. ESPN athlete profiles establish the fantasy player name and position; nflverse weekly/player-registry evidence establishes the GSIS identity. Namesakes are matched by season and position. These overrides are evidence, not guesses.",
   "players": [
-    {"espn_id": 2844, "name": "Kenny Watson", "position": "RB", "gsis_id": "00-0019808"},
+    {"espn_id": 276, "name": "Keenan McCardell", "position": "WR", "gsis_id": "00-0010668"},
+    {"espn_id": 726, "name": "Jeff Wilkins", "position": "K", "gsis_id": "00-0017693"},
+    {"espn_id": 940, "name": "Terry Glenn", "position": "WR", "gsis_id": "00-0006043"},
+    {"espn_id": 943, "name": "Eddie Kennison", "position": "WR", "gsis_id": "00-0009163"},
+    {"espn_id": 1042, "name": "Joe Horn", "position": "WR", "gsis_id": "00-0007744"},
     {"espn_id": 2178, "name": "Jerry Porter", "position": "WR", "gsis_id": "00-0019703"},
+    {"espn_id": 2211, "name": "Darrell Jackson", "position": "WR", "gsis_id": "00-0019663"},
+    {"espn_id": 2212, "name": "Reuben Droughns", "position": "RB", "gsis_id": "00-0019610"},
+    {"espn_id": 2320, "name": "Mike Anderson", "position": "RB", "gsis_id": "00-0019594"},
+    {"espn_id": 2586, "name": "Anthony Thomas", "position": "RB", "gsis_id": "00-0020403"},
+    {"espn_id": 2844, "name": "Kenny Watson", "position": "RB", "gsis_id": "00-0019808"},
     {"espn_id": 2898, "name": "Drew Bennett", "position": "WR", "gsis_id": "00-0019976"},
-    {"espn_id": 5551, "name": "Chris Perry", "position": "RB", "gsis_id": "00-0022926"},
-    {"espn_id": 8497, "name": "Chris Henry", "position": "WR", "gsis_id": "00-0023518"},
+    {"espn_id": 3734, "name": "Ronald Curry", "position": "WR", "gsis_id": "00-0021337"},
     {"espn_id": 4551, "name": "Chris Brown", "position": "RB", "gsis_id": "00-0022092"},
-    {"espn_id": 3734, "name": "Ronald Curry", "position": "WR", "gsis_id": "00-0021337"}
+    {"espn_id": 5551, "name": "Chris Perry", "position": "RB", "gsis_id": "00-0022926"},
+    {"espn_id": 8487, "name": "Vernand Morency", "position": "RB", "gsis_id": "00-0023508"},
+    {"espn_id": 8497, "name": "Chris Henry", "position": "WR", "gsis_id": "00-0023518"}
   ],
   "espn_source_template": "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/athletes/{espn_id}?lang=en&region=us",
   "nfl_source_template": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{year}.csv"

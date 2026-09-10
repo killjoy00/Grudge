@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "files": {
-    "draft-performance.json": "dc5c03070da3c641b26597b2178bbf5bc477b7d97366d4349a25af34f448f33b",
-    "draft-performance-provenance.json": "af0c14f73fdd46d7fe39fd9c8a3d3c1933e6cdcc7d6fc5648b90c5745e651f0e",
-    "player-week-scores.json.gz": "549536f16335ae86636195a29d7a78fb38392bd1e4d46b5fc893a7e13033b5fa",
-    "player-identities.json": "06f8e60a90403e3201b6a4dc32ffdeee0db1b7cac1f174d7deeca79e581f10e9"
+    "draft-performance.json": "bfee501901ee7a7dc900ea34bada9b404f43787240d053c1cabda4cf01ed9fce",
+    "draft-performance-provenance.json": "bdae336b6b67a7a38f962708fee52b3fa8c6cf6a68acd12c9b7586af764d24db",
+    "player-week-scores.json.gz": "cfa90d62ea3bfe05d93d9dd2a818921c3332f40ed3d74e72707bfe63f198c6bc",
+    "player-identities.json": "2d0afae069da7520a433a8392339875835b72d81e4a40ee7bd271066650e35b8"
   }
 }
