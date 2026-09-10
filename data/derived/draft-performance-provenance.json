@@ -723,6 +723,7 @@
     }
   ],
   "identity_overrides_sha256": "4ff8edc43cc93dff3aae8be63189c763108f3cb82575c69dee9a9b016adcb707",
+  "season_identity_overrides_sha256": "b496ba37f9cf576c8e98ea6cb9b6917c7286f9181cde99d7082a6d7c7bc55494",
   "excluded_pick_overrides_sha256": "aeabc17f703bf4d572351e2989d69c7d6077f9b0420c408ea4f3d5407370ff97",
   "limitation": "NFL reconstruction omits the 40+ yard touchdown bonus flags; ESPN weekly scores override reconstructed points wherever available."
 }

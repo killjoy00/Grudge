@@ -6,6 +6,7 @@ export interface DraftPerformancePick {
   overall_pick: number;
   espn_team_id: number;
   espn_player_id: number;
+  player_key: string;
   full_name: string;
   position: number;
   fantasy_points: number | null;

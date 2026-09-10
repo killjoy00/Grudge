@@ -90,6 +90,13 @@ def main():
     overrides = ROOT / 'data/draft-player-identities.json'
     for row in json.loads(overrides.read_text())['players']:
         by_espn[row['espn_id']] = row
+    season_overrides_path = ROOT / 'data/draft-player-season-identities.json'
+    season_override_data = json.loads(season_overrides_path.read_text())
+    if season_override_data.get('schema_version') != 1:
+        raise ValueError('Unsupported season-scoped draft identity override schema')
+    season_overrides = {(row['season'], row['espn_id']): row for row in season_override_data.get('players', [])}
+    if len(season_overrides) != len(season_override_data.get('players', [])):
+        raise ValueError('Duplicate season-scoped draft identity override')
     excluded_overrides_path = ROOT / 'data/draft-excluded-pick-overrides.json'
     excluded_data = json.loads(excluded_overrides_path.read_text())
     if excluded_data.get('schema_version') != 1:
@@ -218,6 +225,9 @@ def main():
         for player_id, info in by_espn.items():
             if info['gsis_id'] not in ('NA', ''):
                 id_map[player_id] = info['gsis_id']
+        for (override_year, player_id), info in season_overrides.items():
+            if override_year == year:
+                id_map[player_id] = info['gsis_id']
 
         def resolve(player_id, name, pos):
             gsis = id_map.get(player_id)
@@ -256,7 +266,12 @@ def main():
         for pick in picks:
             player_id = pick['playerId']
             info = season_meta.get(player_id) or metadata.get(player_id) or {}
-            crossed = by_espn.get(player_id, {})
+            crossed = season_overrides.get((year, player_id), by_espn.get(player_id, {}))
+            if (year, player_id) in season_overrides and info.get('fullName'):
+                if normalized(info['fullName']) != normalized(crossed['name']):
+                    raise ValueError(f'{year}: season identity override name mismatch for ESPN {player_id}')
+                if info.get('defaultPositionId') and POSITIONS.get(crossed['position']) != info.get('defaultPositionId'):
+                    raise ValueError(f'{year}: season identity override position mismatch for ESPN {player_id}')
             pos = info.get('defaultPositionId') or POSITIONS.get(crossed.get('position'))
             if pos in (5, 16) or player_id < 0 or crossed.get('position') in ('K', 'PK', 'DST', 'DEF'):
                 continue
@@ -275,7 +290,8 @@ def main():
             source_label = 'espn_weekly' if not reconstructed and any((player_id, w) in exact for w in range(1, regular + 1)) \
                 else 'no_regular_season_stats' if gsis not in pool_meta else 'nflverse' if not exact else 'espn_nflverse'
             results.append({'overall_pick': pick['overallPickNumber'], 'espn_team_id': pick['teamId'],
-                            'espn_player_id': player_id, 'full_name': name, 'position': pos,
+                            'espn_player_id': player_id, 'player_key': f'gsis:{gsis}',
+                            'full_name': name, 'position': pos,
                             'fantasy_points': round(sum(values), 2),
                             'active_weeks': sum(v != 0 for v in values), 'performance_source': source_label})
             # Include identified drafted players who recorded no NFL stats at all.
@@ -304,7 +320,8 @@ def main():
                 score_rows.append([gsis, espn_by_gsis.get(gsis), info['position'], week, points, evidence])
         score_seasons.append({'season': year, 'regular_weeks': regular, 'scoring_hash': scoring_hash,
                              'rows': score_rows})
-        all_identities.update(id_map)
+        all_identities.update({player_id: gsis for player_id, gsis in id_map.items()
+                               if (year, player_id) not in season_overrides})
         print(f'{year}: {len(results)} offensive picks, {len(pool)} NFL players, {len(errors)} scoring comparisons', flush=True)
     if unresolved:
         raise ValueError(f'Unresolved draft identities; no output written: {unresolved}')
@@ -314,6 +331,7 @@ def main():
         'sources': sources, 'archives': archive_sources, 'checks': checks,
         'skipped_incomplete_boards': skipped_boards,
         'identity_overrides_sha256': hashlib.sha256(overrides.read_bytes()).hexdigest(),
+        'season_identity_overrides_sha256': hashlib.sha256(season_overrides_path.read_bytes()).hexdigest(),
         'excluded_pick_overrides_sha256': hashlib.sha256(excluded_overrides_path.read_bytes()).hexdigest(),
         'limitation': 'NFL reconstruction omits the 40+ yard touchdown bonus flags; ESPN weekly scores override reconstructed points wherever available.',
     }, indent=2) + '\n')

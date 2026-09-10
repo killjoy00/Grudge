@@ -1,7 +1,7 @@
 import { gradeDrafts, DRAFT_MODEL_VERSION, type DraftPerformanceSeason } from './draft-model.ts';
 import { valueTrade } from './trade-value.ts';
 import { valueTradeProduction } from './trade-production.ts';
-import { canonicalPlayerKey, digest, type PlayerWeekScore } from './player-week.ts';
+import { digest, type PlayerWeekScore } from './player-week.ts';
 import { stmt, type Stmt } from './db.ts';
 import type { SeasonContext } from './trade-value.ts';
 import type { DetectedTrade } from './trade-history.ts';
@@ -43,7 +43,7 @@ export function draftInputsFromScores(bases: DraftPerformanceSeason[], scores: P
       return [id, pos, rows.reduce((sum, r) => sum + Number(r.points), 0)] as [string, number, number];
     });
     const picks = base.picks.map((pick) => {
-      const rows = production(canonicalPlayerKey(pick.espn_player_id));
+      const rows = production(pick.player_key);
       const reconstructed = rows.some((r) => r.evidence === 'reconstructed');
       const observed = rows.some((r) => r.evidence === 'observed');
       return { ...pick,
@@ -70,10 +70,7 @@ export function draftPublicationStatements(seasons: DraftPerformanceSeason[], co
   // pick's canonical scoring rows. Carry that same identity into publication.
   // Do not depend on nfl_player_aliases already having been backfilled for a
   // newly recovered season: publication may be the first writer to use it.
-  const grades = gradeDrafts(seasons).map((grade) => ({
-    ...grade,
-    player_key: canonicalPlayerKey(grade.espn_player_id),
-  }));
+  const grades = gradeDrafts(seasons);
   const out = [stmt(`insert into public.model_runs (run_id, model_kind, model_version, input_hash, coverage)
     values ($1, 'draft', $2, $3, $4::jsonb) on conflict do nothing`,
   [runId, DRAFT_MODEL_VERSION, inputHash, JSON.stringify(coverage)])];

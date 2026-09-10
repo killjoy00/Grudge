@@ -13,8 +13,8 @@ function season(year: number): DraftPerformanceSeason {
       ["r1",2,250],["r2",2,210],["r3",2,120],["r4",2,90],
       ["w1",3,240],["w2",3,190],["w3",3,110],
       ["t1",4,170],["t2",4,100],["t3",4,80]],
-    picks:[{overall_pick:1,espn_team_id:1,espn_player_id:1,full_name:'First',position:2,fantasy_points:250,active_weeks:13,performance_source:'observed'},
-      {overall_pick:8,espn_team_id:1,espn_player_id:2,full_name:'Last',position:3,fantasy_points:110,active_weeks:13,performance_source:'observed'}] };
+    picks:[{overall_pick:1,espn_team_id:1,espn_player_id:1,player_key:'gsis:q1',full_name:'First',position:2,fantasy_points:250,active_weeks:13,performance_source:'observed'},
+      {overall_pick:8,espn_team_id:1,espn_player_id:2,player_key:'gsis:w3',full_name:'Last',position:3,fantasy_points:110,active_weeks:13,performance_source:'observed'}] };
 }
 test('replacement uses all NFL players and the actual FLEX allocation',()=>{
   const base=season(2025);const r=draftReplacement(base);

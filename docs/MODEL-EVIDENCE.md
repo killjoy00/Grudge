@@ -32,7 +32,7 @@ The grade subtracts historical expected production at the actual overall pick. A
 
 Every draft coordinate must be either a real player row or an explicitly evidenced excluded K/D/ST slot. Any unexplained coordinate, missing offensive identity, or missing scoring anywhere in the replacement pool or drafted-player evidence blocks the season. Excluded slots preserve their real overall-pick coordinates but receive no individual grade. A blocked publication has no current result pointer; older immutable runs remain available for audit. SQL independently verifies the known board plus excluded coordinates before exposing any class, pick, position or slot grade.
 
-Chronological validation starts only after three prior seasons. Across **2,346 picks in 16 held-out seasons**, pick expectation had **MAE 13.4417 / RMSE 18.8404**, compared with **16.4505 / 21.6842** for a constant prior-season production expectation. The roughly 13% RMSE reduction evaluates expected normalized production, not causal drafting skill or championship prediction. Reproduce it with `npm run models:validate`; results are committed in `data/derived/draft-model-validation.json`.
+Chronological validation starts only after three prior seasons. Across **2,346 picks in 16 held-out seasons**, pick expectation had **MAE 13.4571 / RMSE 18.8845**, compared with **16.4863 / 21.6823** for a constant prior-season production expectation. The roughly 13% RMSE reduction evaluates expected normalized production, not causal drafting skill or championship prediction. Reproduce it with `npm run models:validate`; results are committed in `data/derived/draft-model-validation.json`.
 
 ## Trade model and durable records
 

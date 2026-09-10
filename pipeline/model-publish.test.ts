@@ -25,6 +25,7 @@ function syntheticSeason(season: number, fantasyPoints: number): DraftPerformanc
       overall_pick: 1,
       espn_team_id: 1,
       espn_player_id: 8417,
+      player_key: canonicalPlayerKey(8417),
       full_name: 'Ronnie Brown',
       position: 2,
       fantasy_points: fantasyPoints,
@@ -74,4 +75,23 @@ test('draft publication carries the committed canonical key before a season alia
   } finally {
     await db.close();
   }
+});
+
+
+test('draft publication trusts the committed season-scoped key over a colliding global ESPN id', async () => {
+  const db = await modelDatabase();
+  try {
+    const playerKey = 'gsis:00-0020514';
+    assert.equal(canonicalPlayerKey(13103), 'gsis:00-0026857');
+    await db.query(`insert into nfl_players(player_key,full_name,position,bio) values($1,'Michael Bennett','RB','{}')`, [playerKey]);
+    const seasons = [2005, 2007, 2008, 2009].map((season, index) => ({
+      ...syntheticSeason(season, 150 + index * 10),
+      board: [[1, 1, 13103]] as [number, number, number][],
+      picks: [{ ...syntheticSeason(season, 150 + index * 10).picks[0]!, espn_player_id: 13103, player_key: playerKey, full_name: 'Michael Bennett' }],
+    }));
+    const coverage = Object.fromEntries(seasons.map(({ season }) => [season, { ready: true, reasons: [], source_hash: String(season) }]));
+    await execute(db, draftPublicationStatements(seasons, coverage));
+    const keys = (await db.query<{player_key:string}>(`select player_key from draft_grade_results order by season`)).rows.map((row) => row.player_key);
+    assert.deepEqual(keys, Array(4).fill(playerKey));
+  } finally { await db.close(); }
 });

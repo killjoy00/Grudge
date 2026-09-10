@@ -22,34 +22,34 @@
   ],
   "pick_expectation": {
     "n": 2346,
-    "mae": 13.4417,
-    "rmse": 18.8404
+    "mae": 13.4571,
+    "rmse": 18.8845
   },
   "constant_prior_seasons_baseline": {
     "n": 2346,
-    "mae": 16.4505,
-    "rmse": 21.6842
+    "mae": 16.4863,
+    "rmse": 21.6823
   },
   "position_residuals": [
     {
       "position": 1,
       "n": 280,
-      "mean_value": 2.6849
+      "mean_value": 2.6722
     },
     {
       "position": 2,
       "n": 866,
-      "mean_value": 1.327
+      "mean_value": 1.1419
     },
     {
       "position": 3,
       "n": 952,
-      "mean_value": -0.1379
+      "mean_value": -0.1679
     },
     {
       "position": 4,
       "n": 248,
-      "mean_value": -0.7278
+      "mean_value": -0.7359
     }
   ],
   "limits": [
