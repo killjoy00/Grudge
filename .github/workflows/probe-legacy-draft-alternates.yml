@@ -9,6 +9,7 @@ on:
       - 'scripts/probe-legacy-transactions.mjs'
       - 'scripts/probe-roster-draft-diff.mjs'
       - 'scripts/probe-2005-player-catalog.mjs'
+      - 'scripts/probe-2005-gsis.mjs'
 
 permissions:
   contents: read
@@ -42,6 +43,8 @@ jobs:
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
           ESPN_S2: ${{ secrets.ESPN_S2 }}
         run: node scripts/probe-2005-player-catalog.mjs
+      - name: Map recovered names to GSIS identities
+        run: node scripts/probe-2005-gsis.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: legacy-draft-probe
