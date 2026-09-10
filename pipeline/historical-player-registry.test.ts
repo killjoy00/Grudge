@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { modelDatabase, execute } from '../tests/models/database.ts';
 import { historicalPlayerRegistryStatements } from './player-import.ts';
-import { scoreStatements, type PlayerWeekScore } from './player-week.ts';
+import { replaceHistoricalScoreStatements, scoreStatements, type PlayerWeekScore } from './player-week.ts';
 
 test('historical scoring seeds missing canonical players before enforcing the score FK', async () => {
   const db = await modelDatabase();
@@ -44,6 +44,28 @@ test('historical registry seeding never overwrites a richer existing player prof
     assert.equal(row.full_name, 'Current Name');
     assert.equal(row.position, 'WR');
     assert.equal(row.bio.headshot, 'kept');
+  } finally {
+    await db.close();
+  }
+});
+
+
+test('historical score replacement removes superseded derived identities', async () => {
+  const db = await modelDatabase();
+  try {
+    const wrong = 'gsis:00-0026857';
+    const correct = 'gsis:00-0020514';
+    await db.query(`insert into nfl_players(player_key,full_name,position,bio) values
+      ($1,'Dannell Ellerbe','LB','{}'),($2,'Michael Bennett','RB','{}')`, [wrong, correct]);
+    await db.query(`insert into player_week_scores
+      (season,week,player_key,espn_player_id,position_id,points,evidence,source,scoring_version,input_hash)
+      values(2005,1,$1,13103,2,0,'verified_zero','nflverse','old','old')`, [wrong]);
+    const replacement: PlayerWeekScore = { season: 2005, week: 1, player_key: correct, espn_player_id: 13103,
+      position_id: 2, points: 4.5, evidence: 'reconstructed', source: 'nflverse', scoring_version: 'new', input_hash: 'new' };
+    await execute(db, replaceHistoricalScoreStatements(2005, [replacement]));
+    assert.equal((await db.query('select 1 from player_week_scores where season=2005 and player_key=$1', [wrong])).rows.length, 0);
+    const row = (await db.query<{points:string}>('select points from player_week_scores where season=2005 and player_key=$1', [correct])).rows[0];
+    assert.equal(Number(row?.points), 4.5);
   } finally {
     await db.close();
   }

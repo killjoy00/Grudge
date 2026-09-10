@@ -4,7 +4,7 @@ import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { connect, runTransaction, upsertChunked } from '../pipeline/db.ts';
-import { canonicalPlayerKey, digest, observedPlayerWeeks, scoreStatements, type PlayerWeekScore, type ScoringEvidence } from '../pipeline/player-week.ts';
+import { digest, observedPlayerWeeks, replaceHistoricalScoreStatements, scoreStatements, type PlayerWeekScore, type ScoringEvidence } from '../pipeline/player-week.ts';
 import { draftInputsFromScores, draftPublicationStatements, tradePublicationStatements } from '../pipeline/model-publish.ts';
 import { loadTradeContext, type ModelQuery } from '../pipeline/model-context.ts';
 import { gradeDrafts, type DraftPerformanceSeason } from '../pipeline/draft-model.ts';
@@ -48,6 +48,26 @@ if (!dryRun) {
   const sql = connect();
   const query: ModelQuery = (text, params = []) => sql.query(text, params) as never;
   const positionNames = new Map([[1, 'QB'], [2, 'RB'], [3, 'WR'], [4, 'TE']]);
+  // Preflight season-scoped aliases before any production write. A provider-ID
+  // collision must stop the refresh without leaving partially replaced scores.
+  const draftAliases = [...new Map(bases.flatMap((season) => season.picks.map((pick) => [
+    `${season.season}:${pick.espn_player_id}`,
+    { season: season.season, espn_player_id: pick.espn_player_id, player_key: pick.player_key, match_method: 'reviewed_draft_evidence' },
+  ] as const))).values()];
+  if (draftAliases.some((alias) => !alias.player_key.startsWith('gsis:'))) {
+    throw new Error('A complete draft season still contains a non-canonical offensive player identity');
+  }
+  const existingAliases = await query<{ season: number; espn_player_id: number; player_key: string }>(
+    'select season, espn_player_id, player_key from public.nfl_player_aliases where season = any($1::int[])',
+    [bases.map((season) => season.season)],
+  );
+  const expectedAliases = new Map(draftAliases.map((alias) => [`${alias.season}:${alias.espn_player_id}`, alias.player_key]));
+  for (const alias of existingAliases) {
+    const expected = expectedAliases.get(`${alias.season}:${alias.espn_player_id}`);
+    if (expected && expected !== alias.player_key) {
+      throw new Error(`${alias.season} ESPN player ${alias.espn_player_id}: existing alias ${alias.player_key} conflicts with reviewed draft identity ${expected}`);
+    }
+  }
   for (const season of data.seasons) {
     const base = bases.find((candidate) => candidate.season === season.season);
     if (!base?.player_registry?.length) throw new Error(`${season.season}: missing historical player registry evidence`);
@@ -62,7 +82,7 @@ if (!dryRun) {
     if (missingKeys.length) throw new Error(`${season.season}: score evidence lacks canonical registry metadata for ${missingKeys.slice(0, 10).join(", ")}`);
     await runTransaction(sql, [
       ...historicalPlayerRegistryStatements(registry),
-      ...scoreStatements(seasonScores),
+      ...replaceHistoricalScoreStatements(season.season, seasonScores),
     ]);
   }
   // Reconcile existing sequence IDs and backfill exact postseason scoring.
@@ -104,33 +124,7 @@ if (!dryRun) {
   }])).values()];
   await runTransaction(sql, upsertChunked('public.players', ['espn_player_id', 'full_name', 'default_position_id'], players, ['espn_player_id'], []));
 
-  // A reviewed draft identity is also a season-scoped provider alias. Insert any
-  // missing aliases so raw draft-board/profile joins and the published grades use
-  // the same canonical player. Existing aliases are never overwritten: a
-  // disagreement is an evidence conflict and must stop the refresh for review.
-  const draftAliases = [...new Map(bases.flatMap((season) => season.picks.map((pick) => {
-    const player_key = canonicalPlayerKey(pick.espn_player_id);
-    return [`${season.season}:${pick.espn_player_id}`, {
-      season: season.season,
-      espn_player_id: pick.espn_player_id,
-      player_key,
-      match_method: 'reviewed_draft_evidence',
-    }] as const;
-  }))).values()];
-  if (draftAliases.some((alias) => alias.player_key.startsWith('espn:'))) {
-    throw new Error('A complete draft season still contains a non-canonical offensive player identity');
-  }
-  const existingAliases = await query<{ season: number; espn_player_id: number; player_key: string }>(
-    'select season, espn_player_id, player_key from public.nfl_player_aliases where season = any($1::int[])',
-    [bases.map((season) => season.season)],
-  );
-  const expectedAliases = new Map(draftAliases.map((alias) => [`${alias.season}:${alias.espn_player_id}`, alias.player_key]));
-  for (const alias of existingAliases) {
-    const expected = expectedAliases.get(`${alias.season}:${alias.espn_player_id}`);
-    if (expected && expected !== alias.player_key) {
-      throw new Error(`${alias.season} ESPN player ${alias.espn_player_id}: existing alias ${alias.player_key} conflicts with reviewed draft identity ${expected}`);
-    }
-  }
+  // Insert only aliases that passed the preflight above.
   await runTransaction(sql, upsertChunked(
     'public.nfl_player_aliases',
     ['season', 'espn_player_id', 'player_key', 'match_method'],

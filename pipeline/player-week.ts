@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import identities from '../data/derived/player-identities.json' with { type: 'json' };
+import seasonIdentities from '../data/draft-player-season-identities.json' with { type: 'json' };
 import { stmt, type Stmt } from './db.ts';
 import { classifyScoreCopies } from './scoring-evidence.ts';
 
@@ -12,12 +13,18 @@ export interface PlayerWeekScore {
 export function digest(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
-export function canonicalPlayerKey(id: number): string {
+const seasonIdentityMap = new Map(
+  (seasonIdentities.players as { season: number; espn_id: number; gsis_id: string }[])
+    .map((row) => [`${row.season}:${row.espn_id}`, row.gsis_id]),
+);
+
+export function canonicalPlayerKey(id: number, season?: number): string {
   // ESPN encodes NFL defensive units as -16000 minus its pro-team id. The NFL
   // player directory intentionally gives those durable franchise identities
   // (`dst:1`, `dst:2`, ...), so never emit a parallel `espn:-16002` identity.
   if (id <= -16001 && id >= -16099) return `dst:${-id - 16000}`;
-  const gsis = (identities as Record<string, string>)[String(id)];
+  const gsis = (season === undefined ? undefined : seasonIdentityMap.get(`${season}:${id}`))
+    ?? (identities as Record<string, string>)[String(id)];
   return gsis ? `gsis:${gsis}` : `espn:${id}`;
 }
 
@@ -35,7 +42,7 @@ export function observedPlayerWeeks(
     const row = copies[0]!;
     const { values, points, evidence } = classifyScoreCopies(copies.map((r) => r.applied_points));
     return {
-      season: row.season, week: row.week, player_key: canonicalPlayerKey(row.espn_player_id),
+      season: row.season, week: row.week, player_key: canonicalPlayerKey(row.espn_player_id, row.season),
       espn_player_id: row.espn_player_id, position_id: positions.get(row.espn_player_id) ?? null,
       points, evidence,
       source: 'espn_weekly', scoring_version: scoringVersion,
@@ -66,4 +73,16 @@ export function scoreStatements(rows: PlayerWeekScore[]): Stmt[] {
         is distinct from (excluded.input_hash, excluded.evidence, excluded.points)
   `, [JSON.stringify(rows.slice(i, i + 1000))]));
   return out;
+}
+
+
+/** Replace only the reproducible historical regular-season layer for one season. */
+export function replaceHistoricalScoreStatements(season: number, rows: PlayerWeekScore[]): Stmt[] {
+  if (rows.some((row) => row.season !== season || !['historical_espn', 'nflverse'].includes(row.source))) {
+    throw new Error(`Invalid historical score replacement for ${season}`);
+  }
+  return [
+    stmt(`delete from public.player_week_scores where season = $1 and source in ('historical_espn', 'nflverse')`, [season]),
+    ...scoreStatements(rows),
+  ];
 }
