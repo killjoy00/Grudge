@@ -35,8 +35,8 @@ jobs:
             'docs/MODEL-EVIDENCE.md': [
               ("The committed corpus contains **132,360 player-weeks, 2,491 offensive picks, and 17 complete seasons (2008–2025, excluding 2020)**. Unrostered players are included.",
                "The committed corpus contains **139,614 player-weeks, 2,630 offensive picks, and 18 complete seasons (2007–2025, excluding 2020)**. Unrostered players are included. The recovered 2005 and 2006 boards are deliberately withheld from grading because they contain only 119 of 128 and 129 of 160 overall-pick rows respectively; resolvable player identities do not make an incomplete board complete."),
-              ("Across **2,047 picks in 14 held-out seasons**, pick expectation had **MAE 13.5229 / RMSE 18.9556**, compared with **16.5245 / 21.7593** for a constant prior-season production expectation (about 13% lower).",
-               "Across **2,197 picks in 15 held-out seasons**, pick expectation had **MAE 13.5573 / RMSE 18.9611**, compared with **16.6404 / 21.7559** for a constant prior-season production expectation (about 13% lower)."),
+              ("Across **2,047 picks in 14 held-out seasons**, pick expectation had **MAE 13.5229 / RMSE 18.9556**, compared with **16.5245 / 21.7593** for a constant prior-season production expectation.",
+               "Across **2,197 picks in 15 held-out seasons**, pick expectation had **MAE 13.5573 / RMSE 18.9611**, compared with **16.6404 / 21.7559** for a constant prior-season production expectation."),
             ],
             'docs/LEAGUE-HISTORY.md': [
               ("- draft recap boards back to 2005.\n\nThe recovery also established the limits:",
