@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "description": "Season-scoped ESPN-to-GSIS corrections for historical provider-ID collisions. These override the current global provider crosswalk only for the named season.",
+  "players": [
+    {
+      "season": 2005,
+      "espn_id": 13103,
+      "name": "Michael Bennett",
+      "position": "RB",
+      "gsis_id": "00-0020514",
+      "evidence": "Authenticated ESPN 2005 player/roster data identifies ESPN 13103 as Michael Bennett RB; nflverse 2005 identifies Michael Bennett RB as GSIS 00-0020514. The current global crosswalk reuses ESPN 13103 for Dannell Ellerbe (GSIS 00-0026857)."
+    }
+  ]
+}
