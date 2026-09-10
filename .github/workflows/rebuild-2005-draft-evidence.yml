@@ -1,4 +1,5 @@
 name: Rebuild 2005 draft evidence
+# One-time recovery run after the reviewed 2005 legacy identity crosswalk was completed.
 
 on:
   push:
