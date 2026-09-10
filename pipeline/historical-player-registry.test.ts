@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { modelDatabase, execute } from '../tests/models/database.ts';
 import { historicalPlayerRegistryStatements } from './player-import.ts';
-import { replaceHistoricalScoreStatements, scoreStatements, type PlayerWeekScore } from './player-week.ts';
+import { replaceHistoricalScoreStatements, scoreStatements, SUPERSEDED_HISTORICAL_SOURCE, type PlayerWeekScore } from './player-week.ts';
 
 test('historical scoring seeds missing canonical players before enforcing the score FK', async () => {
   const db = await modelDatabase();
@@ -49,8 +49,7 @@ test('historical registry seeding never overwrites a richer existing player prof
   }
 });
 
-
-test('historical score replacement removes superseded derived identities', async () => {
+test('historical score replacement retires superseded identities without DELETE privilege', async () => {
   const db = await modelDatabase();
   try {
     const wrong = 'gsis:00-0026857';
@@ -59,13 +58,23 @@ test('historical score replacement removes superseded derived identities', async
       ($1,'Dannell Ellerbe','LB','{}'),($2,'Michael Bennett','RB','{}')`, [wrong, correct]);
     await db.query(`insert into player_week_scores
       (season,week,player_key,espn_player_id,position_id,points,evidence,source,scoring_version,input_hash)
-      values(2005,1,$1,13103,2,0,'verified_zero','nflverse','old','old')`, [wrong]);
+      values
+      (2005,1,$1,13103,2,0,'verified_zero','nflverse','old','old'),
+      (2005,1,$2,2575,2,1,'reconstructed','nflverse','old','canonical-old')`, [wrong, correct]);
     const replacement: PlayerWeekScore = { season: 2005, week: 1, player_key: correct, espn_player_id: 13103,
       position_id: 2, points: 4.5, evidence: 'reconstructed', source: 'nflverse', scoring_version: 'new', input_hash: 'new' };
     await execute(db, replaceHistoricalScoreStatements(2005, [replacement]));
-    assert.equal((await db.query('select 1 from player_week_scores where season=2005 and player_key=$1', [wrong])).rows.length, 0);
-    const row = (await db.query<{points:string}>('select points from player_week_scores where season=2005 and player_key=$1', [correct])).rows[0];
-    assert.equal(Number(row?.points), 4.5);
+    const retired = (await db.query<{espn_player_id:number|null;points:string|null;evidence:string;source:string}>(
+      'select espn_player_id,points,evidence,source from player_week_scores where season=2005 and player_key=$1', [wrong])).rows[0]!;
+    assert.equal(retired.espn_player_id, null);
+    assert.equal(retired.points, null);
+    assert.equal(retired.evidence, 'missing');
+    assert.equal(retired.source, SUPERSEDED_HISTORICAL_SOURCE);
+    const row = (await db.query<{espn_player_id:number;points:string;source:string}>(
+      'select espn_player_id,points,source from player_week_scores where season=2005 and player_key=$1', [correct])).rows[0]!;
+    assert.equal(Number(row.espn_player_id), 13103);
+    assert.equal(Number(row.points), 4.5);
+    assert.equal(row.source, 'nflverse');
   } finally {
     await db.close();
   }
