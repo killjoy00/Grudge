@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "excluded_picks": [
+    {
+      "season": 2005,
+      "overall_pick": 126,
+      "position": "DST",
+      "evidence": "manual_review_second_defense_2026-09-10"
+    }
+  ]
+}
