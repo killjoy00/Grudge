@@ -291,7 +291,9 @@ def main():
                         'board': [[p['overallPickNumber'], p['teamId'], p['playerId']] for p in picks],
                         'excluded_board': excluded_board,
                         'slot_counts': data['settings']['rosterSettings']['lineupSlotCounts'],
-                        'pool': pool, 'picks': results})
+                        'pool': pool,
+                        'player_registry': [[gsis, info['position'], info['name']] for gsis, info in sorted(pool_meta.items())],
+                        'picks': results})
         espn_by_gsis = {gsis: player_id for player_id, gsis in id_map.items()}
         score_rows = []
         for gsis, info in sorted(pool_meta.items()):

@@ -13,6 +13,7 @@ import { detectTrades } from '../pipeline/trade-history.ts';
 import { tradeWriteStatements } from '../pipeline/trade-identity.ts';
 import { completedWeeks, rosterEntryRows, playerRows, starterSlots } from '../pipeline/normalize.ts';
 import type { EspnLeague } from '../pipeline/espn.ts';
+import { historicalPlayerRegistryStatements } from '../pipeline/player-import.ts';
 
 const root = new URL('../', import.meta.url);
 const dryRun = process.argv.includes('--dry-run');
@@ -46,8 +47,23 @@ console.log(`${scores.length} canonical player-weeks; ${gradeDrafts(offline.seas
 if (!dryRun) {
   const sql = connect();
   const query: ModelQuery = (text, params = []) => sql.query(text, params) as never;
+  const positionNames = new Map([[1, 'QB'], [2, 'RB'], [3, 'WR'], [4, 'TE']]);
   for (const season of data.seasons) {
-    await runTransaction(sql, scoreStatements(scores.filter((s) => s.season === season.season)));
+    const base = bases.find((candidate) => candidate.season === season.season);
+    if (!base?.player_registry?.length) throw new Error(`${season.season}: missing historical player registry evidence`);
+    const registry = base.player_registry.map(([gsis, positionId, fullName]) => {
+      const position = positionNames.get(positionId);
+      if (!position || !fullName) throw new Error(`${season.season}: invalid historical player registry row ${gsis}`);
+      return { player_key: `gsis:${gsis}`, full_name: fullName, position, bio: {} };
+    });
+    const registryKeys = new Set(registry.map((player) => player.player_key));
+    const seasonScores = scores.filter((score) => score.season === season.season);
+    const missingKeys = [...new Set(seasonScores.filter((score) => !registryKeys.has(score.player_key)).map((score) => score.player_key))];
+    if (missingKeys.length) throw new Error(`${season.season}: score evidence lacks canonical registry metadata for ${missingKeys.slice(0, 10).join(", ")}`);
+    await runTransaction(sql, [
+      ...historicalPlayerRegistryStatements(registry),
+      ...scoreStatements(seasonScores),
+    ]);
   }
   // Reconcile existing sequence IDs and backfill exact postseason scoring.
   // The same normalizer and writers are used by the live weekly loader.

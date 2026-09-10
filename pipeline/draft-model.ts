@@ -22,6 +22,8 @@ export interface DraftPerformanceSeason {
   slot_counts: Record<string, number>;
   /** All NFL offensive players, including undrafted/free-agent production. */
   pool: [string, number, number][];
+  /** Canonical identity metadata for every player whose production enters the historical pool. */
+  player_registry?: [string, number, string][];
   picks: DraftPerformancePick[];
 }
 export interface GradedPick extends DraftPerformancePick {
