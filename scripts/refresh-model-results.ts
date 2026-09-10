@@ -4,7 +4,7 @@ import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { connect, runTransaction, upsertChunked } from '../pipeline/db.ts';
-import { digest, observedPlayerWeeks, replaceHistoricalScoreStatements, scoreStatements, type PlayerWeekScore, type ScoringEvidence } from '../pipeline/player-week.ts';
+import { digest, observedPlayerWeeks, replaceHistoricalScoreStatements, scoreStatements, SUPERSEDED_HISTORICAL_SOURCE, type PlayerWeekScore, type ScoringEvidence } from '../pipeline/player-week.ts';
 import { draftInputsFromScores, draftPublicationStatements, tradePublicationStatements } from '../pipeline/model-publish.ts';
 import { loadTradeContext, type ModelQuery } from '../pipeline/model-context.ts';
 import { gradeDrafts, type DraftPerformanceSeason } from '../pipeline/draft-model.ts';
@@ -134,7 +134,9 @@ if (!dryRun) {
   ));
 
   const [canonical, boards] = await Promise.all([
-    query<PlayerWeekScore>('select * from public.player_week_scores where season = any($1::int[]) order by season, week, player_key', [bases.map((s) => s.season)]),
+    query<PlayerWeekScore>(`select * from public.player_week_scores
+      where season = any($1::int[]) and source <> $2
+      order by season, week, player_key`, [bases.map((s) => s.season), SUPERSEDED_HISTORICAL_SOURCE]),
     query<(typeof archivedBoards)[number]>('select season, overall_pick, espn_team_id, espn_player_id from public.draft_picks order by season, overall_pick'),
   ]);
   const inputs = draftInputsFromScores(bases, canonical, boards);
