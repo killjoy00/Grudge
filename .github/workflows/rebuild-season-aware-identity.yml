@@ -1,0 +1,67 @@
+name: Rebuild season-aware historical identity
+
+on:
+  push:
+    branches: [fix/season-aware-historical-player-identity]
+    paths:
+      - '.github/workflows/rebuild-season-aware-identity.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/season-aware-historical-player-identity
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Apply season-aware identity patch
+        run: node scripts/apply-season-aware-identity-patch.mjs
+      - name: Rebuild canonical evidence
+        run: npm run models:build-data
+      - name: Validate model
+        run: npm run models:validate
+      - name: Validate publication inputs
+        run: npm run models:refresh -- --dry-run
+      - name: Audit reviewed aliases against production
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: node scripts/audit-draft-alias-conflicts.mjs
+      - name: Update validation metrics in documentation
+        run: |
+          python3 - <<'PY'
+          import json, re
+          from pathlib import Path
+          v = json.loads(Path('data/derived/draft-model-validation.json').read_text())
+          p = v['pick_expectation']; b = v['constant_prior_seasons_baseline']
+          path = Path('docs/MODEL-EVIDENCE.md')
+          text = path.read_text()
+          pattern = r'Across \*\*[0-9,]+ picks in [0-9]+ held-out seasons\*\*, pick expectation had \*\*MAE [0-9.]+ / RMSE [0-9.]+\*\*, compared with \*\*[0-9.]+ / [0-9.]+\*\* for a constant prior-season production expectation\.'
+          replacement = f"Across **{p['n']:,} picks in {len(v['held_out_seasons'])} held-out seasons**, pick expectation had **MAE {p['mae']:.4f} / RMSE {p['rmse']:.4f}**, compared with **{b['mae']:.4f} / {b['rmse']:.4f}** for a constant prior-season production expectation."
+          new, n = re.subn(pattern, replacement, text)
+          if n != 1: raise SystemExit(f'Expected one validation paragraph match, found {n}')
+          path.write_text(new)
+          PY
+      - name: Run typecheck and full tests
+        run: |
+          npm run typecheck
+          npm test
+      - name: Remove one-time helpers and commit
+        run: |
+          git rm scripts/apply-season-aware-identity-patch.mjs scripts/audit-draft-alias-conflicts.mjs .github/workflows/rebuild-season-aware-identity.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/draft-player-season-identities.json data/derived pipeline scripts/build-draft-performance.py scripts/refresh-model-results.ts docs/MODEL-EVIDENCE.md
+          git commit -m "Honor season-scoped historical player identities"
+          git push origin HEAD:fix/season-aware-historical-player-identity
