@@ -1,0 +1,29 @@
+name: Audit historical score collisions
+
+on:
+  push:
+    branches: [fix/historical-score-delete-permission]
+    paths:
+      - '.github/workflows/audit-historical-score-collisions.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/historical-score-delete-permission
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Audit collision rows and role privileges
+        env:
+          NEON_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          node scripts/neon-sql.mjs -c "select current_user, has_table_privilege(current_user,'public.player_week_scores','DELETE') as can_delete, has_table_privilege(current_user,'public.player_week_scores','UPDATE') as can_update, has_table_privilege(current_user,'public.nfl_players','UPDATE') as can_update_players"
+          node scripts/neon-sql.mjs -c "select season,week,player_key,espn_player_id,position_id,points,evidence,source from public.player_week_scores where season=2005 and (espn_player_id in (13103,13370,13376,13554) or player_key in ('gsis:00-0020514','gsis:00-0026857','gsis:00-0020446','gsis:00-0027503','gsis:00-0020498','gsis:00-0027725','gsis:00-0020536','gsis:00-0027248')) order by espn_player_id,week,player_key"
+          node scripts/neon-sql.mjs -c "select player_key,full_name,position,bio from public.nfl_players where player_key in ('gsis:00-0026857','gsis:00-0027503','gsis:00-0027725','gsis:00-0027248','gsis:00-0020514','gsis:00-0020446','gsis:00-0020498','gsis:00-0020536') order by player_key"
