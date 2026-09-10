@@ -18,18 +18,68 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Probe 2005-2007 with the canonical builder
+      - name: Probe unresolved ESPN identities against ESPN athlete records and nflverse
         shell: bash
         run: |
-          cp scripts/build-draft-performance.py /tmp/build-draft-performance.py
-          sed -i "s/if year < 2008 or year == 2020:/if year == 2020:/" scripts/build-draft-performance.py
-          set +e
-          python3 scripts/build-draft-performance.py --cache-dir /tmp/grudge-draft-sources > legacy-draft-investigation.txt 2>&1
-          status=$?
-          set -e
-          cat legacy-draft-investigation.txt
-          echo "builder_exit=$status" >> legacy-draft-investigation.txt
-          mv /tmp/build-draft-performance.py scripts/build-draft-performance.py
+          python3 - <<'PY' | tee legacy-draft-investigation.txt
+          import csv, io, json, re, urllib.request
+
+          unresolved = {
+            2005: [1868367,1869694,1951644,1953735,1962369,1867957,2129297,1921396,1870431,1868359,1868405,1869693,1954423,1869892,1870428,2014162,1951343,1868992],
+            2006: [1951644,1869694,1953735,1953184,1956341,1941582,1921396,1868359,1946250,1868066,1954772,1949439,1869402,1952653,1868367,1949968,1869002],
+            2007: [2211,940,8487,2586,1042,2212,2320,943,726,276],
+          }
+          control = [2844]
+
+          def get_json(url):
+            req = urllib.request.Request(url, headers={'User-Agent':'grudge-identity-audit/1.0','Accept':'application/json'})
+            with urllib.request.urlopen(req, timeout=20) as r:
+              return json.load(r)
+
+          def norm(name):
+            name = re.sub(r'\b(jr|sr|ii|iii|iv|v)\b', '', (name or '').lower())
+            return re.sub(r'[^a-z0-9]', '', name)
+
+          profiles = {}
+          for ident in sorted(set(control + [i for ids in unresolved.values() for i in ids])):
+            url = f'https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/athletes/{ident}?lang=en&region=us'
+            try:
+              p = get_json(url)
+              position = None
+              pref = p.get('position', {}).get('$ref') if isinstance(p.get('position'), dict) else None
+              if pref:
+                try:
+                  pos = get_json(pref)
+                  position = pos.get('abbreviation') or pos.get('name')
+                except Exception:
+                  pass
+              profiles[ident] = {'name': p.get('displayName') or p.get('fullName'), 'position': position, 'id': p.get('id')}
+            except Exception as e:
+              profiles[ident] = {'error': type(e).__name__}
+
+          print('ESPN_PROFILES')
+          for ident in sorted(profiles):
+            print(json.dumps({'espn_id':ident, **profiles[ident]}, sort_keys=True))
+
+          print('NFLVERSE_MATCHES')
+          for year, ids in unresolved.items():
+            url = f'https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{year}.csv'
+            req = urllib.request.Request(url, headers={'User-Agent':'grudge-identity-audit/1.0'})
+            with urllib.request.urlopen(req, timeout=60) as r:
+              rows = list(csv.DictReader(io.TextIOWrapper(r, encoding='utf-8')))
+            by_name = {}
+            for row in rows:
+              if row.get('season_type') != 'REG': continue
+              by_name.setdefault(norm(row.get('player_display_name')), {})[row.get('player_id')] = row
+            for ident in ids:
+              p = profiles.get(ident, {})
+              name = p.get('name')
+              candidates = list(by_name.get(norm(name), {}).values()) if name else []
+              unique = {}
+              for row in candidates:
+                unique[row.get('player_id')] = {'gsis_id':row.get('player_id'),'name':row.get('player_display_name'),'position':row.get('position')}
+              print(json.dumps({'season':year,'espn_id':ident,'espn_name':name,'espn_position':p.get('position'),'candidates':list(unique.values())}, sort_keys=True))
+          PY
       - uses: actions/upload-artifact@v7
         with:
           name: legacy-draft-investigation
