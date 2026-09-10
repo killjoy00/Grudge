@@ -9,6 +9,30 @@
       "position": "RB",
       "gsis_id": "00-0020514",
       "evidence": "Authenticated ESPN 2005 player/roster data identifies ESPN 13103 as Michael Bennett RB; nflverse 2005 identifies Michael Bennett RB as GSIS 00-0020514. The current global crosswalk reuses ESPN 13103 for Dannell Ellerbe (GSIS 00-0026857)."
+    },
+    {
+      "season": 2005,
+      "espn_id": 13370,
+      "name": "Chris Chambers",
+      "position": "WR",
+      "gsis_id": "00-0020446",
+      "evidence": "The 2005 ESPN archive identifies ESPN 13370 as Chris Chambers WR and the existing season-aware production alias agrees; nflverse 2005 identifies Chris Chambers WR as GSIS 00-0020446. The current global crosswalk reuses ESPN 13370 for Josh Gordy (GSIS 00-0027503)."
+    },
+    {
+      "season": 2005,
+      "espn_id": 13376,
+      "name": "Reggie Wayne",
+      "position": "WR",
+      "gsis_id": "00-0020498",
+      "evidence": "The 2005 ESPN archive identifies ESPN 13376 as Reggie Wayne WR and the existing season-aware production alias agrees; nflverse 2005 identifies Reggie Wayne WR as GSIS 00-0020498. The current global crosswalk reuses ESPN 13376 for Clay Harbor (GSIS 00-0027725)."
+    },
+    {
+      "season": 2005,
+      "espn_id": 13554,
+      "name": "LaDainian Tomlinson",
+      "position": "RB",
+      "gsis_id": "00-0020536",
+      "evidence": "The 2005 ESPN archive identifies ESPN 13554 as LaDainian Tomlinson RB and the existing season-aware production alias agrees; nflverse 2005 identifies LaDainian Tomlinson RB as GSIS 00-0020536. The current global crosswalk reuses ESPN 13554 for Jermelle Cudjo (GSIS 00-0027248)."
     }
   ]
 }
