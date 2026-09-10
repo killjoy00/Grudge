@@ -1,4 +1,4 @@
-name: Build verified 2007 draft evidence
+name: Finalize draft coverage and verify
 
 on:
   push:
@@ -10,56 +10,75 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
           ref: feat/status-draft-history-hardening
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
-      - name: Enforce complete boards and admit the verified 2007 archive
+      - name: Update evidence boundary documentation
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('scripts/build-draft-performance.py')
-          text = path.read_text()
-          replacements = [
-            ("    checks = []\n    archive_sources = []\n", "    checks = []\n    skipped_boards = []\n    archive_sources = []\n"),
-            ("        if year < 2008 or year == 2020:\n", "        if year < 2005 or year == 2020:\n"),
-            ("        if not picks or not set(range(1, regular + 1)).issubset(completed):\n            continue\n        rows = source(f'{year}.csv', STATS_URL.format(year))\n",
-             "        if not picks or not set(range(1, regular + 1)).issubset(completed):\n            continue\n        max_pick = max(p['overallPickNumber'] for p in picks)\n        present_picks = {p['overallPickNumber'] for p in picks}\n        missing_picks = sorted(set(range(1, max_pick + 1)) - present_picks)\n        if missing_picks:\n            skipped_boards.append({'season': year, 'recorded_picks': len(picks),\n                                   'max_overall_pick': max_pick, 'missing_overall_picks': missing_picks})\n            print(f'{year}: skipped incomplete draft board; missing overall picks {missing_picks}', flush=True)\n            continue\n        rows = source(f'{year}.csv', STATS_URL.format(year))\n"),
-            ("                        'total_picks': max(p['overallPickNumber'] for p in picks),\n", "                        'total_picks': max_pick,\n"),
-            ("        'sources': sources, 'archives': archive_sources, 'checks': checks,\n", "        'sources': sources, 'archives': archive_sources, 'checks': checks,\n        'skipped_incomplete_boards': skipped_boards,\n"),
-          ]
-          for before, after in replacements:
-            if before not in text:
-              raise SystemExit(f'Expected builder source not found: {before[:80]!r}')
-            text = text.replace(before, after, 1)
-          path.write_text(text)
+
+          replacements = {
+            'components/DraftRecordsSection.tsx': [
+              ("2005–2007 remain board-only because their older player-ID namespace is unresolved. Model 2026.3 keeps each published result for comparison.",
+               "The complete 2007 board is graded after reviewed historical player-identity recovery. The 2005 and 2006 archives remain board-only because their recovered boards themselves are incomplete (119 of 128 and 129 of 160 pick rows respectively); those seasons stay withheld even where individual identities can be resolved. Model 2026.3 keeps each published result for comparison."),
+            ],
+            'docs/MODEL-EVIDENCE.md': [
+              ("The committed corpus contains **132,360 player-weeks, 2,491 offensive picks, and 17 complete seasons (2008–2025, excluding 2020)**. Unrostered players are included.",
+               "The committed corpus contains **139,614 player-weeks, 2,630 offensive picks, and 18 complete seasons (2007–2025, excluding 2020)**. Unrostered players are included. The recovered 2005 and 2006 boards are deliberately withheld from grading because they contain only 119 of 128 and 129 of 160 overall-pick rows respectively; resolvable player identities do not make an incomplete board complete."),
+              ("Across **2,047 picks in 14 held-out seasons**, pick expectation had **MAE 13.5229 / RMSE 18.9556**, compared with **16.5245 / 21.7593** for a constant prior-season production expectation (about 13% lower).",
+               "Across **2,197 picks in 15 held-out seasons**, pick expectation had **MAE 13.5573 / RMSE 18.9611**, compared with **16.6404 / 21.7559** for a constant prior-season production expectation (about 13% lower)."),
+            ],
+            'docs/LEAGUE-HISTORY.md': [
+              ("- draft recap boards back to 2005.\n\nThe recovery also established the limits:",
+               "- draft recap boards back to 2005.\n\nDraft-board recovery is not the same as grade completeness. The 2007 board is complete and now supports the canonical performance model. The recovered 2005 board contains 119 of 128 overall-pick rows and 2006 contains 129 of 160, so both remain visible as source history but are deliberately withheld from performance grading.\n\nThe recovery also established the limits:"),
+            ],
+            'README.md': [
+              ("The league did not play in 2020. Never invent data to fill an evidence gap.",
+               "The league did not play in 2020. Draft performance grades begin with the complete 2007 board; the recovered 2005–2006 boards remain source history only because they are incomplete. Never invent data to fill an evidence gap."),
+            ],
+            'lib/admin-status.ts': [
+              ("githubJson<GitHubRunsResponse>('/actions/runs?per_page=50')", "githubJson<GitHubRunsResponse>('/actions/runs?per_page=100')"),
+            ],
+          }
+
+          for filename, pairs in replacements.items():
+            path = Path(filename)
+            text = path.read_text()
+            for before, after in pairs:
+              if before not in text:
+                raise SystemExit(f'Expected text not found in {filename}: {before[:100]!r}')
+              text = text.replace(before, after, 1)
+            path.write_text(text)
           PY
-      - name: Rebuild canonical draft evidence
-        run: python3 scripts/build-draft-performance.py --cache-dir /tmp/grudge-draft-sources
-      - name: Recalculate chronological validation
+      - name: Verify application and regression suite
+        shell: bash
+        env:
+          VERCEL_ENV: preview
         run: |
           npm ci
-          npm run models:validate
-      - name: Commit verified evidence to the feature branch
+          npm audit --audit-level=moderate
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Commit verified documentation and UI coverage changes
         shell: bash
         run: |
           git config user.name "grudge-data-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add scripts/build-draft-performance.py data/derived/draft-performance.json data/derived/draft-performance-provenance.json data/derived/player-week-scores.json.gz data/derived/player-identities.json data/derived/model-evidence-manifest.json data/derived/draft-model-validation.json
+          git add components/DraftRecordsSection.tsx docs/MODEL-EVIDENCE.md docs/LEAGUE-HISTORY.md README.md lib/admin-status.ts
           if git diff --cached --quiet; then
-            echo "No generated changes"
+            echo "No changes to commit"
             exit 0
           fi
-          git commit -m "Extend verified draft evidence to 2007"
+          git commit -m "Document strict 2007 draft coverage"
           git push origin HEAD:feat/status-draft-history-hardening
