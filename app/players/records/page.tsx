@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 
-import { MetricBars } from '../../../components/MetricBars.tsx';
 import { franchiseHref, seasonHref } from '../../../lib/history-format.ts';
 import { playerHref } from '../../../lib/player-data.ts';
 import { getPlayerRecordLeaders } from '../../../lib/player-intelligence.ts';
@@ -43,76 +42,80 @@ export default async function PlayerRecordsPage() {
       ))}</tbody>
     </table></div></div>
 
-    <h2>Career production</h2>
-    <p className="sub">Actual points and starts contributed in tracked Grudge games. Weekly lineup evidence begins in 2018.</p>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
-      <div className="card">
-        <strong>Career starter points</strong>
-        <div style={{ marginTop: 14 }}><MetricBars rows={records.starterPoints.map((row) => ({
-          key: row.player_key,
-          label: `${row.full_name} · ${row.position}`,
-          value: Number(row.points),
-          display: `${Number(row.points).toFixed(1)} pts`,
-          href: playerHref(row.player_key, row.latest_season),
-          detail: `${row.starts} starts · ${row.seasons} season${row.seasons === 1 ? '' : 's'}`,
-        }))} /></div>
-      </div>
-      <div className="card">
-        <strong>Most career starts</strong>
-        <div style={{ marginTop: 14 }}><MetricBars rows={records.mostStarts.map((row) => ({
-          key: row.player_key,
-          label: `${row.full_name} · ${row.position}`,
-          value: row.starts,
-          display: `${row.starts} starts`,
-          href: playerHref(row.player_key, row.latest_season),
-          detail: `${Number(row.points).toFixed(1)} starter pts · ${row.seasons} season${row.seasons === 1 ? '' : 's'}`,
-        }))} /></div>
-      </div>
-    </div>
+    <h2>Career starter points</h2>
+    <p className="sub">Actual points contributed as a starter in tracked Grudge games. Weekly lineup evidence begins in 2018.</p>
+    <div className="card"><div className="scroll"><table>
+      <thead><tr><th>#</th><th>Player</th><th className="num">Points</th><th className="num">Starts</th><th className="num">Seasons</th></tr></thead>
+      <tbody>{records.starterPoints.map((row, index) => (
+        <tr key={row.player_key} className={index === 0 ? 'title-row' : undefined}>
+          <td>{index + 1}</td>
+          <td><a className="tname" href={playerHref(row.player_key, row.latest_season)}>{row.full_name}</a><span className="tsub block">{row.position}</span></td>
+          <td className="num"><strong>{Number(row.points).toFixed(1)}</strong></td>
+          <td className="num">{row.starts}</td>
+          <td className="num">{row.seasons}</td>
+        </tr>
+      ))}</tbody>
+    </table></div></div>
+
+    <h2>Most career starts</h2>
+    <p className="sub">Most tracked Grudge starts since player-level weekly lineup evidence begins in 2018.</p>
+    <div className="card"><div className="scroll"><table>
+      <thead><tr><th>#</th><th>Player</th><th className="num">Starts</th><th className="num">Points</th><th className="num">Seasons</th></tr></thead>
+      <tbody>{records.mostStarts.map((row, index) => (
+        <tr key={row.player_key} className={index === 0 ? 'title-row' : undefined}>
+          <td>{index + 1}</td>
+          <td><a className="tname" href={playerHref(row.player_key, row.latest_season)}>{row.full_name}</a><span className="tsub block">{row.position}</span></td>
+          <td className="num"><strong>{row.starts}</strong></td>
+          <td className="num">{Number(row.points).toFixed(1)}</td>
+          <td className="num">{row.seasons}</td>
+        </tr>
+      ))}</tbody>
+    </table></div></div>
 
     <h2>Grudge journeymen</h2>
-    <p className="sub">Most different permanent franchises a player has actually started for in the recoverable weekly era.</p>
-    <div className="card">
-      <MetricBars rows={records.mostFranchises.map((row) => ({
-        key: row.player_key,
-        label: `${row.full_name} · ${row.position}`,
-        value: row.franchises,
-        display: `${row.franchises} franchise${row.franchises === 1 ? '' : 's'}`,
-        href: playerHref(row.player_key, row.latest_season),
-        detail: `${row.starts} starts · ${row.seasons} season${row.seasons === 1 ? '' : 's'}`,
-      }))} />
-    </div>
+    <p className="sub">Most different permanent franchises a player has actually started for in the recoverable weekly era. Team defenses are excluded.</p>
+    <div className="card"><div className="scroll"><table>
+      <thead><tr><th>#</th><th>Player</th><th className="num">Franchises</th><th className="num">Starts</th><th className="num">Seasons</th></tr></thead>
+      <tbody>{records.mostFranchises.map((row, index) => (
+        <tr key={row.player_key} className={index === 0 ? 'title-row' : undefined}>
+          <td>{index + 1}</td>
+          <td><a className="tname" href={playerHref(row.player_key, row.latest_season)}>{row.full_name}</a><span className="tsub block">{row.position}</span></td>
+          <td className="num"><strong>{row.franchises}</strong></td>
+          <td className="num">{row.starts}</td>
+          <td className="num">{row.seasons}</td>
+        </tr>
+      ))}</tbody>
+    </table></div></div>
 
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginTop: 24 }}>
-      <div>
-        <h2>Most drafted</h2>
-        <p className="sub">Every recovered Grudge draft from 2005 onward. The current season counts as soon as its draft board is captured.</p>
-        <div className="card">
-          <MetricBars rows={records.drafted.map((row) => ({
-            key: row.player_key,
-            label: `${row.full_name} · ${row.position}`,
-            value: row.events,
-            display: `${row.events} draft${row.events === 1 ? '' : 's'}`,
-            href: playerHref(row.player_key, row.last_season),
-            detail: `${row.first_season}–${row.last_season}`,
-          }))} />
-        </div>
-      </div>
-      <div>
-        <h2>Most traded</h2>
-        <p className="sub">Confirmed active trade packages in the recovered transaction era, 2018 onward. Drops and waivers are not trades.</p>
-        <div className="card">
-          <MetricBars rows={records.traded.map((row) => ({
-            key: row.player_key,
-            label: `${row.full_name} · ${row.position}`,
-            value: row.events,
-            display: `${row.events} trade${row.events === 1 ? '' : 's'}`,
-            href: playerHref(row.player_key, row.last_season),
-            detail: `${row.seasons} season${row.seasons === 1 ? '' : 's'} · ${row.first_season}–${row.last_season}`,
-          }))} empty="No confirmed trades are available yet." />
-        </div>
-      </div>
-    </div>
+    <h2>Most drafted</h2>
+    <p className="sub">Every recovered Grudge draft from 2005 onward. The current season counts as soon as its draft board is captured.</p>
+    <div className="card"><div className="scroll"><table>
+      <thead><tr><th>#</th><th>Player</th><th className="num">Drafts</th><th className="num">Seasons</th><th>Span</th></tr></thead>
+      <tbody>{records.drafted.map((row, index) => (
+        <tr key={row.player_key} className={index === 0 ? 'title-row' : undefined}>
+          <td>{index + 1}</td>
+          <td><a className="tname" href={playerHref(row.player_key, row.last_season)}>{row.full_name}</a><span className="tsub block">{row.position}</span></td>
+          <td className="num"><strong>{row.events}</strong></td>
+          <td className="num">{row.seasons}</td>
+          <td>{row.first_season}–{row.last_season}</td>
+        </tr>
+      ))}</tbody>
+    </table></div></div>
+
+    <h2>Most traded</h2>
+    <p className="sub">Confirmed active trade packages in the recovered transaction era, 2018 onward. Drops and waivers are not trades.</p>
+    <div className="card"><div className="scroll"><table>
+      <thead><tr><th>#</th><th>Player</th><th className="num">Trades</th><th className="num">Seasons</th><th>Span</th></tr></thead>
+      <tbody>{records.traded.length > 0 ? records.traded.map((row, index) => (
+        <tr key={row.player_key} className={index === 0 ? 'title-row' : undefined}>
+          <td>{index + 1}</td>
+          <td><a className="tname" href={playerHref(row.player_key, row.last_season)}>{row.full_name}</a><span className="tsub block">{row.position}</span></td>
+          <td className="num"><strong>{row.events}</strong></td>
+          <td className="num">{row.seasons}</td>
+          <td>{row.first_season}–{row.last_season}</td>
+        </tr>
+      )) : <tr><td colSpan={5}>No confirmed trades are available yet.</td></tr>}</tbody>
+    </table></div></div>
 
     <div className="callout" style={{ marginTop: 24 }}>
       <strong>Coverage matters:</strong> draft frequency is complete back to 2005, while weekly scores, starts, franchise counts and trade frequency begin where ESPN preserved player-level weekly evidence in 2018. The site does not backfill those gaps by inference.

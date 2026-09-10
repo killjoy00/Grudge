@@ -127,6 +127,28 @@ export default async function RecordsPage() {
   const eligible = seasons.filter((row) => row.points_for !== null);
   const bestSeasons = [...eligible].sort(bySeasonQuality).slice(0, 10);
   const offenses = [...eligible].sort(byOffense).slice(0, 10);
+
+  const leagueOffenseTotals = new Map<number, { pointsPerGame: number; teams: number }>();
+  for (const row of eligible) {
+    const ppg = pointsPerGame(row.points_for, row.wins, row.losses, row.ties);
+    if (ppg === null) continue;
+    const season = leagueOffenseTotals.get(row.season) ?? { pointsPerGame: 0, teams: 0 };
+    season.pointsPerGame += ppg;
+    season.teams += 1;
+    leagueOffenseTotals.set(row.season, season);
+  }
+  const leagueAveragePpg = new Map(
+    [...leagueOffenseTotals].map(([season, totals]) => [season, totals.pointsPerGame / Math.max(1, totals.teams)])
+  );
+  const offenseVsLeague = (row: AllSeasonRecordRow) => {
+    const ppg = pointsPerGame(row.points_for, row.wins, row.losses, row.ties);
+    const leaguePpg = leagueAveragePpg.get(row.season);
+    return ppg !== null && leaguePpg ? ppg / leaguePpg - 1 : 0;
+  };
+  const adjustedOffenses = [...eligible]
+    .sort((a, b) => offenseVsLeague(b) - offenseVsLeague(a) || byOffense(a, b))
+    .slice(0, 10);
+
   const champions = powerSeasons.filter((row) => row.is_champion).slice(0, 10);
   const nonChampions = powerSeasons.filter((row) => !row.is_champion).slice(0, 10);
   const missedPlayoffs = powerSeasons
@@ -137,8 +159,8 @@ export default async function RecordsPage() {
     <>
       <div className="page-hero">
         <div className="eyebrow">The record book</div>
-        <h1>League records</h1>
-        <p>Season achievements, game marks, draft archaeology, power champions and schedule luck in one place.</p>
+        <h1>Team records</h1>
+        <p>Team seasons, game marks, power champions and schedule luck across Grudge history.</p>
       </div>
 
       <HistoryNav current="records" />
@@ -151,6 +173,17 @@ export default async function RecordsPage() {
       <h3>Best offenses</h3>
       <p className="sub">Points per regular-season game, not raw season totals.</p>
       <SeasonTable rows={offenses} markLabel="PF/G" value={(row) => `${pointsPerGame(row.points_for, row.wins, row.losses, row.ties)?.toFixed(1) ?? '—'}`} />
+
+      <h3>Best league-adjusted offenses</h3>
+      <p className="sub">Regular-season PF/G compared with the league average in that same season, so offenses from different scoring environments can be compared directly.</p>
+      <SeasonTable
+        rows={adjustedOffenses}
+        markLabel="vs avg"
+        value={(row) => {
+          const delta = offenseVsLeague(row) * 100;
+          return `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`;
+        }}
+      />
 
       <h3>Best champions</h3>
       <p className="sub">Final regular-season power score: {POWER_FORMULA}. Every recoverable settled season from 2005 onward uses the same model.</p>

@@ -40,7 +40,7 @@ export default async function Standings({
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
           <a className="btn btn-quiet" href={seasonHref(season)}>Open the {season} season file</a>
-          <a className="btn btn-quiet" href="/history/records">League records</a>
+          <a className="btn btn-quiet" href="/history/records">Team records</a>
         </div>
         <div className="card">
           <div className="scroll">
@@ -83,7 +83,7 @@ export default async function Standings({
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
         <a className="btn btn-quiet" href={seasonHref(season)}>Open the {season} season file</a>
-        <a className="btn btn-quiet" href="/history/records">League records</a>
+        <a className="btn btn-quiet" href="/history/records">Team records</a>
       </div>
 
       <div className="card">
