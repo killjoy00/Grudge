@@ -18,16 +18,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Translate 2005-2006 legacy fantasy IDs through authenticated ESPN history
+      - name: Query ESPN season player catalogs for 2005-2006 legacy IDs
         env:
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
           ESPN_S2: ${{ secrets.ESPN_S2 }}
         shell: bash
         run: |
-          if [ -z "$ESPN_SWID" ] || [ -z "$ESPN_S2" ]; then
-            echo "ESPN credentials unavailable" | tee legacy-draft-investigation.txt
-            exit 0
-          fi
           python3 - <<'PY' | tee legacy-draft-investigation.txt
           import csv, io, json, os, re, urllib.error, urllib.request
 
@@ -35,43 +31,25 @@ jobs:
             2005: [1868367,1869694,1951644,1953735,1962369,1867957,2129297,1921396,1870431,1868359,1868405,1869693,1954423,1869892,1870428,2014162,1951343,1868992],
             2006: [1951644,1869694,1953735,1953184,1956341,1941582,1921396,1868359,1946250,1868066,1954772,1949439,1869402,1952653,1868367,1949968,1869002],
           }
-          cookie = f"SWID={os.environ['ESPN_SWID']}; espn_s2={os.environ['ESPN_S2']}"
+          cookie = None
+          if os.environ.get('ESPN_SWID') and os.environ.get('ESPN_S2'):
+            cookie = f"SWID={os.environ['ESPN_SWID']}; espn_s2={os.environ['ESPN_S2']}"
           base = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl'
 
           def norm(name):
             name = re.sub(r'\b(jr|sr|ii|iii|iv|v)\b', '', (name or '').lower())
             return re.sub(r'[^a-z0-9]', '', name)
 
-          def request_json(url, fantasy_filter=None):
-            headers = {'User-Agent':'Mozilla/5.0','Accept':'application/json','Cookie':cookie}
-            if fantasy_filter is not None:
-              headers['X-Fantasy-Filter'] = json.dumps(fantasy_filter, separators=(',',':'))
+          def get(url, filt):
+            headers = {'User-Agent':'Mozilla/5.0','Accept':'application/json','X-Fantasy-Filter':json.dumps(filt,separators=(',',':'))}
+            if cookie: headers['Cookie'] = cookie
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=30) as response:
-              return response.status, json.load(response)
-
-          def collect_players(value):
-            found = []
-            def walk(node):
-              if isinstance(node, dict):
-                if isinstance(node.get('player'), dict) and node['player'].get('id') is not None:
-                  found.append(node['player'])
-                if node.get('id') is not None and (node.get('fullName') or node.get('displayName')) and ('defaultPositionId' in node or 'proTeamId' in node):
-                  found.append(node)
-                for child in node.values(): walk(child)
-              elif isinstance(node, list):
-                for child in node: walk(child)
-            walk(value)
-            dedup = {}
-            for p in found:
-              dedup[str(p.get('id'))] = p
-            return list(dedup.values())
+              return json.load(response)
 
           stats = {}
           for year in targets:
-            req = urllib.request.Request(
-              f'https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{year}.csv',
-              headers={'User-Agent':'grudge-identity-audit/1.0'})
+            req = urllib.request.Request(f'https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{year}.csv',headers={'User-Agent':'grudge-identity-audit/1.0'})
             with urllib.request.urlopen(req, timeout=60) as r:
               rows = list(csv.DictReader(io.TextIOWrapper(r, encoding='utf-8')))
             names = {}
@@ -82,37 +60,36 @@ jobs:
 
           for year, ids in targets.items():
             for ident in ids:
-              filt = {'players': {'filterIds': {'value': [ident]}, 'limit': 10}}
+              result = {'season':year,'legacy_id':ident,'attempts':[]}
+              player = None
               attempts = [
-                f'{base}/leagueHistory/114052?seasonId={year}&view=kona_player_info',
-                f'{base}/seasons/{year}/segments/0/leagues/114052?view=kona_player_info',
+                (f'{base}/seasons/{year}/players?view=players_wl', {'filterIds':{'value':[ident]}}),
+                (f'{base}/seasons/{year}/players?view=kona_player_info', {'filterIds':{'value':[ident]}}),
+                (f'{base}/seasons/{year}/segments/0/leaguedefaults/1?view=kona_player_info', {'players':{'filterIds':{'value':[ident]}}}),
+                (f'{base}/seasons/{year}/segments/0/leaguedefaults/3?view=kona_player_info', {'players':{'filterIds':{'value':[ident]}}}),
+                (f'{base}/seasons/{year}/segments/0/leaguedefaults/4?view=kona_player_info', {'players':{'filterIds':{'value':[ident]}}}),
               ]
-              result = {'season':year,'legacy_id':ident,'source':None,'players':[]}
-              for url in attempts:
+              for url, filt in attempts:
                 try:
-                  status, data = request_json(url, filt)
-                  players = collect_players(data)
-                  exact = [p for p in players if str(p.get('id')) == str(ident)]
+                  data = get(url, filt)
+                  pool = data if isinstance(data, list) else data.get('players', []) if isinstance(data, dict) else []
+                  exact = []
+                  for item in pool:
+                    p = item.get('player', item) if isinstance(item, dict) else {}
+                    if str(p.get('id')) == str(ident): exact.append(p)
+                  result['attempts'].append({'path':url.split('/games/ffl/')[-1].split('?')[0],'status':200,'count':len(pool),'exact':len(exact)})
                   if exact:
-                    result['source'] = 'leagueHistory' if 'leagueHistory' in url else 'season'
-                    result['players'] = exact
+                    player = exact[0]
                     break
-                  if players and not result['players']:
-                    result['players'] = players[:3]
                 except urllib.error.HTTPError as error:
-                  result.setdefault('http', []).append(error.code)
+                  result['attempts'].append({'path':url.split('/games/ffl/')[-1].split('?')[0],'status':error.code})
                 except Exception as error:
-                  result.setdefault('errors', []).append(type(error).__name__)
-              compact = []
-              for p in result.pop('players', []):
-                name = p.get('fullName') or p.get('displayName')
-                candidates = list(stats[year].get(norm(name), {}).values()) if name else []
-                unique = {r.get('player_id'): r for r in candidates}
-                compact.append({
-                  'espn_id':p.get('id'),'name':name,'position_id':p.get('defaultPositionId'),'pro_team_id':p.get('proTeamId'),
-                  'nflverse':[{'gsis_id':r.get('player_id'),'name':r.get('player_display_name'),'position':r.get('position')} for r in unique.values()],
-                })
-              result['players'] = compact
+                  result['attempts'].append({'path':url.split('/games/ffl/')[-1].split('?')[0],'error':type(error).__name__})
+              if player:
+                name = player.get('fullName') or player.get('displayName')
+                unique = stats[year].get(norm(name), {})
+                result['player'] = {'name':name,'position_id':player.get('defaultPositionId'),'pro_team_id':player.get('proTeamId'),
+                  'nflverse':[{'gsis_id':r.get('player_id'),'name':r.get('player_display_name'),'position':r.get('position')} for r in unique.values()]}
               print(json.dumps(result, sort_keys=True))
           PY
       - uses: actions/upload-artifact@v7
