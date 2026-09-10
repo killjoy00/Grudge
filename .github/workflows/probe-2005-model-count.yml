@@ -1,4 +1,4 @@
-name: Verify 2005 model corpus count
+name: Finalize 2005 draft coverage documentation
 
 on:
   push:
@@ -7,17 +7,62 @@ on:
       - '.github/workflows/probe-2005-model-count.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  verify:
+  finalize:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run models:refresh -- --dry-run
+          ref: fix/grade-2005-draft
+          fetch-depth: 0
+      - name: Update coverage wording and remove this one-time workflow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f'{path}: expected one match, found {text.count(old)}')
+              p.write_text(text.replace(old, new))
+
+          replace_once(
+              'README.md',
+              "The league did not play in 2020. Draft performance grades begin with the complete 2007 board; the recovered 2005–2006 boards remain source history only because they are incomplete. Never invent data to fill an evidence gap. See `docs/LEAGUE-HISTORY.md`, `docs/HISTORICAL-TRANSACTIONS.md` and `docs/LEGACY-TRADE-EVIDENCE.md` before changing historical behavior.",
+              "The league did not play in 2020. Draft performance grades cover 2005 and 2007–2025. The 2005 source preserves all 128 draft coordinates: 119 named player rows plus nine excluded D/ST slots, eight identified by ESPN's defense lineup slot and one manually reviewed as a second defense. The 2006 board remains source history only because 21 non-defense zero-ID slots are still unresolved. Never invent data to fill an evidence gap. See `docs/LEAGUE-HISTORY.md`, `docs/HISTORICAL-TRANSACTIONS.md` and `docs/LEGACY-TRADE-EVIDENCE.md` before changing historical behavior."
+          )
+
+          replace_once(
+              'components/DraftRecordsSection.tsx',
+              "        <strong>Coverage and sources.</strong> Every season uses the Grudge regular-season window, including player production while unrostered. ESPN weekly scores take priority; missing weeks and the older seasons are reconstructed from NFL statistics under that year&rsquo;s scoring rules. Reconstructed weeks omit the old long-touchdown bonus and are labeled estimates. Missing identity or scoring evidence blocks the entire season&rsquo;s grades. The complete 2007 board is graded after reviewed historical player-identity recovery. The 2005 and 2006 archives remain board-only because their recovered boards themselves are incomplete (119 of 128 and 129 of 160 pick rows respectively); those seasons stay withheld even where individual identities can be resolved. Model 2026.3 keeps each published result for comparison.",
+              "        <strong>Coverage and sources.</strong> Every season uses the Grudge regular-season window, including player production while unrostered. ESPN weekly scores take priority; missing weeks and the older seasons are reconstructed from NFL statistics under that year&rsquo;s scoring rules. Reconstructed weeks omit the old long-touchdown bonus and are labeled estimates. Missing offensive identity or scoring evidence blocks the entire season&rsquo;s grades. The 2005 board is graded after reviewed legacy player-identity recovery and explicit accounting for nine D/ST slots: eight provider-tagged defense slots plus one manually reviewed second defense. The complete 2007 board is also graded after reviewed historical player-identity recovery. The 2006 archive remains board-only because 21 non-defense zero-ID slots are unresolved. Model 2026.3 keeps each published result for comparison."
+          )
+
+          replace_once(
+              'docs/MODEL-EVIDENCE.md',
+              "The committed corpus contains **139,627 player-weeks, 2,630 offensive picks, and 18 complete seasons (2007–2025, excluding 2020)**. Unrostered players are included. The recovered 2005 and 2006 boards are deliberately withheld from grading because they contain only 119 of 128 and 129 of 160 overall-pick rows respectively; resolvable player identities do not make an incomplete board complete. All draft production ends at the Grudge regular-season boundary. Historical identities now recover injured/cut players such as 2017 Dalvin Cook; 2021 Irv Smith's established no-stat season remains a real zero.",
+              "The committed corpus contains **146,407 player-weeks, 2,740 offensive picks, and 19 complete seasons (2005 and 2007–2025, excluding 2020)**. Unrostered players are included. The recovered 2005 source preserves all 128 board coordinates: 119 named-player rows and nine excluded D/ST slots. ESPN itself marks eight of those blanks with the defense lineup slot; pick 126 is a reviewed manual attestation that the bench blank was a second defense. The 110 QB/RB/WR/TE selections are therefore gradeable without inventing a defense identity. The 2006 board remains withheld because 21 non-defense zero-ID slots are unresolved. All draft production ends at the Grudge regular-season boundary. Historical identities now recover early-era and injured/cut players without silently converting unknowns to zero; 2021 Irv Smith's established no-stat season remains a real zero."
+          )
+
+          replace_once(
+              'docs/MODEL-EVIDENCE.md',
+              "A changed or incomplete draft board blocks its season. Missing scoring anywhere in the replacement pool or drafted-player evidence also blocks the season. A blocked publication has no current result pointer; older immutable runs remain available for audit. SQL independently verifies the board against the published results before exposing any class, pick, position or slot grade.",
+              "Every draft coordinate must be either a real player row or an explicitly evidenced excluded K/D/ST slot. Any unexplained coordinate, missing offensive identity, or missing scoring anywhere in the replacement pool or drafted-player evidence blocks the season. Excluded slots preserve their real overall-pick coordinates but receive no individual grade. A blocked publication has no current result pointer; older immutable runs remain available for audit. SQL independently verifies the known board plus excluded coordinates before exposing any class, pick, position or slot grade."
+          )
+
+          replace_once(
+              'docs/MODEL-EVIDENCE.md',
+              "Chronological validation starts only after three prior seasons. Across **2,197 picks in 15 held-out seasons**, pick expectation had **MAE 13.5573 / RMSE 18.9611**, compared with **16.6404 / 21.7559** for a constant prior-season production expectation. The roughly 13% RMSE reduction evaluates expected normalized production, not causal drafting skill or championship prediction. Reproduce it with `npm run models:validate`; results are committed in `data/derived/draft-model-validation.json`.",
+              "Chronological validation starts only after three prior seasons. Across **2,346 picks in 16 held-out seasons**, pick expectation had **MAE 13.4417 / RMSE 18.8404**, compared with **16.4505 / 21.6842** for a constant prior-season production expectation. The roughly 13% RMSE reduction evaluates expected normalized production, not causal drafting skill or championship prediction. Reproduce it with `npm run models:validate`; results are committed in `data/derived/draft-model-validation.json`."
+          )
+          PY
+          git rm .github/workflows/probe-2005-model-count.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md components/DraftRecordsSection.tsx docs/MODEL-EVIDENCE.md
+          git commit -m "Document recovered 2005 draft coverage"
+          git push origin HEAD:fix/grade-2005-draft
