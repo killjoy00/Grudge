@@ -17,7 +17,7 @@ try {
   const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:3018/players',{waitUntil:'networkidle'});
-  assert.match(await page.locator('h2').first().innerText(),/All players/);
+  assert.match(await page.locator('h2').first().innerText(),/All players/i);
   await page.getByRole('combobox',{name:'Season',exact:true}).selectOption('2024');
   await page.getByRole('combobox',{name:'Position',exact:true}).selectOption('WR');
   await page.getByRole('combobox',{name:'From week',exact:true}).selectOption('3');

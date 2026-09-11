@@ -1,4 +1,5 @@
 import './globals.css';
+import './athletics.css';
 import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Nav } from '../components/Nav.tsx';
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#071d35',
+  themeColor: '#102b44',
 };
 
 // Deliberately NOT async, and deliberately not calling auth(). Any dynamic API
