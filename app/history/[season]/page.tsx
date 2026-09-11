@@ -121,7 +121,7 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
       {(highlights.highestScore || highlights.topPlayer || highlights.biggestBlowout || highlights.closestFinish) && (
         <>
           <h2>Season highlights</h2>
-          <p className="sub">Team-level weekly records are recovered back to 2005. Individual player weeks appear only where ESPN still exposes lineup entries (2018 onward).</p>
+          <p className="sub">Team-level weekly records are recovered back to 2005. Grudge-attributed individual player weeks appear only where weekly lineup ownership survives (2018 onward); NFL player production is reconstructed separately.</p>
           <div className="card">
             <div style={{ display: 'grid', gap: 14 }}>
               {highlights.highestScore && <div><strong>Highest team score</strong><span className="block">{gameSummary(highlights.highestScore)} · Week {highlights.highestScore.week}</span></div>}
@@ -190,7 +190,7 @@ export default async function SeasonHistoryPage({ params }: { params: Promise<{ 
         </table></div>
         {source === 'manual' && (
           <p className="note">
-            Commissioner records remain authoritative for final standings and playoff finish. ESPN&rsquo;s recovered archive supplies this season&rsquo;s weekly team scores, opponents, playoff scoreboards and draft board. Player-level weekly lineups and transactions are not available before 2018.
+            Commissioner records remain authoritative for final standings and playoff finish. ESPN&rsquo;s recovered archive supplies this season&rsquo;s weekly team scores, opponents, playoff scoreboards and draft board. Weekly Grudge player lineups and transactions are not available before 2018; NFL player production is reconstructed separately where the Player archive can support it.
           </p>
         )}
         {!settled && (
