@@ -2,10 +2,14 @@ import type { Metadata } from 'next';
 
 import { franchiseHref, seasonHref } from '../../../lib/history-format.ts';
 import { playerHref } from '../../../lib/player-data.ts';
-import { getPlayerRecordLeaders } from '../../../lib/player-intelligence.ts';
+import { getCachedPlayerRecordLeaders } from '../../../lib/cached-queries.ts';
 import { getTrackedTopPlayerWeeks } from '../../../lib/tracked-game-queries.ts';
 import { POSITIONS } from '../../../pipeline/trade.ts';
 
+// Stays force-dynamic on purpose: this is a static route, so a revalidate
+// window would make Next prerender it and the build would need a live
+// database credential, which this project deliberately avoids. The caching
+// comes from getCachedPlayerRecordLeaders, whose data cache applies here too.
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Player records · Grudge Match',
@@ -14,7 +18,7 @@ export const metadata: Metadata = {
 
 export default async function PlayerRecordsPage() {
   const [records, topWeeks] = await Promise.all([
-    getPlayerRecordLeaders(12),
+    getCachedPlayerRecordLeaders(12),
     getTrackedTopPlayerWeeks(12),
   ]);
 

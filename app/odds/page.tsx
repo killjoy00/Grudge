@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 export default function Odds() {
-  redirect('/standings#playoff-outlook');
+  permanentRedirect('/standings#playoff-outlook');
 }

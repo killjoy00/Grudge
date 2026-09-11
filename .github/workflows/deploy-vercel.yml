@@ -89,7 +89,11 @@ jobs:
       # The weekly pipeline can append a raw-data commit after its proof succeeds;
       # that follow-up commit must not hide the request marker that caused the
       # proof. The newest request since the last verified production SHA wins.
-      - name: Require requested weekly pipeline proof
+      # Named for what it does: a proof is enforced only when a commit in the
+      # unverified range actually requested one by touching the marker file.
+      # With no request in range this step is a no-op, and `schema:verify`
+      # above remains the unconditional gate.
+      - name: Enforce weekly pipeline proof when one was requested
         id: proof
         if: steps.gate.outputs.deploy == 'true'
         env:
@@ -156,10 +160,22 @@ jobs:
         if: steps.gate.outputs.deploy == 'true'
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+          MAIN_SHA: ${{ steps.gate.outputs.main_sha }}
         run: |
           set -euo pipefail
           if [ -z "$HOOK" ]; then
             echo "::error::VERCEL_DEPLOY_HOOK_URL is not set."
+            exit 1
+          fi
+          # The deploy hook builds whatever main points at when Vercel receives
+          # it, but every gate above ran against MAIN_SHA and the health check
+          # below waits for exactly that commit. If main moved while we were
+          # verifying, the build would be an unverified commit and the wait
+          # would time out seven minutes later against a SHA that is never
+          # served. Fail now, with the reason, instead of then.
+          tip=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ -n "$tip" ] && [ "$tip" != "$MAIN_SHA" ]; then
+            echo "::error::main advanced from $MAIN_SHA to $tip during verification. Nothing was deployed; re-run this workflow to verify and deploy the new tip."
             exit 1
           fi
           code=$(curl -sS -X POST -o /tmp/deploy.json -w '%{http_code}' "$HOOK")

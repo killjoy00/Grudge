@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { modelDatabase, execute } from '../tests/models/database.ts';
-import { playerFilters, currentNflSeason, playerHref, decodePlayerKey, type PlayerRow, type PlayerHistoryEvent } from './player-data.ts';
+import { playerFilters, currentNflSeason, playerHref, decodePlayerKey, dominantScoreEvidence, scoreEvidenceLabel, type PlayerRow, type PlayerHistoryEvent } from './player-data.ts';
 import { playerListQuery, PLAYER_HISTORY_SQL, PLAYER_CONTRIBUTIONS_SQL } from './player-queries.ts';
 import { playerRegistryStatements, playerSeasonStatements, validatePlayerSeason, type PlayerSeasonArtifact } from '../pipeline/player-import.ts';
 
@@ -35,6 +35,22 @@ test('player filters default to the NFL season and normalize safe, inclusive wee
   assert.deepEqual(playerFilters({season:'2024',position:'WR',from:'6',to:'3',sort:'points; drop table players'},2026),
     {season:2024,position:'WR',period:'REG',from:3,to:6,q:'',sort:'points',direction:'desc',page:1});
   assert.equal(playerFilters({},2026).season, 2026);
+});
+
+test('a table states its dominant scoring evidence once and labels only the exceptions', () => {
+  const espn = {observed: true};
+  const rebuilt = {rebuilt: true};
+  assert.equal(scoreEvidenceLabel({unavailable: true, rebuilt: true}), 'Incomplete', 'incomplete outranks rebuilt');
+  assert.equal(scoreEvidenceLabel({}), 'No scores');
+
+  const mostlyEspn = [...Array(9).fill(espn), rebuilt];
+  assert.equal(dominantScoreEvidence(mostlyEspn), 'ESPN');
+  assert.equal(mostlyEspn.filter(r => scoreEvidenceLabel(r) !== 'ESPN').length, 1, 'only the exception stays labelled');
+
+  assert.equal(dominantScoreEvidence([...Array(6).fill(espn), ...Array(4).fill(rebuilt)]), null,
+    'a genuinely mixed table keeps every row labelled');
+  assert.equal(dominantScoreEvidence([espn, espn, espn]), null, 'too few rows to generalise');
+  assert.equal(dominantScoreEvidence([]), null);
 });
 
 test('a linked player key survives the round trip through the route segment', () => {
