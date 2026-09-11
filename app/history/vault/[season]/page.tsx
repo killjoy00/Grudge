@@ -161,7 +161,7 @@ export default async function VaultSeasonPage({ params }: { params: Promise<{ se
 
       {season < 2018 && (
         <p className="note" style={{ marginTop: 24 }}>
-          Legacy limitation: ESPN still serves the team-level scoreboard and draft board, but its old per-player weekly boxscore entries are empty. Individual weekly performances and points left on the bench therefore remain unavailable before 2018.
+          Legacy limitation: ESPN still serves the team-level scoreboard and draft board, but its old per-player weekly boxscore entries are empty. Grudge weekly ownership, starter attribution, optimal lineups and points-left-on-bench therefore remain unavailable before 2018. NFL player production can still be reconstructed separately from archived Grudge scoring rules and NFL statistics.
         </p>
       )}
     </>
