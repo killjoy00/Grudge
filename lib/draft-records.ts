@@ -150,7 +150,7 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
              active_weeks, production_score::text, draft_capital_score::text,
              value_delta::text
         from graded
-       where active_weeks >= 8 and season >= 2018
+       where active_weeks >= 8
        order by ${DRAFT_PICK_SORT.productiveMisses}
        limit 5`),
     asPublic<RepeatDraftRow>(`
@@ -318,4 +318,4 @@ async function draftRecordsRaw(): Promise<DraftRecords> {
   };
 }
 
-export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.7'], { revalidate: 3600 });
+export const getDraftRecords = unstable_cache(draftRecordsRaw, ['draft-records-2026.8'], { revalidate: 3600 });
