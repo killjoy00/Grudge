@@ -11,9 +11,9 @@ export interface RecapWeek {
  * Regular-season weeks with a settled recap available for a season.
  *
  * team_week_results is deliberately regular-season-only, which is exactly the
- * boundary the weekly recap uses. Pre-2018 manual archive seasons therefore
- * return no rows rather than pretending we can reconstruct weekly stories from
- * season totals.
+ * boundary the weekly recap uses. Recovered 2005-2017 scoreboards now populate
+ * this table too, so those seasons can render team-level historical recaps while
+ * lineup-dependent sections remain gated by their own evidence.
  */
 async function recapWeeks(season: number) {
   return asPublic<RecapWeek>(
@@ -27,6 +27,6 @@ async function recapWeeks(season: number) {
 
 export const getRecapWeeks = unstable_cache(
   recapWeeks,
-  ['weekly-recap-weeks'],
+  ['weekly-recap-weeks-2026.2'],
   { revalidate: 3600 }
 );
