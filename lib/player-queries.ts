@@ -92,8 +92,20 @@ left join lateral (select string_agg(coalesce(nullif(concat_ws(' ', m.first_name
 left join lateral (select string_agg(coalesce(nullif(concat_ws(' ', m.first_name, m.last_name), ''), m.display_name), ', ' order by m.swid) as names
   from public.team_owners o join public.members m using (season, swid)
   where o.season = e.season and o.espn_team_id = e.other_team_id) current_other_owners on true
-order by e.season desc, coalesce(e.week, case when e.kind = 'draft' then 0 else 99 end) desc,
-  e.occurred_at desc nulls last, e.event_key`;
+order by e.season asc,
+  coalesce(e.week, case when e.kind = 'draft' then 0 else 99 end) asc,
+  case e.kind
+    when 'draft' then 0
+    when 'waiver' then 1
+    when 'add' then 1
+    when 'trade' then 1
+    when 'roster' then 2
+    when 'drop' then 3
+    when 'final_roster' then 4
+    when 'current_roster' then 4
+    else 2
+  end asc,
+  e.occurred_at asc nulls last, e.event_key asc`;
 
 export const PLAYER_CONTRIBUTIONS_SQL = `select r.season, tf.team_name, tf.franchise_key,
   count(*)::int as roster_weeks, count(*) filter (where r.is_starter)::int as starts,
