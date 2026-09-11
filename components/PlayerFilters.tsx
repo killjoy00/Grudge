@@ -41,7 +41,9 @@ export function PlayerFilters({ filters, seasons, profile = false }: {
     </select></label><label><span>Order</span><select name="direction" defaultValue={filters.direction}>
       <option value="desc">Highest first</option><option value="asc">Lowest / A–Z</option>
     </select></label></>}
-    <button type="submit">Show {profile ? 'season' : 'players'}</button>
-    {!profile && <a className="btn btn-quiet" href="/players">Reset</a>}
+    <div className="filter-actions">
+      <button type="submit">Show {profile ? 'season' : 'players'}</button>
+      {!profile && <a className="btn btn-quiet" href="/players">Reset</a>}
+    </div>
   </form>;
 }

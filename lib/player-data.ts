@@ -97,3 +97,52 @@ export interface PlayerHistoryEvent {
   team_name: string | null; franchise_key: string | null; managers: string | null;
   other_team_name: string | null; other_managers: string | null;
 }
+
+/**
+ * How a row's points were established. Every row carries one, and in practice a
+ * season's table is overwhelmingly a single value -- so printing it under all
+ * fifty rows repeats one word fifty times and buries the handful of rows that
+ * actually differ. `dominantScoreEvidence` names the value a table is mostly
+ * made of, so the table can state it once in a caption and label only the
+ * exceptions. A table with no clear majority gets no caption and keeps every
+ * row labelled.
+ */
+export type ScoreEvidenceLabel = 'ESPN' | 'Rebuilt' | 'Incomplete' | 'No scores';
+
+/** These arrive from Postgres as counts, not booleans, so they are read for truthiness. */
+export interface ScoreEvidenceCounts {
+  unavailable?: number | boolean | null;
+  rebuilt?: number | boolean | null;
+  observed?: number | boolean | null;
+}
+
+export function scoreEvidenceLabel(
+  row: ScoreEvidenceCounts
+): ScoreEvidenceLabel {
+  if (row.unavailable) return 'Incomplete';
+  if (row.rebuilt) return 'Rebuilt';
+  if (row.observed) return 'ESPN';
+  return 'No scores';
+}
+
+export function dominantScoreEvidence(
+  rows: ScoreEvidenceCounts[]
+): ScoreEvidenceLabel | null {
+  if (rows.length < 4) return null;
+  const counts = new Map<ScoreEvidenceLabel, number>();
+  for (const row of rows) {
+    const label = scoreEvidenceLabel(row);
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  for (const [label, count] of counts) {
+    if (count / rows.length >= 0.8) return label;
+  }
+  return null;
+}
+
+export const SCORE_EVIDENCE_CAPTION: Record<ScoreEvidenceLabel, string> = {
+  ESPN: 'Points are archived ESPN weekly scores unless a row says otherwise.',
+  Rebuilt: 'Points are rebuilt from NFL statistics under that year\u2019s league rules unless a row says otherwise.',
+  Incomplete: 'Points are incomplete for most of these players; rows say where a usable score exists.',
+  'No scores': 'No fantasy scoring is published for most of these players.',
+};

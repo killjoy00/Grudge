@@ -8,6 +8,7 @@ import 'server-only';
  * guarantees without coupling `next build` to Neon.
  */
 import { unstable_cache } from 'next/cache';
+import { getPlayerRecordLeaders } from './player-intelligence.ts';
 import { allTimeTradeRecords, seasonTrades } from './trade-history-queries.ts';
 import {
   getLuck,
@@ -86,5 +87,19 @@ export const getCachedSeasonTrades = unstable_cache(
 export const getCachedTradeRecords = unstable_cache(
   allTimeTradeRecords,
   ['trade-records-v4-canonical-franchises'],
+  { revalidate: 3600 }
+);
+
+/**
+ * The player record book rebuilds one credited-lineup CTE per leaderboard, and
+ * that CTE walks every roster entry the league has ever recorded. Measured
+ * against production it costs roughly a second per leaderboard, three of which
+ * run on one page. The underlying rows only change when the weekly pipeline
+ * publishes, so serving an hour-old record book is free accuracy-wise and the
+ * difference between a slow page and an instant one.
+ */
+export const getCachedPlayerRecordLeaders = unstable_cache(
+  getPlayerRecordLeaders,
+  ['player-record-leaders-v1'],
   { revalidate: 3600 }
 );
