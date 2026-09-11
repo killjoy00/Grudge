@@ -113,7 +113,14 @@ test('career history respects season identity, actual managers, completed moves 
     assert.equal(events.find(e=>e.kind==='trade')!.managers,'Jon');
     assert.equal(events.find(e=>e.kind==='trade')!.other_managers,'Mike');
     assert.equal(events.some(e=>e.season===2005),false,'old reused ESPN identity stays on old player');
-    assert.deepEqual(events.filter(e=>e.kind==='roster').map(e=>[e.week,e.end_week]),[[6,6],[3,4]]);
+    assert.deepEqual(events.map(e=>[e.season,e.kind,e.week,e.end_week]),[
+      [2024,'draft',null,null],
+      [2024,'waiver',2,null],
+      [2024,'roster',3,4],
+      [2024,'trade',6,null],
+      [2024,'roster',6,6],
+      [2026,'draft',null,null],
+    ],'ledger reads from acquisition through roster tenure to departure/next move');
     const old = (await db.query<PlayerHistoryEvent>(PLAYER_HISTORY_SQL,['old'])).rows;
     assert.equal(old[0]!.managers,'Joe');
     const contribution = (await db.query<{points:string;starts:number}>(PLAYER_CONTRIBUTIONS_SQL,['new'])).rows;
