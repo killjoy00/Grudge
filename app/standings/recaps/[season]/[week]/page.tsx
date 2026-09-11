@@ -203,7 +203,7 @@ export default async function WeeklyRecapPage({
                     <td className="num">{luck
                       ? `${luckValue !== null && luckValue > 0 ? '+' : ''}${luck.luck_delta}`
                       : '—'}</td>
-                    <td className="num">{allPlay?.scaled_wins !== null && allPlay?.scaled_losses !== null
+                    <td className="num">{allPlay && allPlay.scaled_wins !== null && allPlay.scaled_losses !== null
                       ? `${allPlay.scaled_wins}-${allPlay.scaled_losses}`
                       : allPlay ? `${allPlay.all_play_wins}-${allPlay.all_play_losses}` : '—'}</td>
                   </tr>
