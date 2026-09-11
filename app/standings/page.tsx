@@ -193,7 +193,7 @@ export default async function Standings({
         <p className="note" style={{ marginTop: 12 }}>
           The blue line is the playoff cut (top {PLAYOFF_FIELD} of {rows.length}).
           {hasLuck && <> <strong>Luck</strong> is wins above or below what your weekly scores earned against the whole league.</>}
-          {archive && <> This season comes from the commissioner&rsquo;s 2005–2017 archive, which has no week-by-week luck index.</>}
+          {archive && <> Commissioner records remain authoritative for the final 2005–2017 standings; recovered weekly scoreboards supply the week-by-week score, luck, all-play and power context.</>}
         </p>
       </div>
 
