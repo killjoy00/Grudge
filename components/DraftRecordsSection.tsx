@@ -149,12 +149,12 @@ export function DraftRecordsSection({ records, full = false }: { records: DraftR
 
       <h3>Biggest misses who stayed on the field</h3>
       <p className="sub">
-        The five lowest-value picks in the available weekly-roster era who still scored in at least eight different weeks.
+        The five lowest-value picks across validated draft seasons who still scored in at least eight different NFL weeks.
         The main bust list grades the outcome, including injuries; this companion list highlights players
-        who had a sustained opportunity to produce. Its coverage expands automatically as completed seasons become gradable.
+        who had a sustained opportunity to produce. Coverage expands automatically as additional completed draft seasons pass the publication gate.
       </p>
       <div style={{ maxWidth: 720 }}>
-        <PickTable title={`Available-season misses · ${productiveRange}`} rows={records.productiveMisses} positive={false} />
+        <PickTable title={`Validated-season misses · ${productiveRange}`} rows={records.productiveMisses} positive={false} />
       </div>
 
       <h2>Draft habits</h2>
