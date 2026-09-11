@@ -113,7 +113,15 @@ export async function getManagerPlayerLeaders(managerKey: string, limit = 8) {
 }
 
 export async function getPlayerRecordLeaders(limit = 10) {
-  const [starterPoints, mostStarts, mostFranchises, drafted, traded] = await Promise.all([
+  const [
+    starterPoints,
+    mostStarts,
+    mostFranchises,
+    drafted,
+    traded,
+    archiveRosterSeasons,
+    championshipRosters,
+  ] = await Promise.all([
     asPublic<PlayerContributionRow>(
       `${CREDITED}
        ${CONTRIBUTION_SELECT}
@@ -172,6 +180,47 @@ export async function getPlayerRecordLeaders(limit = 10) {
         limit $1`,
       [limit]
     ),
+    asPublic<PlayerFrequencyRow>(
+      `select p.player_key, p.full_name, p.position,
+              count(distinct r.season)::int as events,
+              count(distinct r.season)::int as seasons,
+              min(r.season)::int as first_season,
+              max(r.season)::int as last_season
+         from public.player_archive_rosters r
+         join public.season_champions sc on sc.season = r.season
+         join public.nfl_players p on p.player_key = r.player_key
+        where r.snapshot_kind = 'final' and p.position <> 'D/ST'
+        group by p.player_key, p.full_name, p.position
+        order by count(distinct r.season) desc, max(r.season) desc, p.full_name
+        limit $1`,
+      [limit]
+    ),
+    asPublic<PlayerFrequencyRow>(
+      `select p.player_key, p.full_name, p.position,
+              count(distinct r.season)::int as events,
+              count(distinct r.season)::int as seasons,
+              min(r.season)::int as first_season,
+              max(r.season)::int as last_season
+         from public.player_archive_rosters r
+         join public.franchise_season_teams fst
+           on fst.season = r.season and fst.espn_team_id = r.espn_team_id
+         join public.season_champions sc
+           on sc.season = r.season and sc.champion_key = fst.franchise_key
+         join public.nfl_players p on p.player_key = r.player_key
+        where r.snapshot_kind = 'final' and p.position <> 'D/ST'
+        group by p.player_key, p.full_name, p.position
+        order by count(distinct r.season) desc, max(r.season) desc, p.full_name
+        limit $1`,
+      [limit]
+    ),
   ]);
-  return { starterPoints, mostStarts, mostFranchises, drafted, traded };
+  return {
+    starterPoints,
+    mostStarts,
+    mostFranchises,
+    drafted,
+    traded,
+    archiveRosterSeasons,
+    championshipRosters,
+  };
 }
