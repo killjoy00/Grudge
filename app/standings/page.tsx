@@ -1,5 +1,5 @@
 import {
-  getCachedPreseasonTeams, getCachedSeasonList, getCachedSeasonTable,
+  getCachedPlayoffOdds, getCachedPreseasonTeams, getCachedSeasonList, getCachedSeasonTable,
 } from '../../lib/cached-queries.ts';
 import { getCurrentSeason } from '../../lib/queries.ts';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
@@ -10,6 +10,7 @@ import { franchiseHref, seasonHref } from '../../lib/history-format.ts';
 export const dynamic = 'force-dynamic';
 
 const PLAYOFF_FIELD = 6;
+type PlayoffOddsRow = Awaited<ReturnType<typeof getCachedPlayoffOdds>>[number];
 
 function finish(place: number | null) {
   if (place === 1) return 'Champion';
@@ -17,6 +18,56 @@ function finish(place: number | null) {
   if (place === 3 || place === 4) return 'Lost semifinal';
   if (place === 5 || place === 6) return 'Lost first round';
   return null;
+}
+
+function PlayoffOutlook({ season, rows }: { season: number; rows: PlayoffOddsRow[] }) {
+  if (rows.length === 0) {
+    return <>
+      <h2 id="playoff-outlook">Playoff outlook</h2>
+      <div className="callout">
+        With no games played, every team&rsquo;s remaining schedule is the whole season and a simulation would just be telling you the field is even. Playoff odds appear here once week 1 is scored.
+      </div>
+    </>;
+  }
+
+  const assumptions = (rows[0]?.assumptions ?? {}) as Record<string, unknown>;
+  return <section aria-labelledby="playoff-outlook">
+    <h2 id="playoff-outlook">Playoff outlook</h2>
+    <p className="sub">
+      After week {rows[0]?.week ?? '—'} · {String(assumptions.simCount ?? '')} simulations of the remaining schedule under the league&rsquo;s real tiebreak rules.
+    </p>
+    <div className="card">
+      {rows.map((row) => (
+        <div key={row.espn_team_id} style={{ padding: '11px 0', borderBottom: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <a href={`/team/${row.espn_team_id}`} className="tname">{row.name}</a>
+            <span style={{ flex: 1 }} />
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
+              {row.playoff_pct}%
+            </span>
+            {Number(row.bye_pct) > 0.5 && (
+              <span className="tsub" style={{ minWidth: 62, textAlign: 'right' }}>
+                bye {row.bye_pct}%
+              </span>
+            )}
+          </div>
+          <div className="bar"><i style={{ width: `${row.playoff_pct}%` }} /></div>
+        </div>
+      ))}
+    </div>
+    <div className="card">
+      <details>
+        <summary>What these numbers assume — and how well they&rsquo;ve held up</summary>
+        <p className="note" style={{ marginTop: 10 }}>
+          Each remaining game is simulated by drawing both teams&rsquo; scores from a normal distribution fitted to their own weeks this season, then re-seeding on the league&rsquo;s real rule (win %, ties broken by total points).
+          <br /><br />
+          <strong>Each team&rsquo;s average is pulled toward the league average</strong>{' '}before simulating. The raw model was checked against seven real seasons and was measurably overconfident — teams it gave a 30% chance made the playoffs 46% of the time. Shrinking the means cut the average error from 4.9 points to 0.8.
+          <br /><br />
+          <strong>What it ignores:</strong> injuries, bye weeks, trades, waiver pickups, and hot streaks. Weeks are drawn independently. Treat a 95% as &ldquo;very likely&rdquo;, not a promise.
+        </p>
+      </details>
+    </div>
+  </section>;
 }
 
 export default async function Standings({
@@ -28,6 +79,7 @@ export default async function Standings({
   if (!season) return <p className="empty">No seasons on record yet.</p>;
 
   const [rows, luck] = await getCachedSeasonTable(season);
+  const playoffOdds = season === current ? await getCachedPlayoffOdds(season) : [];
 
   if (rows.length === 0) {
     const teams = await getCachedPreseasonTeams(season);
@@ -64,6 +116,7 @@ export default async function Standings({
           </div>
           <p className="note">Nobody has played yet, so this is the canonical franchise field and schedule rather than a completed historical table.</p>
         </div>
+        {season === current && <PlayoffOutlook season={season} rows={playoffOdds} />}
         <RecapArchive season={season} />
         <SeasonPicker seasons={seasons.map((x) => x.season)} current={season} basePath="/standings" />
       </>
@@ -144,6 +197,7 @@ export default async function Standings({
         </p>
       </div>
 
+      {season === current && <PlayoffOutlook season={season} rows={playoffOdds} />}
       <RecapArchive season={season} />
       <SeasonPicker seasons={seasons.map((x) => x.season)} current={season} basePath="/standings" />
     </>
