@@ -1,0 +1,32 @@
+name: Week 1 production UX audit
+
+on:
+  push:
+    branches:
+      - audit/week1-production-ux
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Capture production desktop and mobile UX
+        env:
+          SITE_URL: https://grudge.planitnow.us
+        run: node scripts/week1-ux-audit.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: week1-production-ux
+          path: ux-audit-output
+          if-no-files-found: error
+          retention-days: 7
