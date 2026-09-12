@@ -18,6 +18,11 @@ try {
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:3018/players',{waitUntil:'networkidle'});
   assert.match(await page.locator('h2').first().innerText(),/All players/i);
+  const activeTab=page.locator('nav.tabs a[aria-current="page"]');
+  const activeBox=await activeTab.boundingBox();
+  assert.ok(activeBox,'Active mobile tab must render');
+  assert.ok(activeBox.x>=0 && activeBox.x+activeBox.width<=390,
+    `Active mobile tab must be visible, got x=${activeBox.x} width=${activeBox.width}`);
   await page.getByRole('combobox',{name:'Season',exact:true}).selectOption('2024');
   await page.getByRole('combobox',{name:'Position',exact:true}).selectOption('WR');
   await page.getByRole('combobox',{name:'From week',exact:true}).selectOption('3');
@@ -44,7 +49,7 @@ try {
   await page.goto('http://127.0.0.1:3018/players?season=2025&position=QB',{waitUntil:'networkidle'});
   await page.screenshot({path:`${output}/players-desktop.png`,fullPage:true});
   assert.deepEqual(errors,[],'Browser page errors');
-  console.log('PASS: mobile filters, historical score, profiles, correct managers, NFL playoffs, 2005, desktop, no page errors');
+  console.log('PASS: mobile filters, visible active nav, historical score, profiles, correct managers, NFL playoffs, 2005, desktop, no page errors');
 } finally {
   if(browser) await browser.close();
   server.kill('SIGTERM');
