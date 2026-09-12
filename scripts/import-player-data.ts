@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { connect, runTransaction } from '../pipeline/db.ts';
+import { currentSeasonAliasRepairStatement } from '../pipeline/player-alias-repair.ts';
 import { playerRegistryStatements, playerSeasonStatements, validatePlayerSeason, type PlayerSeasonArtifact } from '../pipeline/player-import.ts';
 import type { PlayerProfile } from '../lib/player-data.ts';
 
@@ -37,5 +38,16 @@ if (process.argv.includes('--dry-run')) {
     const s = read(entry.file, entry.sha256) as PlayerSeasonArtifact;
     await runTransaction(sql, playerSeasonStatements(s, entry.sha256));
     console.log(`${year}: published ${s.games.length} NFL player games`);
+  }
+
+  // The season artifact intentionally covers players with scoring/roster evidence.
+  // ESPN can still expose additional current-season IDs only through waivers or
+  // the free-agent pool. Heal those aliases from an exact, unique canonical name
+  // match after the artifact import has rebuilt its authoritative alias set.
+  const seasons = Object.keys(manifest.seasons).map(Number).filter(Number.isInteger);
+  const currentSeason = seasons.length ? Math.max(...seasons) : null;
+  if (currentSeason !== null) {
+    await runTransaction(sql, [currentSeasonAliasRepairStatement(currentSeason)]);
+    console.log(`${currentSeason}: repaired deterministic transaction/free-agent aliases`);
   }
 }
