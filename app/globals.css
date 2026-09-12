@@ -664,3 +664,529 @@ table.sortable th.num .sort-btn { flex-direction: row-reverse; }
   /* Everything fits at this width, so the fade would be a lie. */
   .tabs-wrap::after { content: none; }
 }
+
+/* ========================================================================== */
+/* Modern Collegiate Athletics visual system — consolidated from athletics.css. */
+/* Keep global visual rules in this file; ordering below preserves the exact */
+/* production cascade introduced by the redesign.                              */
+/* ========================================================================== */
+
+:root {
+  --navy: #102b44;
+  --navy-2: #183c5a;
+  --carolina: #6aa9d2;
+  --carolina-deep: #356f96;
+  --cream: #f3f6f8;
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f5f7f8;
+  --line: #d7dfe4;
+  --line-dark: #aebbc4;
+  --text: #17212a;
+  --muted: #66717c;
+  --accent: #2c719d;
+  --link-ink: #1f648d;
+  /* Small uppercase labels (table heads, ranks, footer, kickers) sit at 9-11px,
+     which WCAG treats as body text needing 4.5:1. The previous greys measured
+     2.78-4.25:1. This one clears it on white (5.41), on the #f5f7f8 table head
+     (5.09) and on the cream page ground (5.02), so every label role can share
+     it instead of carrying its own near-miss hex. */
+  --label: #5f6b76;
+  --pick-on: #2f668d;
+  --win: #1e7251;
+  --loss: #a94747;
+  --warn: #9a661c;
+  --gold: #c69d38;
+  --radius: 0px;
+}
+
+html { background: var(--cream); }
+body {
+  background: var(--cream);
+  background-image: none;
+  color: var(--text);
+  font: 15px/1.48 "Helvetica Neue", Arial, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--link-ink); text-underline-offset: 3px; }
+a:hover { color: var(--navy); }
+code { border: 1px solid var(--line); background: var(--surface-2); }
+.wrap { max-width: 1040px; padding-top: 28px; }
+
+/* White athletics masthead over a full-width navy navigation bar. */
+header.site {
+  color: var(--navy);
+  background: #fff;
+  border-top: 0;
+  border-bottom: 0;
+  box-shadow: none;
+}
+.headrow {
+  min-height: 74px;
+  gap: 12px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.brand { gap: 12px; color: var(--navy); }
+.brand:hover { color: var(--navy); }
+.brand-copy strong {
+  color: var(--navy);
+  font: 800 24px/1 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: -.04em;
+  text-transform: uppercase;
+}
+.brand-copy small {
+  margin-top: 5px;
+  color: var(--label);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .12em;
+}
+.league-mark { width: 41px; height: 46px; }
+.mark-shield { fill: var(--navy); stroke: var(--navy); stroke-width: 3; }
+.mark-stripe { fill: var(--carolina); }
+.mark-ball { fill: #fff; }
+.mark-laces { stroke: var(--navy); stroke-width: 2; }
+.authcontrols > a { color: var(--navy); }
+header.site button {
+  padding: 8px 12px;
+  color: var(--navy);
+  background: #fff;
+  border: 1px solid var(--navy);
+}
+header.site button:hover:not(:disabled) {
+  color: #fff;
+  background: var(--navy);
+  border-color: var(--navy);
+}
+.tabs-wrap {
+  background: var(--navy);
+  border-top: 1px solid rgb(16 43 68 / .12);
+}
+nav.tabs {
+  gap: 30px;
+  border-top: 0;
+}
+nav.tabs a {
+  padding: 13px 0 12px;
+  color: #a9c0d1;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+nav.tabs a::after { height: 4px; }
+nav.tabs a:hover, nav.tabs a.on { color: #fff; }
+nav.tabs a.on::after { background: var(--carolina); }
+.tabs-wrap::after {
+  background: linear-gradient(to right, rgb(16 43 68 / 0), var(--navy));
+}
+
+/* Typography: compact, athletic, and entirely sans-serif. */
+h1, h2, h3 { color: var(--navy); }
+h1 {
+  margin: 22px 0 6px;
+  font: 800 clamp(32px, 5vw, 42px)/1 "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -.045em;
+}
+h2 {
+  margin: 28px 0 9px;
+  font: 800 16px/1.15 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+h3 {
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: -.01em;
+}
+.eyebrow, .section-kicker {
+  color: var(--carolina-deep);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.sub { color: var(--muted); }
+.player-event-date strong,
+.member-heading strong,
+.empty-state strong {
+  font-family: Arial, "Helvetica Neue", sans-serif;
+}
+
+/* Heroes become informational headers rather than decorative banners. */
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 20px;
+  padding: 27px 30px 26px;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--carolina);
+  box-shadow: none;
+}
+.page-hero::after { display: none; }
+.page-hero h1 {
+  margin: 3px 0 7px;
+  color: var(--navy);
+}
+.page-hero h2 { color: var(--navy); }
+.page-hero p {
+  max-width: 690px;
+  color: var(--muted);
+  font-size: 15px;
+}
+.page-hero .eyebrow { color: var(--carolina-deep); }
+.compact-hero {
+  padding-top: 20px;
+  padding-bottom: 19px;
+  border-top-width: 4px;
+}
+.compact-hero h1 { font-size: clamp(27px, 4vw, 34px); }
+
+/* Flat, precise surfaces. Rounded/shadowed dashboard cards are removed. */
+.card {
+  margin-bottom: 16px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.card:has(> table),
+.card:has(> .scroll),
+.card:has(> .match) { padding: 0; }
+.card:has(> table) > .note,
+.card:has(> .scroll) > .note {
+  margin: 0 !important;
+  padding: 13px 16px;
+  background: #fafbfc;
+  border-top: 1px solid var(--line);
+}
+.callout {
+  padding: 13px 15px;
+  background: #f2f7fa;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--carolina-deep);
+}
+.callout.warning { background: #fff9ec; }
+
+/* Stat strips read like compact athletics summary tables. */
+.stat-strip {
+  gap: 0;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--line);
+}
+.stat-strip > div {
+  padding: 16px 18px;
+  background: #fff;
+  border-right: 1px solid var(--line);
+}
+.stat-strip > div:last-child { border-right: 0; }
+.stat-strip strong {
+  color: var(--navy);
+  font: 800 26px/1 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: -.035em;
+}
+.stat-strip span {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* Tables share a restrained sports-information treatment. */
+table { font-size: 14px; }
+th {
+  padding: 11px 14px;
+  color: var(--label);
+  background: #f5f7f8;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line);
+}
+tbody tr:nth-child(even) { background: transparent; }
+tbody tr:hover { background: #fafcfd; }
+.rank {
+  color: var(--label);
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  font-weight: 800;
+}
+.tname { color: var(--navy); font-weight: 750; }
+.tsub { color: var(--muted); }
+.title-row { background: #fbfcfd; }
+.espn-row td { background: #f4f8fb; }
+.sort-btn { font-weight: 800; }
+.sort-btn:hover, .sort-btn.active { color: var(--navy); }
+.sort-btn.active .sort-caret { color: var(--carolina-deep); }
+
+/* Score rows mirror the approved Model 2 mockup. */
+.match {
+  gap: 13px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.match .side { color: var(--navy); font-weight: 750; }
+.match .side span:last-child {
+  min-width: 45px;
+  color: var(--navy);
+  font: 800 18px/1 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: -.02em;
+}
+.match .side.win {
+  padding-left: 10px;
+  border-left: 3px solid var(--carolina);
+  font-weight: 800;
+}
+.match .side.win span:last-child { color: var(--navy); }
+.match .side.lose { color: #667581; }
+.vs {
+  color: var(--label);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+.match .espn-link {
+  color: var(--link-ink);
+  border-color: var(--line);
+}
+
+/* Actions are square, compact and institutional rather than app-like. */
+button, .btn {
+  padding: 9px 14px;
+  color: #fff;
+  background: var(--navy);
+  border: 1px solid var(--navy);
+  border-radius: var(--radius);
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  font-weight: 800;
+}
+button:hover:not(:disabled), .btn:hover {
+  color: #fff;
+  background: var(--carolina-deep);
+  border-color: var(--carolina-deep);
+}
+.btn-quiet {
+  color: var(--navy);
+  background: #fff;
+  border-color: var(--line-dark);
+}
+.btn-quiet:hover { color: #fff; background: var(--navy); border-color: var(--navy); }
+input[type="text"], input[type="email"], input[type="number"], select, textarea {
+  background: #fff;
+  border-color: var(--line-dark);
+  border-radius: var(--radius);
+}
+input:focus, select:focus, textarea:focus {
+  outline: 3px solid rgb(106 169 210 / .28);
+  border-color: var(--carolina-deep);
+}
+.pill, .status-dot, .delivery-status,
+.tag, .badge {
+  border-radius: var(--radius);
+}
+.tag.era {
+  color: var(--navy);
+  background: #f3f6f8;
+  border-color: var(--line);
+}
+.bar { background: #e6ebee; border-color: #d7dfe4; }
+.bar > i { background: var(--carolina-deep); }
+
+/* Predictions keep their strong tap targets, but lose the old rounded-card chrome. */
+.matchup {
+  background: #fff;
+  border-color: var(--line);
+  border-radius: var(--radius);
+}
+.matchup-head {
+  color: var(--navy);
+  background: #f5f7f8;
+}
+.matchup-body { background: #fff; }
+.matchup-vs {
+  font-family: Arial, "Helvetica Neue", sans-serif;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.pick { border-radius: var(--radius); }
+.matchup .pick { background: var(--navy); border-color: var(--navy); }
+button.pick.on, .matchup .pick.on {
+  background: var(--pick-on);
+  border-color: var(--carolina);
+  box-shadow: inset 0 0 0 1px var(--carolina);
+}
+.matchup-projection { background: #fafbfc; }
+
+/* Trades, admin and profile surfaces use the same flat language. */
+.member-card {
+  background: #fff;
+  border-color: var(--line);
+  border-left-color: var(--carolina-deep);
+  box-shadow: none;
+}
+.member-heading strong { color: var(--navy); font-weight: 800; }
+.trade-card { box-shadow: none; }
+.trade-side {
+  background: #f5f7f8;
+  border-radius: var(--radius);
+}
+.trade-side.ahead {
+  background: #eef7f2;
+  box-shadow: inset 0 0 0 1px rgb(30 114 81 / .20);
+}
+.cmt { border-left-color: var(--carolina); }
+.adminbar { border-bottom: 1px solid var(--line-dark); }
+.preference-row { border-color: var(--line); }
+
+/* Player surfaces inherit the same type and table rules. */
+.player-table .player-name-cell { background: #fff; }
+.player-points strong { color: var(--navy); }
+.player-event-date strong {
+  color: var(--navy);
+  font-size: 20px;
+  font-weight: 800;
+}
+.player-methodology summary,
+.player-raw-stats summary,
+details summary { color: var(--navy); }
+
+.site-footer {
+  color: var(--label);
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+}
+
+@media (max-width: 680px) {
+  body { font-size: 15px; }
+  .wrap { padding: 18px 13px 60px; }
+  .headrow { min-height: 64px; padding: 7px 13px; }
+  .brand { gap: 9px; }
+  .brand-copy strong { font-size: 19px; }
+  .brand-copy small { color: var(--label); font-size: 9px; letter-spacing: .055em; }
+  .league-mark { width: 34px; height: 39px; }
+  nav.tabs { gap: 22px; padding: 0 13px; }
+  nav.tabs a { padding: 11px 0 10px; font-size: 10px; }
+  .page-hero { padding: 21px 18px 20px; border-top-width: 5px; }
+  .page-hero h1 { font-size: clamp(30px, 10vw, 38px); }
+  .page-hero p { font-size: 14px; }
+  .compact-hero { padding: 17px 18px; }
+  .card { padding: 14px; }
+  .card:has(> table),
+  .card:has(> .scroll),
+  .card:has(> .match) { padding: 0; }
+  .match { padding: 13px 14px; }
+  .match .side.win { padding-left: 8px; }
+  .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-strip.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat-strip > div { padding: 13px 10px; }
+  .stat-strip > div:nth-child(2n) { border-right: 0; }
+  .stat-strip > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .stat-strip.three > div { border-top: 0; border-right: 1px solid var(--line); }
+  .stat-strip.three > div:last-child { border-right: 0; }
+  .stat-strip strong { font-size: 22px; }
+  th { padding: 10px 12px; }
+  td { padding: 12px; }
+  .site-footer { padding-right: 13px; padding-left: 13px; }
+}
+
+/* ------------------------------------------------------- outbound ESPN chips
+   The ESPN pills and the Preview pill on the scoreboard share .espn-link, and
+   a 1px --line border on a white card left them barely separated from the
+   ground they sat on. They keep their quiet role -- the team name beside them
+   is still the primary link -- but a tinted fill, a stronger edge and a real
+   pressed state make them read as actionable chips rather than stray text. */
+.espn-link {
+  padding: 3px 8px;
+  color: var(--link-ink);
+  background: #eef4f8;
+  border: 1px solid #b9cfdf;
+  font-size: 11px;
+}
+.espn-link:hover, .espn-link:focus-visible {
+  color: #fff;
+  background: var(--carolina-deep);
+  border-color: var(--carolina-deep);
+}
+.match .espn-link,
+.matchup-head .espn-link {
+  color: var(--link-ink);
+  background: #eef4f8;
+  border-color: #b9cfdf;
+}
+.match .espn-link:hover, .match .espn-link:focus-visible,
+.matchup-head .espn-link:hover, .matchup-head .espn-link:focus-visible {
+  color: #fff;
+  background: var(--carolina-deep);
+  border-color: var(--carolina-deep);
+}
+
+/* ------------------------------------------------------------ trade impact
+   "team fit · lineup impact" was the last lowercase muted label left from the
+   old system, sitting directly under the largest number on the card, so it
+   read as an afterthought. It now uses the same uppercase label treatment as
+   every other caption here, and the number it captions carries the navy and
+   the tabular sizing the stat strips use. */
+.trade-impact {
+  display: block;
+  color: var(--navy);
+  font: 800 27px/1 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: -.035em;
+}
+.trade-impact.up { color: var(--win); }
+.trade-impact.down { color: var(--loss); }
+.trade-impact-label {
+  display: block;
+  margin-top: 5px;
+  margin-left: 0;
+  color: var(--carolina-deep);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.trade-secondary { color: var(--muted); }
+
+/* --------------------------------------------------------------- form rows
+   The filter grids are four columns, so a submit button landed wherever the
+   preceding field left off -- alone in column one on the player profile, mid
+   row on the ledger. The actions now occupy their own full-width row. */
+.player-filters button[type="submit"],
+.player-filters .btn-quiet {
+  align-self: start;
+}
+.player-filters .filter-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 10px;
+  align-items: center;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 680px) {
+  /* The masthead had two competing stacks at 390px: the wordmark's tagline
+     wrapped onto a second line and "Preview my Grudge" wrapped onto a third.
+     Below 680px the tagline is dropped and the action keeps to one line. */
+  .brand-copy small { display: none; }
+  .authcontrols > a, header.site .authcontrols a { white-space: nowrap; font-size: 12px; }
+  .headrow { min-height: 56px; gap: 10px; }
+
+  /* Section jump links wrapped with a 24px gap, leaving the last one adrift on
+     a line of its own. A tighter two-axis gap keeps the rows readable. */
+  .player-sections { gap: 10px 18px; }
+
+  /* Stat strip captions wrap to different heights, so the numbers above them
+     no longer shared a baseline. Pinning the caption box evens the row. */
+  .stat-strip > div { display: flex; flex-direction: column; justify-content: flex-start; }
+  .stat-strip span { min-height: 2.4em; }
+
+  .player-filters .filter-actions { padding-top: 12px; }
+}
