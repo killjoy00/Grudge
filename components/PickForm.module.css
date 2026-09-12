@@ -1,0 +1,31 @@
+.head {
+  flex-wrap: wrap;
+}
+
+.status {
+  margin-left: auto;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.head .actions :global(.espn-link) {
+  margin-left: 0;
+}
+
+@media (max-width: 560px) {
+  .head {
+    row-gap: 7px;
+  }
+
+  .actions {
+    flex: 1 0 100%;
+  }
+
+  .head .actions :global(.espn-link) {
+    flex: 1 1 0;
+    text-align: center;
+  }
+}
