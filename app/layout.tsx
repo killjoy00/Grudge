@@ -1,5 +1,4 @@
 import './globals.css';
-import './athletics.css';
 import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Nav } from '../components/Nav.tsx';
