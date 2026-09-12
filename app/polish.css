@@ -9,7 +9,7 @@
   grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
   gap: 12px;
   min-height: 76px;
-  padding: 17px 154px 17px 18px;
+  padding: 17px 172px 17px 18px;
 }
 
 .match:has(> .espn-link:last-child) > .side {
@@ -69,10 +69,11 @@
 .match:has(> .espn-link:last-child) > .vs .espn-link {
   position: absolute;
   right: 18px;
-  width: 118px;
-  min-width: 118px;
+  width: 136px;
+  min-width: 136px;
   margin-left: 0 !important;
   text-align: center;
+  white-space: nowrap;
 }
 
 .match:has(> .espn-link:last-child) > .espn-link:last-child {
@@ -162,8 +163,8 @@
   .match:has(> .espn-link:last-child) > .espn-link:last-child,
   .match:has(> .espn-link:last-child) > .vs .espn-link {
     right: 14px;
-    width: 122px;
-    min-width: 122px;
+    width: 136px;
+    min-width: 136px;
   }
 
   .match:has(> .espn-link:last-child) > .espn-link:last-child {
