@@ -20,13 +20,19 @@ const routes = [
 
 const report = { base, generatedAt: new Date().toISOString(), pages: [] };
 
+async function settle(page, url) {
+  const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(1500);
+  return response;
+}
+
 for (const viewport of viewports) {
   const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
   const page = await context.newPage();
 
   for (const [name, path] of routes) {
     const url = `${base}${path}`;
-    const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 });
+    const response = await settle(page, url);
     await page.screenshot({ path: `${out}/${name}-${viewport.name}.png`, fullPage: true });
 
     const metrics = await page.evaluate(() => {
@@ -82,10 +88,10 @@ for (const viewport of viewports) {
   }
 
   if (viewport.name === 'mobile') {
-    await page.goto(`${base}/`, { waitUntil: 'networkidle', timeout: 90000 });
+    await settle(page, `${base}/`);
     const href = await page.locator('a[href^="/matchup/"]').first().getAttribute('href').catch(() => null);
     if (href) {
-      const response = await page.goto(`${base}${href}`, { waitUntil: 'networkidle', timeout: 90000 });
+      const response = await settle(page, `${base}${href}`);
       await page.screenshot({ path: `${out}/matchup-preview-mobile.png`, fullPage: true });
       report.matchup = { href, status: response?.status() ?? null };
     }
