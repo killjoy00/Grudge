@@ -1,0 +1,157 @@
+/* Focused presentation fixes that sit above the shared visual system.
+   These selectors deliberately key off the existing semantic structure so the
+   changes stay local to the live homepage slate and the two trade ledgers. */
+
+/* Live homepage slate: the in-progress scoreboard is the only .match row with
+   a direct trailing Preview link. Give it a real four-column sports-schedule
+   layout instead of letting that fourth item wrap onto a second grid row. */
+.match:has(> .espn-link:last-child) {
+  grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 17px 18px;
+}
+
+.match:has(> .espn-link:last-child) > .side {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.match:has(> .espn-link:last-child) > .side::before {
+  color: var(--label);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.match:has(> .espn-link:last-child) > .side:first-child {
+  text-align: right;
+}
+
+.match:has(> .espn-link:last-child) > .side:first-child::before {
+  content: "Away";
+}
+
+.match:has(> .espn-link:last-child) > .side:nth-child(3)::before {
+  content: "Home";
+}
+
+.match:has(> .espn-link:last-child) > .side > span {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--navy);
+  font: 800 17px/1.2 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: -.02em;
+}
+
+/* One live-game link is enough. The per-team ESPN badges were what made the
+   slate read like a row of controls instead of a schedule. */
+.match:has(> .espn-link:last-child) > .side .espn-link {
+  display: none;
+}
+
+.match:has(> .espn-link:last-child) > .vs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 62px;
+  color: var(--label);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-align: center;
+}
+
+.match:has(> .espn-link:last-child) > .vs .espn-link {
+  margin-left: 0;
+}
+
+.match:has(> .espn-link:last-child) > .espn-link:last-child {
+  min-width: 82px;
+  margin-left: 0 !important;
+  justify-self: end;
+  text-align: center;
+}
+
+/* The trade ledgers used an ad-hoc bold label inside each card. Visually turn
+   that structure into the same heading + explanatory subhead + card/table
+   rhythm used by the main History page. */
+.card:has(> strong:first-child + p.note + .scroll) {
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.card:has(> strong:first-child + p.note + .scroll) > strong:first-child {
+  display: block;
+  margin: 0 0 9px;
+  color: var(--navy);
+  font: 800 16px/1.15 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.card:has(> strong:first-child + p.note + .scroll) > p.note {
+  margin: 0 0 21px !important;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.48;
+}
+
+.card:has(> strong:first-child + p.note + .scroll) > .scroll {
+  margin-top: 0 !important;
+  padding: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+@media (max-width: 680px) {
+  .match:has(> .espn-link:last-child) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "away away"
+      "home home"
+      "espn preview";
+    gap: 8px 12px;
+    padding: 14px;
+  }
+
+  .match:has(> .espn-link:last-child) > .side:first-child {
+    grid-area: away;
+    text-align: left;
+  }
+
+  .match:has(> .espn-link:last-child) > .side:nth-child(3) {
+    grid-area: home;
+  }
+
+  .match:has(> .espn-link:last-child) > .side > span {
+    font-size: 16px;
+  }
+
+  .match:has(> .espn-link:last-child) > .vs {
+    grid-area: espn;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    min-width: 0;
+    font-size: 0;
+  }
+
+  .match:has(> .espn-link:last-child) > .vs .espn-link {
+    font-size: 10px;
+  }
+
+  .match:has(> .espn-link:last-child) > .espn-link:last-child {
+    grid-area: preview;
+    min-width: 0;
+  }
+}
