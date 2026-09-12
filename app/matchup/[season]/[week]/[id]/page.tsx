@@ -144,7 +144,7 @@ export default async function MatchupPreview({
 
       {awayProjection && homeProjection && (
         <div className="card">
-          <div className="section-kicker">ESPN&rsquo;s Tuesday line</div>
+          <div className="section-kicker">ESPN&rsquo;s frozen line</div>
           <h2 style={{ marginTop: 5 }}>
             {Number(awayProjection.projected_points) === Number(homeProjection.projected_points)
               ? `Dead even at ${Number(awayProjection.projected_points).toFixed(1)}`
