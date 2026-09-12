@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react';
 import { submitPick } from '../lib/actions.ts';
 import { EspnMatchupLink } from './EspnLink.tsx';
+import styles from './PickForm.module.css';
 
 export interface Matchup {
   espn_matchup_id: number;
@@ -136,19 +137,23 @@ export function PickForm({
         );
         return (
           <div className="matchup" key={m.espn_matchup_id}>
-            <div className="matchup-head">
+            <div className={`matchup-head ${styles.head}`}>
               <span>Matchup {index + 1} of {matchups.length}</span>
-              {saved === m.espn_matchup_id && <span className="matchup-saved">Saved</span>}
-              {chosen === undefined && <span className="matchup-todo">No pick yet</span>}
-              {/* Not inside the pick buttons: those are the control, and a link
-                  within one would both fight the click and be invalid HTML. */}
-              <a
-                href={`/matchup/${season}/${week}/${m.espn_matchup_id}`}
-                className="espn-link"
-              >
-                Preview
-              </a>
-              <EspnMatchupLink season={season} week={week} teamId={m.away_team_id} />
+              <span className={styles.status}>
+                {saved === m.espn_matchup_id && <span className="matchup-saved">Saved</span>}
+                {chosen === undefined && <span className="matchup-todo">No pick yet</span>}
+              </span>
+              {/* Keep the two secondary actions together. On a phone they get
+                  their own row instead of squeezing the pick state vertically. */}
+              <span className={styles.actions}>
+                <a
+                  href={`/matchup/${season}/${week}/${m.espn_matchup_id}`}
+                  className="espn-link"
+                >
+                  Preview
+                </a>
+                <EspnMatchupLink season={season} week={week} teamId={m.away_team_id} />
+              </span>
             </div>
             <div className="matchup-body">
               {side(m.away_team_id, m.away_name, m.away_owners)}
