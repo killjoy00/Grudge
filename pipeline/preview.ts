@@ -5,6 +5,7 @@
  *   npx tsx pipeline/preview.ts
  *   npx tsx pipeline/preview.ts --week=5
  *   npx tsx pipeline/preview.ts --dry-run
+ *   npx tsx pipeline/preview.ts --week=5 --recapture  # explicit evidence replacement
  *
  * WHY THIS IS NOT PART OF pipeline/run.ts. That script is built around a
  * settled week -- it fetches boxscores only for weeks ESPN has finished, and
@@ -16,10 +17,12 @@
  *
  * WHY IT IS A SNAPSHOT RATHER THAN A LIVE READ. ESPN revises projections up to
  * kickoff; a Friday injury moves them. Reading live would mean the number on
- * screen Sunday morning is not the one ESPN "predicted" on Tuesday, and a
- * record kept against it would be scored against a forecast nobody ever saw.
- * One capture a week, and that capture is both what the page shows and what
- * the record settles against.
+ * screen Sunday morning is not the one ESPN showed when Grudge captured it,
+ * and a record kept against it would be scored against a forecast nobody ever
+ * saw. The first complete capture is therefore immutable. Routine weekly or
+ * verification reruns may refresh reference data, but they cannot replace the
+ * stored line. A deliberate --recapture is the only exception, and it moves
+ * captured_at together with the values so provenance stays truthful.
  *
  * ESPN publishes no win probability. Its pick is the higher projected starting
  * lineup -- the same total its own matchup view shows -- and the
@@ -27,17 +30,16 @@
  * never drift from the projection it came from.
  */
 import { fetchBoxscore, fetchDraft, fetchLeague } from './espn.ts';
-import {
-  draftPickRows, matchupProjectionRows, starterSlots,
-  type DraftPickRow, type MatchupProjectionRow,
-} from './normalize.ts';
-import { connect, runTransaction, upsertChunked, type Stmt } from './db.ts';
+import { draftPickRows, matchupProjectionRows, starterSlots } from './normalize.ts';
+import { connect, runTransaction } from './db.ts';
+import { previewStatements } from './preview-write.ts';
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.includes(`--${n}`);
 const opt = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')[1];
 
 const DRY_RUN = flag('dry-run');
+const RECAPTURE = flag('recapture');
 const SEASON = Number(opt('season') ?? new Date().getUTCFullYear());
 
 /**
@@ -57,24 +59,6 @@ function targetWeek(scoringPeriodId: number, override?: string): number {
   return w;
 }
 
-function statements(projections: MatchupProjectionRow[], picks: DraftPickRow[]): Stmt[] {
-  return [
-    ...upsertChunked(
-      'public.matchup_projections',
-      ['season', 'week', 'espn_matchup_id', 'espn_team_id', 'projected_points', 'starters'],
-      projections as unknown as Record<string, unknown>[],
-      ['season', 'week', 'espn_team_id']
-    ),
-    ...upsertChunked(
-      'public.draft_picks',
-      ['season', 'overall_pick', 'round', 'round_pick', 'espn_team_id', 'espn_player_id',
-       'is_keeper'],
-      picks as unknown as Record<string, unknown>[],
-      ['season', 'overall_pick']
-    ),
-  ];
-}
-
 async function main() {
   const league = await fetchLeague(SEASON);
   const week = targetWeek(league.scoringPeriodId, opt('week'));
@@ -88,25 +72,46 @@ async function main() {
                 `${row.projected_points.toFixed(1).padStart(6)}  (${row.starters} starters)`);
   }
 
+  // Never freeze a partial league snapshot. A transactional write protects us
+  // from half a database transaction, but this protects us from a complete
+  // transaction built from an incomplete ESPN response.
+  const teamCount = league.teams?.length ?? 0;
+  if (projections.length > 0 && teamCount > 0 && projections.length !== teamCount) {
+    throw new Error(
+      `refusing partial projection snapshot: ESPN returned ${projections.length} side(s) for ${teamCount} teams`,
+    );
+  }
+
   const draft = draftPickRows(await fetchDraft(SEASON), SEASON);
   console.log(`  draft board: ${draft.length} pick(s)`);
 
   // An empty projection set is not an error -- ESPN serves nothing for a week
-  // beyond the schedule, and the season ends. It is also not something to
-  // write: an upsert of zero rows leaves last week's capture in place, which
-  // is the correct outcome, but saying so beats a silent success.
+  // beyond the schedule, and the season ends. Draft reference data and the
+  // canonical player-name repair can still be useful, so only a fully empty
+  // batch is skipped by runTransaction itself.
   if (projections.length === 0 && draft.length === 0) {
-    console.log('nothing to write');
-    return;
+    console.log('no projection or draft rows; canonical player cache will still be checked');
   }
 
-  const batch = statements(projections, draft);
+  const capturedAt = new Date().toISOString();
+  const batch = previewStatements(projections, draft, SEASON, capturedAt, RECAPTURE);
   if (DRY_RUN) {
     console.log(`--dry-run: ${batch.length} statement(s), nothing written`);
     return;
   }
+
+  if (RECAPTURE) {
+    console.warn(
+      `RECAPTURE requested for ${SEASON} week ${week}: existing projection evidence and captured_at may be replaced`,
+    );
+  }
+
   await runTransaction(connect(), batch);
-  console.log(`wrote ${projections.length} projection(s) and ${draft.length} draft pick(s)`);
+  console.log(
+    RECAPTURE
+      ? `recaptured ${projections.length} projection side(s); refreshed ${draft.length} draft pick(s)`
+      : `preserved existing weekly line or inserted first capture for ${projections.length} side(s); refreshed ${draft.length} draft pick(s)`,
+  );
 }
 
 main().catch((e) => {
