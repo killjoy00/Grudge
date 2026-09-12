@@ -2,19 +2,21 @@
    These selectors deliberately key off the existing semantic structure so the
    changes stay local to the live homepage slate and the two trade ledgers. */
 
-/* Live homepage slate: the in-progress scoreboard is the only .match row with
-   a direct trailing Preview link. Give it a real four-column sports-schedule
-   layout instead of letting that fourth item wrap onto a second grid row. */
+/* Live homepage slate: keep both teams left-aligned, keep the "at" marker in
+   the middle, and reserve the far-right edge for the two preview actions. */
 .match:has(> .espn-link:last-child) {
-  grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr) auto;
-  gap: 16px;
-  padding: 17px 18px;
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 76px;
+  padding: 17px 154px 17px 18px;
 }
 
 .match:has(> .espn-link:last-child) > .side {
   display: grid;
   gap: 3px;
   min-width: 0;
+  text-align: left;
 }
 
 .match:has(> .espn-link:last-child) > .side::before {
@@ -23,11 +25,8 @@
   font-weight: 800;
   letter-spacing: .11em;
   line-height: 1;
+  text-align: left;
   text-transform: uppercase;
-}
-
-.match:has(> .espn-link:last-child) > .side:first-child {
-  text-align: right;
 }
 
 .match:has(> .espn-link:last-child) > .side:first-child::before {
@@ -44,36 +43,60 @@
   color: var(--navy);
   font: 800 17px/1.2 Arial, "Helvetica Neue", sans-serif;
   letter-spacing: -.02em;
+  text-align: left;
 }
 
-/* One live-game link is enough. The per-team ESPN badges were what made the
-   slate read like a row of controls instead of a schedule. */
+/* The slate gets one ESPN matchup action, not a roster badge beside each team. */
 .match:has(> .espn-link:last-child) > .side .espn-link {
   display: none;
 }
 
 .match:has(> .espn-link:last-child) > .vs {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-width: 62px;
+  min-width: 30px;
   color: var(--label);
   font-size: 9px;
   letter-spacing: .12em;
   text-align: center;
 }
 
+/* Re-label and stack the two destination choices at the far right. The ESPN
+   arrow is intentionally removed here; the label already communicates that it
+   is the external preview. */
+.match:has(> .espn-link:last-child) > .espn-link:last-child,
 .match:has(> .espn-link:last-child) > .vs .espn-link {
-  margin-left: 0;
+  position: absolute;
+  right: 18px;
+  width: 118px;
+  min-width: 118px;
+  margin-left: 0 !important;
+  text-align: center;
 }
 
 .match:has(> .espn-link:last-child) > .espn-link:last-child {
-  min-width: 82px;
-  margin-left: 0 !important;
-  justify-self: end;
-  text-align: center;
+  top: 11px;
+  font-size: 0;
+}
+
+.match:has(> .espn-link:last-child) > .espn-link:last-child::after {
+  content: "Grudge Preview";
+  font-size: 11px;
+}
+
+.match:has(> .espn-link:last-child) > .vs .espn-link {
+  bottom: 11px;
+  font-size: 0;
+}
+
+.match:has(> .espn-link:last-child) > .vs .espn-link::after {
+  content: "ESPN Preview";
+  font-size: 11px;
+}
+
+.match:has(> .espn-link:last-child) > .vs .espn-link span {
+  display: none;
 }
 
 /* The trade ledgers used an ad-hoc bold label inside each card. Visually turn
@@ -97,7 +120,10 @@
   text-transform: uppercase;
 }
 
+/* Both ledger descriptions reserve the same three-line text block so the two
+   tables begin on exactly the same horizontal line. */
 .card:has(> strong:first-child + p.note + .scroll) > p.note {
+  min-height: 63px;
   margin: 0 0 21px !important;
   color: var(--muted);
   font-size: 14px;
@@ -115,22 +141,10 @@
 
 @media (max-width: 680px) {
   .match:has(> .espn-link:last-child) {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "away away"
-      "home home"
-      "espn preview";
-    gap: 8px 12px;
-    padding: 14px;
-  }
-
-  .match:has(> .espn-link:last-child) > .side:first-child {
-    grid-area: away;
-    text-align: left;
-  }
-
-  .match:has(> .espn-link:last-child) > .side:nth-child(3) {
-    grid-area: home;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    min-height: 0;
+    padding: 14px 14px 82px;
   }
 
   .match:has(> .espn-link:last-child) > .side > span {
@@ -138,20 +152,30 @@
   }
 
   .match:has(> .espn-link:last-child) > .vs {
-    grid-area: espn;
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
+    display: block;
+    height: 0;
     min-width: 0;
+    overflow: visible;
     font-size: 0;
   }
 
+  .match:has(> .espn-link:last-child) > .espn-link:last-child,
   .match:has(> .espn-link:last-child) > .vs .espn-link {
-    font-size: 10px;
+    right: 14px;
+    width: 122px;
+    min-width: 122px;
   }
 
   .match:has(> .espn-link:last-child) > .espn-link:last-child {
-    grid-area: preview;
-    min-width: 0;
+    top: auto;
+    bottom: 45px;
+  }
+
+  .match:has(> .espn-link:last-child) > .vs .espn-link {
+    bottom: 13px;
+  }
+
+  .card:has(> strong:first-child + p.note + .scroll) > p.note {
+    min-height: 0;
   }
 }
