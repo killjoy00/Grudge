@@ -24,6 +24,19 @@ jobs:
         env:
           SITE_URL: https://grudge.planitnow.us
         run: node scripts/week1-ux-audit.mjs
+      - name: Start auth-free local audit fixture
+        run: |
+          VERCEL_ENV=preview npm run dev -- --hostname 127.0.0.1 > /tmp/ux-dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/ux-audit-picks >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ux-dev.log
+          exit 1
+      - name: Capture pick-board fixture
+        run: node scripts/week1-picks-audit.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: week1-production-ux
