@@ -8,7 +8,7 @@
 .match:has(> .espn-link:last-child) {
   grid-template-columns: minmax(0, 1fr) 62px minmax(0, 1fr) auto;
   gap: 16px;
-  padding: 17px 2px;
+  padding: 17px 18px;
 }
 
 .match:has(> .espn-link:last-child) > .side {
@@ -18,9 +18,9 @@
 }
 
 .match:has(> .espn-link:last-child) > .side::before {
-  color: var(--muted);
+  color: var(--label);
   font-size: 9px;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: .11em;
   line-height: 1;
   text-transform: uppercase;
@@ -42,8 +42,8 @@
   display: block;
   overflow-wrap: anywhere;
   color: var(--navy);
-  font: 700 18px/1.22 Georgia, "Times New Roman", serif;
-  letter-spacing: -.012em;
+  font: 800 17px/1.2 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: -.02em;
 }
 
 /* One live-game link is enough. The per-team ESPN badges were what made the
@@ -59,7 +59,7 @@
   justify-content: center;
   gap: 5px;
   min-width: 62px;
-  color: var(--muted);
+  color: var(--label);
   font-size: 9px;
   letter-spacing: .12em;
   text-align: center;
@@ -90,26 +90,27 @@
 
 .card:has(> strong:first-child + p.note + .scroll) > strong:first-child {
   display: block;
-  margin: 0 0 11px;
+  margin: 0 0 9px;
   color: var(--navy);
-  font: 700 21px/1.2 Georgia, "Times New Roman", serif;
-  letter-spacing: -.015em;
+  font: 800 16px/1.15 Arial, "Helvetica Neue", sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 
 .card:has(> strong:first-child + p.note + .scroll) > p.note {
   margin: 0 0 21px !important;
   color: var(--muted);
   font-size: 14px;
-  line-height: 1.52;
+  line-height: 1.48;
 }
 
 .card:has(> strong:first-child + p.note + .scroll) > .scroll {
   margin-top: 0 !important;
-  padding: 18px;
-  background: var(--paper);
-  border: 1px solid var(--line-dark);
+  padding: 0;
+  background: #fff;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: 0 3px 0 rgb(7 29 53 / .07);
+  box-shadow: none;
 }
 
 @media (max-width: 680px) {
@@ -120,7 +121,7 @@
       "home home"
       "espn preview";
     gap: 8px 12px;
-    padding: 14px 2px;
+    padding: 14px;
   }
 
   .match:has(> .espn-link:last-child) > .side:first-child {
@@ -133,7 +134,7 @@
   }
 
   .match:has(> .espn-link:last-child) > .side > span {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .match:has(> .espn-link:last-child) > .vs {
@@ -152,9 +153,5 @@
   .match:has(> .espn-link:last-child) > .espn-link:last-child {
     grid-area: preview;
     min-width: 0;
-  }
-
-  .card:has(> strong:first-child + p.note + .scroll) > .scroll {
-    padding: 14px;
   }
 }
