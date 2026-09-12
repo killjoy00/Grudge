@@ -1,2 +1,2 @@
-Deploy main ca3559fc5b1f7bbfd21b4a3f55ec365c110781a4 after PR #88 freezes projection evidence, repairs Week 1 player names, and corrects matchup provenance wording.
+Deploy main a3140781f5700038deae6102f6f08cba69023e6b after PR #89 preserves deterministic current-season transaction/free-agent aliases.
 Requested 2026-09-12.
