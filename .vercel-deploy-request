@@ -1,2 +1,2 @@
-Deploy main ebb8dfbbea5bbe78cc16b8de0e11ec8aa5647ee6 after PR #84 corrects validated draft-history coverage copy.
-Requested 2026-09-11.
+Deploy main a066361d131dfa25e2e9e1645d844d5051dbf954 after PR #86 consolidates styles, pins Node 22, and approves the reviewed esbuild install script.
+Requested 2026-09-12.
