@@ -21,8 +21,8 @@ export function WeekPickReveal({
   picks: RevealedPick[];
 }) {
   return (
-    <div className="card pick-reveal">
-      {matchups.map((matchup) => {
+    <div className="card">
+      {matchups.map((matchup, index) => {
         const game = picks.filter((pick) => pick.espn_matchup_id === matchup.espn_matchup_id);
         const away = game.filter((pick) => pick.predicted_winner_team_id === matchup.away_team_id);
         const home = game.filter((pick) => pick.predicted_winner_team_id === matchup.home_team_id);
@@ -30,20 +30,30 @@ export function WeekPickReveal({
           rows.length ? rows.map((row) => row.display_name ?? 'Someone').join(', ') : 'Nobody';
 
         return (
-          <div className="pick-reveal-game" key={matchup.espn_matchup_id}>
-            <div className="pick-reveal-matchup">
-              <strong>{matchup.away_name}</strong>
-              <span>at</span>
-              <strong>{matchup.home_name}</strong>
+          <div
+            key={matchup.espn_matchup_id}
+            style={{
+              padding: index === 0 ? '0 0 15px' : '15px 0',
+              borderTop: index === 0 ? 0 : '1px solid var(--line)',
+            }}
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'baseline', marginBottom: 8 }}>
+              <strong style={{ color: 'var(--navy)' }}>{matchup.away_name}</strong>
+              <span className="note" style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em' }}>at</span>
+              <strong style={{ color: 'var(--navy)' }}>{matchup.home_name}</strong>
             </div>
-            <div className="pick-reveal-sides">
-              <div>
-                <span className="pick-reveal-team">{matchup.away_name} · {away.length}</span>
-                <span className="pick-reveal-names">{label(away)}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+              <div style={{ padding: '9px 11px', background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
+                <strong style={{ display: 'block', fontSize: 12, color: 'var(--navy)' }}>
+                  {matchup.away_name} · {away.length}
+                </strong>
+                <span className="note" style={{ display: 'block', margin: '3px 0 0', fontSize: 12 }}>{label(away)}</span>
               </div>
-              <div>
-                <span className="pick-reveal-team">{matchup.home_name} · {home.length}</span>
-                <span className="pick-reveal-names">{label(home)}</span>
+              <div style={{ padding: '9px 11px', background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
+                <strong style={{ display: 'block', fontSize: 12, color: 'var(--navy)' }}>
+                  {matchup.home_name} · {home.length}
+                </strong>
+                <span className="note" style={{ display: 'block', margin: '3px 0 0', fontSize: 12 }}>{label(home)}</span>
               </div>
             </div>
           </div>
