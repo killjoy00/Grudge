@@ -4,8 +4,10 @@ import {
   getAllTimeLeaderboard, getWeekProjections, getEspnRecord, getTeamStars,
 } from '../../lib/queries.ts';
 import { getCurrentIncompleteWeek } from '../../lib/game-context.ts';
+import { getLockedWeekPicks } from '../../lib/prediction-reveal.ts';
 import { PickForm } from '../../components/PickForm.tsx';
 import type { Projection, Star } from '../../components/PickForm.tsx';
+import { WeekPickReveal } from '../../components/WeekPickReveal.tsx';
 import { POSITIONS } from '../../pipeline/trade.ts';
 import { isAdmin } from '../../lib/admin.ts';
 
@@ -55,8 +57,10 @@ export default async function Predictions() {
   // page stays on the games people are actually watching instead of jumping
   // ahead to next week's unlocked slate.
   const open = await getCurrentIncompleteWeek(season);
+  const lockAt = open?.locks_at ?? open?.first_kickoff_at ?? null;
+  const locked = lockAt ? new Date(lockAt).getTime() <= Date.now() : true;
 
-  const [matchups, picks, board, allTime, projRows, starRows, espn] = await Promise.all([
+  const [matchups, picks, board, allTime, projRows, starRows, espn, revealedPicks] = await Promise.all([
     open ? getWeekMatchups(season, open.week) : Promise.resolve([]),
     open ? getMyPicks(season, open.week) : Promise.resolve([]),
     getLeaderboard(season),
@@ -64,6 +68,7 @@ export default async function Predictions() {
     open ? getWeekProjections(season, open.week) : Promise.resolve([]),
     open ? getTeamStars(season, open.week) : Promise.resolve([]),
     getEspnRecord(season),
+    open && locked ? getLockedWeekPicks(season, open.week) : Promise.resolve([]),
   ]);
 
   const initial: Record<number, number> = {};
@@ -99,9 +104,6 @@ export default async function Predictions() {
     });
   }
   const starBasis = starRows[0]?.basis ?? null;
-
-  const lockAt = open?.locks_at ?? open?.first_kickoff_at ?? null;
-  const locked = lockAt ? new Date(lockAt).getTime() <= Date.now() : true;
 
   const seasonBy = new Map(board.map((row) => [row.user_id, row]));
   const mine = { season: seasonBy.get(userId), allTime: allTime.find((r) => r.user_id === userId) };
@@ -160,7 +162,7 @@ export default async function Predictions() {
                     <>
                       Week {open.week} is locked — picks closed Saturday at midnight
                       ET, and the database rejects late changes. Your picks are shown
-                      below; each matchup now has a preview and an ESPN link for following it live.
+                      below, and the full locked league board is revealed underneath.
                     </>
                   ) : (
                     <>
@@ -196,6 +198,13 @@ export default async function Predictions() {
               </>
             )}
           </div>
+
+          {locked && (
+            <>
+              <h2>Everyone&rsquo;s picks</h2>
+              <WeekPickReveal matchups={matchups} picks={revealedPicks} />
+            </>
+          )}
         </>
       )}
 
