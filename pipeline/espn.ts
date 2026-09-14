@@ -81,7 +81,10 @@ export interface EspnTeam {
 export interface EspnMatchupSide {
   teamId: number;
   totalPoints?: number;
-  rosterForCurrentScoringPeriod?: { entries?: EspnRosterEntry[] };
+  rosterForCurrentScoringPeriod?: {
+    appliedStatTotal?: number;
+    entries?: EspnRosterEntry[];
+  };
 }
 
 export interface EspnMatchup {
