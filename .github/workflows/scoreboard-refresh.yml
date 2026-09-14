@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '30 6 * * 1'
       timezone: 'America/Chicago'
+    - cron: '47 8 * * 1'
+      timezone: 'America/Chicago'
+  push:
+    branches: [main]
+    paths:
+      - '.scoreboard-refresh-request'
   workflow_dispatch:
     inputs:
       season:
