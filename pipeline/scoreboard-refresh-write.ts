@@ -11,15 +11,18 @@ export interface ExistingMatchupShape {
 const roundScore = (value: number) => Math.round(value * 100) / 100;
 
 /**
- * ESPN's season-level mMatchupScore view can leave totalPoints at its preseason
- * zero during an in-progress week. mBoxscore has the per-player applied totals
- * we already trust for weekly roster evidence, so use those as the fallback.
+ * ESPN's season-level matchup views can leave totalPoints at their preseason
+ * zero during an in-progress week. The weekly boxscore carries the authoritative
+ * current-roster aggregate in rosterForCurrentScoringPeriod.appliedStatTotal;
+ * prefer it when totalPoints has not moved. This also correctly preserves a
+ * legal empty lineup slot -- ESPN totals the players actually started rather
+ * than requiring every configured starter slot to be occupied.
  *
- * A non-zero provider team total wins because it can include league-level score
- * adjustments. If that total is still zero, only accept a computed total when
- * the boxscore contains the full legal set of starters and every starter has a
- * finite appliedStatTotal. That keeps this snapshot from silently publishing a
- * partial lineup if ESPN serves a truncated payload.
+ * A non-zero provider total still wins because it can include league-level score
+ * adjustments. If neither provider total nor the roster aggregate is available,
+ * fall back to summing per-player applied totals only when the boxscore contains
+ * the full legal set of starters. That compatibility path stays fail-closed for
+ * truncated payloads.
  */
 function currentSideScore(
   side: EspnMatchupSide,
@@ -29,6 +32,11 @@ function currentSideScore(
   const provider = side.totalPoints;
   if (typeof provider === 'number' && Number.isFinite(provider) && provider !== 0) {
     return roundScore(provider);
+  }
+
+  const rosterTotal = side.rosterForCurrentScoringPeriod?.appliedStatTotal;
+  if (typeof rosterTotal === 'number' && Number.isFinite(rosterTotal)) {
+    return roundScore(rosterTotal);
   }
 
   const starterEntries = (side.rosterForCurrentScoringPeriod?.entries ?? [])

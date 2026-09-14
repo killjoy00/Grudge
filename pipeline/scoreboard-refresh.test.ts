@@ -101,9 +101,20 @@ test('live boxscore starter totals replace stale zero matchup totals', () => {
   assert.doesNotThrow(() => assertMeaningfulScoreSnapshot(rows));
 });
 
-test('non-zero provider total wins over starter sum for score adjustments', () => {
+test('roster aggregate preserves a legal empty starter slot', () => {
+  const emptySlot = structuredClone(boxscore);
+  emptySlot.schedule![0]!.away!.rosterForCurrentScoringPeriod = {
+    appliedStatTotal: 154.02,
+    entries: [entry(1, 0, 154.02), entry(3, 20, 99)],
+  };
+  const [row] = scoreboardRowsFromBoxscore(league, emptySlot, 1);
+  assert.equal(row?.away_points, 154.02);
+});
+
+test('non-zero provider total wins over roster aggregate and starter sum', () => {
   const adjusted = structuredClone(boxscore);
   adjusted.schedule![0]!.home!.totalPoints = 16.3;
+  adjusted.schedule![0]!.home!.rosterForCurrentScoringPeriod!.appliedStatTotal = 15.3;
   const [row] = scoreboardRowsFromBoxscore(league, adjusted, 1);
   assert.equal(row?.home_points, 16.3);
 });
