@@ -3,17 +3,18 @@
  * Monday score snapshot.
  *
  * This is intentionally NOT the weekly pipeline. It reads ESPN's current
- * matchup totals and updates only home_points/away_points for the first started,
+ * boxscore totals and updates only home_points/away_points for the first started,
  * incomplete week already on file. It never marks a matchup or week final,
  * never writes roster/player evidence, and never recomputes standings or awards.
  * Tuesday remains the canonical settlement run.
  */
 import { connect, runTransaction } from './db.ts';
-import { fetchLeague } from './espn.ts';
-import { matchupRows } from './normalize.ts';
+import { fetchBoxscore, fetchLeague } from './espn.ts';
 import {
+  assertMeaningfulScoreSnapshot,
   assertSameSlate,
   scoreboardRefreshStatements,
+  scoreboardRowsFromBoxscore,
   type ExistingMatchupShape,
 } from './scoreboard-refresh-write.ts';
 
@@ -60,20 +61,26 @@ async function main() {
     [SEASON, week]
   );
 
-  const league = await fetchLeague(SEASON);
+  const [league, boxscore] = await Promise.all([
+    fetchLeague(SEASON),
+    fetchBoxscore(SEASON, week),
+  ]);
   league.seasonId ??= SEASON;
-  const incoming = matchupRows(league)
-    .filter((row) => row.week === week)
+  boxscore.seasonId ??= SEASON;
+  const incoming = scoreboardRowsFromBoxscore(league, boxscore, week)
     .sort((a, b) => a.espn_matchup_id - b.espn_matchup_id);
 
   assertSameSlate(existing, incoming);
+  assertMeaningfulScoreSnapshot(incoming);
   await runTransaction(sql, scoreboardRefreshStatements(incoming));
 
-  const withScores = incoming.filter(
-    (row) => row.home_points != null || row.away_points != null
-  ).length;
   console.log(
-    `${SEASON} week ${week}: refreshed ${incoming.length} matchup score lines (${withScores} with score values).`
+    `${SEASON} week ${week}: refreshed ${incoming.length} matchup score lines from mBoxscore.`
+  );
+  console.log(
+    incoming.map((row) =>
+      `${row.espn_matchup_id}:${row.away_points ?? '—'}-${row.home_points ?? '—'}`
+    ).join(' ')
   );
   console.log('No winners, final flags, week status, rosters, standings, awards, or predictions were changed.');
 }

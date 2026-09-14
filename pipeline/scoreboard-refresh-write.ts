@@ -1,10 +1,86 @@
 import { stmt, type Stmt } from './db.ts';
-import type { MatchupRow } from './normalize.ts';
+import type { EspnLeague, EspnMatchupSide } from './espn.ts';
+import { matchupRows, starterCount, starterSlots, type MatchupRow } from './normalize.ts';
 
 export interface ExistingMatchupShape {
   espn_matchup_id: number;
   home_team_id: number;
   away_team_id: number;
+}
+
+const roundScore = (value: number) => Math.round(value * 100) / 100;
+
+/**
+ * ESPN's season-level mMatchupScore view can leave totalPoints at its preseason
+ * zero during an in-progress week. mBoxscore has the per-player applied totals
+ * we already trust for weekly roster evidence, so use those as the fallback.
+ *
+ * A non-zero provider team total wins because it can include league-level score
+ * adjustments. If that total is still zero, only accept a computed total when
+ * the boxscore contains the full legal set of starters and every starter has a
+ * finite appliedStatTotal. That keeps this snapshot from silently publishing a
+ * partial lineup if ESPN serves a truncated payload.
+ */
+function currentSideScore(
+  side: EspnMatchupSide,
+  starters: Set<number>,
+  expectedStarters: number,
+): number | null {
+  const provider = side.totalPoints;
+  if (typeof provider === 'number' && Number.isFinite(provider) && provider !== 0) {
+    return roundScore(provider);
+  }
+
+  const starterEntries = (side.rosterForCurrentScoringPeriod?.entries ?? [])
+    .filter((entry) => starters.has(entry.lineupSlotId));
+  const values = starterEntries.map((entry) => entry.playerPoolEntry?.appliedStatTotal);
+  const complete = starterEntries.length === expectedStarters
+    && values.every((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  if (complete) return roundScore(values.reduce((sum, value) => sum + value, 0));
+
+  return typeof provider === 'number' && Number.isFinite(provider)
+    ? roundScore(provider)
+    : null;
+}
+
+/** Build the active score slate from mBoxscore rather than stale season totals. */
+export function scoreboardRowsFromBoxscore(
+  league: EspnLeague,
+  boxscore: EspnLeague,
+  week: number,
+): MatchupRow[] {
+  const starters = starterSlots(league);
+  const expectedStarters = starterCount(league);
+  const rawById = new Map(
+    (boxscore.schedule ?? [])
+      .filter((matchup) => matchup.matchupPeriodId === week)
+      .map((matchup) => [matchup.id, matchup]),
+  );
+
+  return matchupRows(boxscore)
+    .filter((row) => row.week === week)
+    .map((row) => {
+      const raw = rawById.get(row.espn_matchup_id);
+      if (!raw?.home || !raw.away) {
+        throw new Error(`ESPN boxscore is missing matchup ${row.espn_matchup_id} sides.`);
+      }
+      return {
+        ...row,
+        home_points: currentSideScore(raw.home, starters, expectedStarters),
+        away_points: currentSideScore(raw.away, starters, expectedStarters),
+      };
+    });
+}
+
+/** Never let a Monday job report success after writing a slate of stale zeroes. */
+export function assertMeaningfulScoreSnapshot(rows: MatchupRow[]): void {
+  if (rows.length === 0) throw new Error('ESPN boxscore returned no active-week matchups.');
+  if (rows.some((row) => row.home_points == null || row.away_points == null)) {
+    throw new Error('ESPN boxscore did not contain complete score values for every matchup.');
+  }
+  if (!rows.some((row) => Number(row.home_points) !== 0 || Number(row.away_points) !== 0)) {
+    throw new Error('ESPN boxscore still contains an all-zero score slate; refusing to publish it.');
+  }
 }
 
 /**
