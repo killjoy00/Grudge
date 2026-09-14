@@ -1,0 +1,82 @@
+name: Monday scoreboard snapshot
+
+on:
+  schedule:
+    - cron: '30 6 * * 1'
+      timezone: 'America/Chicago'
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Season to refresh (blank = current year)'
+        required: false
+        type: string
+
+concurrency:
+  group: monday-scoreboard-snapshot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Test score-refresh boundary
+        run: npx tsx --test pipeline/scoreboard-refresh.test.ts
+      - name: Verify production schema contract
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run schema:verify
+      - name: Refresh active-week score snapshot
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          INPUT_SEASON: ${{ inputs.season }}
+        run: |
+          if [ -n "$INPUT_SEASON" ]; then
+            npx tsx pipeline/scoreboard-refresh.ts --season="$INPUT_SEASON"
+          else
+            npx tsx pipeline/scoreboard-refresh.ts
+          fi
+      - name: Alert on failure
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
+          ALERT_EMAIL: ${{ vars.PIPELINE_ALERT_EMAIL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$RECAP_FROM_EMAIL" ] || [ -z "$ALERT_EMAIL" ]; then
+            echo "::warning::Scoreboard refresh failed and no alert was sent."
+            exit 0
+          fi
+          body=$(jq -n \
+            --arg from "$RECAP_FROM_EMAIL" \
+            --arg to "$ALERT_EMAIL" \
+            --arg subject "Grudge Monday scoreboard refresh FAILED" \
+            --arg url "$RUN_URL" \
+            '{from: $from, to: [$to], subject: $subject, text: ("The Monday scoreboard snapshot failed. Tuesday settlement is unaffected.\n\nLogs: " + $url)}')
+          curl -sS -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H 'Content-Type: application/json' \
+            -d "$body"
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Monday scoreboard snapshot"
+            echo ""
+            echo "- Result: **${{ job.status }}**"
+            echo "- Canonical winner/final flags touched: **no**"
+            echo "- Standings/awards/rosters recomputed: **no**"
+            echo "- Tuesday settlement remains authoritative: **yes**"
+          } >> "$GITHUB_STEP_SUMMARY"
