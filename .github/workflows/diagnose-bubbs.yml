@@ -1,0 +1,87 @@
+name: Diagnose Bubbs Week 1
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/diagnose-bubbs.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Inspect ESPN Week 1 payloads for team 1
+        run: |
+          node <<'NODE'
+          const base = 'https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/2026/segments/0/leagues/114052';
+          const headers = {
+            accept: 'application/json',
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+          };
+          async function get(qs) {
+            const url = `${base}?${qs}`;
+            const res = await fetch(url, {headers});
+            console.log(`FETCH ${url} -> ${res.status}`);
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+          }
+          const cleanEntry = (e) => ({
+            playerId: e?.playerId,
+            lineupSlotId: e?.lineupSlotId,
+            entryAppliedStatTotal: e?.playerPoolEntry?.appliedStatTotal,
+            name: e?.playerPoolEntry?.player?.fullName,
+            weekStats: (e?.playerPoolEntry?.player?.stats ?? [])
+              .filter(s => s?.scoringPeriodId === 1)
+              .map(s => ({statSourceId:s.statSourceId, statSplitTypeId:s.statSplitTypeId, appliedTotal:s.appliedTotal})),
+          });
+          const cleanSide = (s) => ({
+            teamId: s?.teamId,
+            totalPoints: s?.totalPoints,
+            keys: Object.keys(s ?? {}).sort(),
+            rosterKeys: Object.keys(s?.rosterForCurrentScoringPeriod ?? {}).sort(),
+            rosterAppliedStatTotal: s?.rosterForCurrentScoringPeriod?.appliedStatTotal,
+            entries: (s?.rosterForCurrentScoringPeriod?.entries ?? []).map(cleanEntry),
+          });
+          const inspect = (label, data) => {
+            const matchup = (data.schedule ?? []).find(m => m.matchupPeriodId === 1 && (m.home?.teamId === 1 || m.away?.teamId === 1));
+            const team = (data.teams ?? []).find(t => t.id === 1);
+            console.log(`\n=== ${label} ===`);
+            console.log(JSON.stringify({
+              scoringPeriodId: data.scoringPeriodId,
+              status: data.status,
+              matchup: matchup ? {
+                id: matchup.id,
+                matchupPeriodId: matchup.matchupPeriodId,
+                winner: matchup.winner,
+                home: cleanSide(matchup.home),
+                away: cleanSide(matchup.away),
+              } : null,
+              team1: team ? {
+                keys: Object.keys(team).sort(),
+                id: team.id,
+                name: team.name,
+                rosterKeys: Object.keys(team.roster ?? {}).sort(),
+                rosterAppliedStatTotal: team.roster?.appliedStatTotal,
+                pointsByScoringPeriod: team.pointsByScoringPeriod,
+                record: team.record,
+              } : null,
+            }, null, 2));
+          };
+          const box = await get('view=mBoxscore&scoringPeriodId=1');
+          inspect('mBoxscore sp1', box);
+          const score = await get('view=mMatchupScore&scoringPeriodId=1');
+          inspect('mMatchupScore sp1', score);
+          const matchup = await get('view=mMatchup&scoringPeriodId=1');
+          inspect('mMatchup sp1', matchup);
+          const multi = await get('view=mTeam&view=mRoster&view=mMatchupScore&view=mBoxscore&scoringPeriodId=1');
+          inspect('combined views sp1', multi);
+          NODE
