@@ -5,10 +5,12 @@ import {
 } from '../lib/queries.ts';
 import { getCurrentIncompleteWeek } from '../lib/game-context.ts';
 import { getLeagueWire } from '../lib/league-wire.ts';
+import { getLockedWeekPicks } from '../lib/prediction-reveal.ts';
 import { getTrackedPlayoffWeek } from '../lib/tracked-game-queries.ts';
 import { Comments } from '../components/Comments.tsx';
 import { EspnMatchupLink, EspnTeamLink } from '../components/EspnLink.tsx';
 import { LeagueWire } from '../components/LeagueWire.tsx';
+import { WeekPickReveal } from '../components/WeekPickReveal.tsx';
 import { asPublic } from '../lib/db.ts';
 
 export const dynamic = 'force-dynamic';
@@ -63,21 +65,31 @@ export default async function Home() {
   );
 
   // Once the first game of an incomplete week has kicked off, the previous
-  // recap (or preseason countdown) is no longer the headline. The database is
-  // intentionally frozen until Tuesday, so do NOT pretend these are live
-  // scores; show the slate and hand off to ESPN until the pipeline settles it.
+  // recap (or preseason countdown) is no longer the headline. Scores remain
+  // non-canonical until Tuesday, but a narrow Monday-morning snapshot gives the
+  // front page something useful to show without creating partial results.
   if (activeWeek && activeStarted) {
-    const games = await getWeekMatchups(currentSeason, activeWeek.week);
     const lockAt = activeWeek.locks_at ?? activeWeek.first_kickoff_at;
     const locked = lockAt ? new Date(lockAt).getTime() <= now : true;
+    const [games, revealedPicks] = await Promise.all([
+      getWeekMatchups(currentSeason, activeWeek.week),
+      userId && locked
+        ? getLockedWeekPicks(currentSeason, activeWeek.week)
+        : Promise.resolve([]),
+    ]);
+    const hasScoreSnapshot = games.some((game) =>
+      Number(game.away_points ?? 0) > 0 || Number(game.home_points ?? 0) > 0
+    );
+
     return (
       <>
         <div className="page-hero">
           <div className="eyebrow">{currentSeason} scoreboard</div>
           <h1>Week {activeWeek.week} is underway.</h1>
           <p>
-            Grudge freezes the official week after Monday night. Until then, follow
-            the games on ESPN and use the matchup files for the pregame receipts.
+            {hasScoreSnapshot
+              ? <>Monday morning snapshot. These scores are useful, not final — ESPN has the live board, and Tuesday&rsquo;s pipeline still settles the official week.</>
+              : <>Grudge posts a score snapshot Monday morning after the Sunday slate. Until then, ESPN has the live board and the matchup files hold the pregame receipts.</>}
           </p>
         </div>
 
@@ -89,6 +101,11 @@ export default async function Home() {
                   {game.away_name}
                   <EspnTeamLink teamId={game.away_team_id} season={currentSeason} />
                 </span>
+                {hasScoreSnapshot && (
+                  <strong style={{ color: 'var(--navy)', font: '700 24px/1 Georgia, serif', fontVariantNumeric: 'tabular-nums' }}>
+                    {game.away_points ?? '0.0'}
+                  </strong>
+                )}
               </div>
               <span className="vs">
                 at
@@ -100,6 +117,11 @@ export default async function Home() {
                   {game.home_name}
                   <EspnTeamLink teamId={game.home_team_id} season={currentSeason} />
                 </span>
+                {hasScoreSnapshot && (
+                  <strong style={{ color: 'var(--navy)', font: '700 24px/1 Georgia, serif', fontVariantNumeric: 'tabular-nums' }}>
+                    {game.home_points ?? '0.0'}
+                  </strong>
+                )}
               </div>
               <a
                 href={`/matchup/${currentSeason}/${activeWeek.week}/${game.espn_matchup_id}`}
@@ -110,20 +132,34 @@ export default async function Home() {
               </a>
             </div>
           ))}
+          {hasScoreSnapshot && (
+            <p className="note" style={{ margin: '12px 0 0' }}>
+              Snapshot only. Monday-night movement will not appear here until Tuesday&rsquo;s settlement run; ESPN Preview has the live score.
+            </p>
+          )}
         </div>
 
         <div className="card">
           <p className="note" style={{ margin: 0 }}>
             {locked
-              ? <>Week {activeWeek.week} picks are locked. Your board stays visible while the games play.</>
+              ? userId
+                ? <>Week {activeWeek.week} picks are locked. Everyone&rsquo;s submitted picks are now public to signed-in league members.</>
+                : <>Week {activeWeek.week} picks are locked. Sign in through Predictions to see the locked league board.</>
               : <>Week {activeWeek.week} picks are still open until Saturday at midnight ET.</>}
           </p>
           <div style={{ marginTop: 12 }}>
             <a href="/predictions" className="btn">
-              {locked ? 'Review your picks' : 'Make your picks'}
+              {locked ? 'Prediction board' : 'Make your picks'}
             </a>
           </div>
         </div>
+
+        {locked && userId && (
+          <>
+            <h2>Everyone&rsquo;s picks</h2>
+            <WeekPickReveal matchups={games} picks={revealedPicks} />
+          </>
+        )}
 
         <LeagueWire events={wire} />
       </>
