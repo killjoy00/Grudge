@@ -1,12 +1,12 @@
 #!/usr/bin/env -S npx tsx
 /**
- * Reconcile accepted recap sends against Resend's mailbox-level lifecycle state.
+ * Verify mailbox-level recap delivery from durable provider state.
  *
- * send-recap.ts deliberately keeps recap_deliveries.status = 'sent' once Resend
- * accepts a message so retries remain idempotent. This script records the
- * separate provider outcome (delivered, bounced, complained, suppressed, etc.)
- * and can fail a watchdog once every eligible recipient is expected to have
- * reached an actually-delivered state.
+ * A separate reconciler records Resend lifecycle state in recap_deliveries.
+ * This watchdog intentionally does not call the Resend API itself: the CI key
+ * is send-only, so delivery verification must not depend on broadening that
+ * credential. The job fails once a scheduled verification expects delivery and
+ * any eligible member is still pending or in a terminal provider failure state.
  */
 
 import { appendFileSync } from 'node:fs';
@@ -15,22 +15,22 @@ import { pathToFileURL } from 'node:url';
 import { connect } from './db.ts';
 
 type Query = <T>(text: string, params?: unknown[]) => Promise<T[]>;
-
 type ProviderClass = 'delivered' | 'failed' | 'pending';
 
 const DELIVERED_STATES = new Set(['delivered', 'opened', 'clicked']);
 const FAILED_STATES = new Set(['bounced', 'complained', 'failed', 'suppressed']);
 
 interface DeliveryRow {
-  recipient_email: string;
+  member_label: string;
   status: string | null;
   provider_message_id: string | null;
+  provider_status: string | null;
 }
 
 export interface ProviderObservation {
   providerStatus: string | null;
   hasMessageId: boolean;
-  lookupError: string | null;
+  sendStatus: string | null;
 }
 
 export interface ProviderAssessment {
@@ -38,7 +38,7 @@ export interface ProviderAssessment {
   delivered: number;
   failed: number;
   pending: number;
-  lookupErrors: number;
+  unsent: number;
   missingMessageIds: number;
   complete: boolean;
 }
@@ -71,16 +71,16 @@ export function assessProviderDelivery(observations: ProviderObservation[]): Pro
   let delivered = 0;
   let failed = 0;
   let pending = 0;
-  let lookupErrors = 0;
+  let unsent = 0;
   let missingMessageIds = 0;
 
   for (const observation of observations) {
-    if (!observation.hasMessageId) {
-      missingMessageIds += 1;
+    if (observation.sendStatus !== 'sent') {
+      unsent += 1;
       continue;
     }
-    if (observation.lookupError) {
-      lookupErrors += 1;
+    if (!observation.hasMessageId) {
+      missingMessageIds += 1;
       continue;
     }
     const classified = classifyProviderStatus(observation.providerStatus);
@@ -95,22 +95,16 @@ export function assessProviderDelivery(observations: ProviderObservation[]): Pro
     delivered,
     failed,
     pending,
-    lookupErrors,
+    unsent,
     missingMessageIds,
     complete:
       total > 0 &&
       delivered === total &&
       failed === 0 &&
       pending === 0 &&
-      lookupErrors === 0 &&
+      unsent === 0 &&
       missingMessageIds === 0,
   };
-}
-
-function required(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is required to reconcile recap delivery.`);
-  return value;
 }
 
 function queryClient(): Query {
@@ -118,113 +112,25 @@ function queryClient(): Query {
   return (text, params = []) => sql.query(text, params);
 }
 
-function safeProviderCode(value: unknown): string {
-  return String(value ?? 'unknown_error')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '_')
-    .slice(0, 60) || 'unknown_error';
-}
-
-async function fetchProviderStatus(
-  apiKey: string,
-  messageId: string
-): Promise<{ status: string | null; error: string | null }> {
-  let response: Response;
-  try {
-    response = await fetch(`https://api.resend.com/emails/${encodeURIComponent(messageId)}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(15_000),
-    });
-  } catch {
-    return { status: null, error: 'resend_lookup_network_error' };
-  }
-
-  const payload = await response.json().catch(() => ({})) as {
-    last_event?: unknown;
-    status?: unknown;
-    name?: unknown;
-  };
-
-  if (!response.ok) {
-    return {
-      status: null,
-      error: `resend_lookup_${response.status}_${safeProviderCode(payload.name)}`,
-    };
-  }
-
-  return {
-    status: normalizeProviderStatus(payload.last_event ?? payload.status),
-    error: null,
-  };
-}
-
 async function loadEligibleRows(query: Query, season: number, week: number): Promise<DeliveryRow[]> {
   return query<DeliveryRow>(
     `with eligible as (
-       select p.email
+       select p.email,
+              coalesce(nullif(trim(p.display_name), ''), split_part(p.email::text, '@', 1))
+                as member_label
          from public.profiles p
          join public.league_allowlist a on a.email = p.email
         where p.is_active and a.is_active and p.recap_email_enabled
      )
-     select e.email::text as recipient_email,
+     select e.member_label,
             d.status,
-            d.provider_message_id
+            d.provider_message_id,
+            d.provider_status
        from eligible e
        left join public.recap_deliveries d
          on d.season = $1 and d.week = $2 and d.recipient_email = e.email
-      order by e.email`,
+      order by e.member_label`,
     [season, week]
-  );
-}
-
-async function persistObservation(
-  query: Query,
-  season: number,
-  week: number,
-  recipient: string,
-  observation: ProviderObservation
-): Promise<void> {
-  if (observation.lookupError) {
-    await query(
-      `update public.recap_deliveries
-          set provider_status_checked_at = now(),
-              provider_error_code = $4,
-              updated_at = now()
-        where season = $1 and week = $2 and recipient_email = $3::citext`,
-      [season, week, recipient, observation.lookupError]
-    );
-    return;
-  }
-
-  if (!observation.providerStatus) return;
-  const classification = classifyProviderStatus(observation.providerStatus);
-  await query(
-    `update public.recap_deliveries
-        set provider_status = $4,
-            provider_status_checked_at = now(),
-            provider_delivered_at = case
-              when $5 then coalesce(provider_delivered_at, now())
-              else provider_delivered_at
-            end,
-            provider_failed_at = case
-              when $6 then coalesce(provider_failed_at, now())
-              else provider_failed_at
-            end,
-            provider_error_code = case
-              when $6 then 'resend_' || $4
-              else null
-            end,
-            updated_at = now()
-      where season = $1 and week = $2 and recipient_email = $3::citext`,
-    [
-      season,
-      week,
-      recipient,
-      observation.providerStatus,
-      classification === 'delivered',
-      classification === 'failed',
-    ]
   );
 }
 
@@ -238,7 +144,7 @@ function writeGithubOutputs(assessment: ProviderAssessment) {
       `provider_delivered=${assessment.delivered}`,
       `provider_failed=${assessment.failed}`,
       `provider_pending=${assessment.pending}`,
-      `provider_lookup_errors=${assessment.lookupErrors}`,
+      `provider_unsent=${assessment.unsent}`,
       `provider_missing_ids=${assessment.missingMessageIds}`,
       `provider_complete=${assessment.complete}`,
       '',
@@ -262,49 +168,47 @@ async function main() {
   );
 
   const query = queryClient();
-  const apiKey = required('RESEND_API_KEY');
   const rows = await loadEligibleRows(query, season, week);
   if (rows.length === 0) throw new Error('No active league members are eligible for recap email.');
 
-  const observations: ProviderObservation[] = [];
+  const observations: ProviderObservation[] = rows.map((row) => ({
+    providerStatus: row.provider_status,
+    hasMessageId: Boolean(row.provider_message_id),
+    sendStatus: row.status,
+  }));
+  const assessment = assessProviderDelivery(observations);
+  writeGithubOutputs(assessment);
+
+  console.log(
+    `${season} week ${week}: provider state confirms ${assessment.delivered}/${assessment.total} delivered; ` +
+    `${assessment.pending} pending, ${assessment.failed} provider failure(s), ` +
+    `${assessment.unsent} not accepted, ${assessment.missingMessageIds} missing message id(s).`
+  );
+
   for (const row of rows) {
+    const label = row.member_label || 'member';
     if (row.status !== 'sent') {
-      observations.push({
-        providerStatus: null,
-        hasMessageId: Boolean(row.provider_message_id),
-        lookupError: 'recap_not_marked_sent',
-      });
+      console.error(`  ${label}: recap send state is ${row.status ?? 'missing'}`);
       continue;
     }
     if (!row.provider_message_id) {
-      observations.push({ providerStatus: null, hasMessageId: false, lookupError: null });
+      console.error(`  ${label}: sent row has no provider message id`);
       continue;
     }
-
-    const provider = await fetchProviderStatus(apiKey, row.provider_message_id);
-    const observation: ProviderObservation = {
-      providerStatus: provider.status,
-      hasMessageId: true,
-      lookupError: provider.error,
-    };
-    observations.push(observation);
-    await persistObservation(query, season, week, row.recipient_email, observation);
+    const classification = classifyProviderStatus(row.provider_status);
+    if (classification === 'failed') {
+      console.error(`  ${label}: provider ${normalizeProviderStatus(row.provider_status)}`);
+    } else if (classification === 'pending') {
+      console.warn(`  ${label}: provider ${normalizeProviderStatus(row.provider_status)}`);
+    }
   }
-
-  const assessment = assessProviderDelivery(observations);
-  writeGithubOutputs(assessment);
-  console.log(
-    `${season} week ${week}: Resend confirms ${assessment.delivered}/${assessment.total} delivered; ` +
-    `${assessment.pending} pending, ${assessment.failed} provider failure(s), ` +
-    `${assessment.lookupErrors} lookup error(s), ${assessment.missingMessageIds} missing message id(s).`
-  );
 
   if (assessment.failed > 0) {
-    throw new Error(`${assessment.failed} recap email(s) reached a terminal Resend failure state.`);
+    throw new Error(`${assessment.failed} recap email(s) reached a terminal provider failure state.`);
   }
-  if (assessment.lookupErrors > 0 || assessment.missingMessageIds > 0) {
+  if (assessment.unsent > 0 || assessment.missingMessageIds > 0) {
     throw new Error(
-      `Could not verify ${assessment.lookupErrors + assessment.missingMessageIds} recap email(s) with Resend.`
+      `${assessment.unsent + assessment.missingMessageIds} recap delivery record(s) are incomplete.`
     );
   }
   if (requireDelivered && !assessment.complete) {
@@ -321,7 +225,7 @@ const invokedDirectly = process.argv[1]
 
 if (invokedDirectly) {
   main().catch((error) => {
-    console.error(`\nprovider delivery reconciliation failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`\nprovider delivery verification failed: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   });
 }
