@@ -2,10 +2,9 @@ name: Weekly pipeline
 
 on:
   schedule:
-    # GitHub explicitly warns that jobs scheduled at the top of the hour are
-    # more likely to be delayed. Use local-time, off-minute triggers plus
-    # redundant Tuesday-morning backstops. The gate below makes later triggers
-    # no-ops once the week and recap send are complete.
+    # GitHub schedule is best-effort. Keep these as internal backstops, but the
+    # independent .weekly-morning-request push below is the primary Tuesday
+    # trigger because normal push events have not shown the multi-hour cron lag.
     - cron: '17 7 * * 2'
       timezone: 'America/Chicago'
     - cron: '57 7 * * 2'
@@ -14,13 +13,15 @@ on:
       timezone: 'America/Chicago'
     - cron: '7 10 * * 2'
       timezone: 'America/Chicago'
-  # A marker update gives the mobile/agent workflow a safe current-season retry
-  # path. The pipeline's own data commit does not match this path, so it cannot
-  # recursively trigger itself. Push-triggered runs never send a recap.
   push:
     branches: [main]
     paths:
+      # Explicit current-season retry. Preserves the long-standing behavior:
+      # run the pipeline, but never surprise the league with a recap email.
       - '.weekly-pipeline-request'
+      # Independent Tuesday scheduler marker. This is a safe recap-capable
+      # trigger and is database-gated exactly like an on.schedule backstop.
+      - '.weekly-morning-request'
   workflow_dispatch:
     inputs:
       season:
@@ -47,6 +48,38 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Needed to classify which marker changed on push without calling an
+          # external API. The first parent is enough for normal/direct commits
+          # and GitHub merge commits to main.
+          fetch-depth: 2
+
+      - name: Classify trigger
+        id: trigger
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          mode="$EVENT_NAME"
+          morning=false
+
+          if [ "$EVENT_NAME" = 'push' ]; then
+            parent="${GITHUB_SHA}^1"
+            if git rev-parse "$parent" >/dev/null 2>&1 \
+              && git diff --name-only "$parent" "$GITHUB_SHA" \
+                | grep -Fxq '.weekly-morning-request'; then
+              mode='morning'
+              morning=true
+            else
+              mode='push'
+            fi
+          fi
+
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "morning=$morning" >> "$GITHUB_OUTPUT"
+          echo "Weekly trigger mode: $mode"
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -58,7 +91,7 @@ jobs:
         id: gate
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
-          EVENT_NAME: ${{ github.event_name }}
+          TRIGGER_MODE: ${{ steps.trigger.outputs.mode }}
         run: npx tsx pipeline/weekly-run-gate.ts
 
       # No production write is allowed until code tests and the database schema
@@ -153,7 +186,7 @@ jobs:
           fi
 
       - name: Send weekly recap
-        if: steps.gate.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.send_recap == true)
+        if: steps.gate.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.send_recap == true || steps.trigger.outputs.morning == 'true')
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -174,7 +207,7 @@ jobs:
           RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
           ALERT_EMAIL: ${{ vars.PIPELINE_ALERT_EMAIL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TRIGGER: ${{ github.event_name }}
+          TRIGGER: ${{ steps.trigger.outputs.mode || github.event_name }}
         run: |
           if [ -z "$RESEND_API_KEY" ] || [ -z "$RECAP_FROM_EMAIL" ] || [ -z "$ALERT_EMAIL" ]; then
             echo "::warning::Pipeline failed and NO ALERT WAS SENT. Set PIPELINE_ALERT_EMAIL and RESEND_API_KEY."
@@ -200,9 +233,10 @@ jobs:
             echo "### Weekly pipeline"
             echo ""
             echo "- Result: **${{ job.status }}**"
+            echo "- Trigger mode: **${{ steps.trigger.outputs.mode || github.event_name }}**"
             echo "- Gate: **${{ steps.gate.outputs.should_run || 'unknown' }}** — ${{ steps.gate.outputs.reason || 'not resolved' }}"
             echo "- Schema contract checked before writes: **${{ steps.gate.outputs.should_run == 'true' }}**"
             echo "- New raw data committed: **${{ steps.commit.outputs.changed || 'no' }}**"
-            echo "- Recap requested: **${{ steps.gate.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.send_recap == true) }}**"
+            echo "- Recap requested: **${{ steps.gate.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.send_recap == true || steps.trigger.outputs.morning == 'true') }}**"
             echo "- Run: \`$(date -u +'%Y-%m-%d %H:%M UTC')\`"
           } >> "$GITHUB_STEP_SUMMARY"

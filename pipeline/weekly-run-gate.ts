@@ -2,10 +2,10 @@
 /**
  * Decide whether a Weekly pipeline invocation should do the expensive work.
  *
- * Manual and marker-triggered runs are always honored. Scheduled backstops are
- * allowed to fire repeatedly on Tuesday morning, but once the latest started
- * regular-season week is settled and every eligible recap recipient has an
- * accepted send record, later backstops become cheap no-ops.
+ * Manual/current-season retry pushes are always honored. GitHub schedules and
+ * the independent Tuesday-morning marker trigger are idempotent backstops: once
+ * the latest started regular-season week is settled and every eligible recap
+ * recipient has an accepted send record, later triggers become cheap no-ops.
  */
 
 import { appendFileSync } from 'node:fs';
@@ -29,11 +29,12 @@ export interface WeeklyGateDecision {
 }
 
 export function assessWeeklyRunGate(
-  eventName: string,
+  triggerMode: string,
   state: WeeklyGateState
 ): WeeklyGateDecision {
-  if (eventName !== 'schedule') {
-    return { shouldRun: true, reason: `${eventName || 'unknown'} trigger is explicit` };
+  const backstop = triggerMode === 'schedule' || triggerMode === 'morning';
+  if (!backstop) {
+    return { shouldRun: true, reason: `${triggerMode || 'unknown'} trigger is explicit` };
   }
   if (state.week === null) {
     return { shouldRun: true, reason: 'no regular-season week has started yet' };
@@ -141,9 +142,10 @@ function writeOutputs(state: WeeklyGateState, decision: WeeklyGateDecision) {
 }
 
 async function main() {
-  const eventName = process.env.EVENT_NAME?.trim() || 'unknown';
+  const triggerMode =
+    process.env.TRIGGER_MODE?.trim() || process.env.EVENT_NAME?.trim() || 'unknown';
   const state = await loadState(queryClient());
-  const decision = assessWeeklyRunGate(eventName, state);
+  const decision = assessWeeklyRunGate(triggerMode, state);
   writeOutputs(state, decision);
   console.log(
     `${state.season} week ${state.week ?? 'not-started'}: weekly run gate = ` +
