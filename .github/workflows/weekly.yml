@@ -117,6 +117,21 @@ jobs:
             npx tsx pipeline/run.ts
           fi
 
+      # ESPN's live transaction window can drop older preseason evidence even
+      # though we already captured it. Rebuild trades from the accumulated DB
+      # ledger plus completed roster snapshots before publishing derived models.
+      - name: Reconcile accumulated trade history
+        if: steps.gate.outputs.should_run == 'true'
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          INPUT_SEASON: ${{ inputs.season }}
+        run: |
+          if [ -n "$INPUT_SEASON" ]; then
+            npx tsx pipeline/reconcile-live-trades.ts --season="$INPUT_SEASON"
+          else
+            npx tsx pipeline/reconcile-live-trades.ts
+          fi
+
       - name: Compute derived features
         if: steps.gate.outputs.should_run == 'true'
         env:
