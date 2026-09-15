@@ -1,7 +1,8 @@
 name: Recap delivery watchdog
 
 # The primary path runs immediately after the scheduled Weekly pipeline finishes.
-# Two later Tuesday checks are deliberate fallbacks for GitHub cron delay/misses.
+# Three later Tuesday checks are deliberate fallbacks for GitHub cron delay/misses
+# and for mailbox-level Resend delivery verification.
 # send-recap.ts is idempotent per season/week/recipient, so retries cannot create
 # duplicate league emails once recap_deliveries says a recipient was sent.
 on:
@@ -11,6 +12,7 @@ on:
   schedule:
     - cron: '0 17 * * 2'
     - cron: '0 20 * * 2'
+    - cron: '0 23 * * 2'
   workflow_dispatch:
 
 concurrency:
@@ -27,7 +29,7 @@ jobs:
     # this watchdog. The watchdog's own schedules/manual dispatch remain valid.
     if: github.event_name != 'workflow_run' || github.event.workflow_run.event == 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v7
@@ -65,7 +67,8 @@ jobs:
             --season="$INPUT_SEASON" \
             --week="$INPUT_WEEK"
 
-      - name: Confirm every eligible member was sent
+      - name: Confirm every eligible member was accepted by Resend
+        id: sendcheck
         if: always() && steps.preflight.outcome == 'success'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
@@ -76,6 +79,52 @@ jobs:
             --season="$INPUT_SEASON" \
             --week="$INPUT_WEEK" \
             --require-complete
+
+      - name: Reconcile actual Resend delivery
+        id: provider
+        if: always() && steps.preflight.outcome == 'success' && steps.sendcheck.outcome == 'success'
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          INPUT_SEASON: ${{ steps.preflight.outputs.season }}
+          INPUT_WEEK: ${{ steps.preflight.outputs.week }}
+          MISSING_BEFORE_RETRY: ${{ steps.preflight.outputs.missing }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          extra=''
+
+          # The workflow_run path fires seconds after the primary send, so it
+          # records current provider state but does not mistake normal transit
+          # time for failure. Later scheduled checks require true delivery.
+          if [ "$EVENT_NAME" != 'workflow_run' ] && [ "$MISSING_BEFORE_RETRY" = '0' ]; then
+            extra='--require-delivered'
+          fi
+
+          # The last Tuesday fallback is authoritative even if it had to repair
+          # a missed send itself. Give those fresh messages three minutes to
+          # leave normal transit before requiring mailbox delivery.
+          if [ "$EVENT_SCHEDULE" = '0 23 * * 2' ]; then
+            if [ "$MISSING_BEFORE_RETRY" != '0' ]; then
+              sleep 180
+            fi
+            extra='--require-delivered'
+          fi
+
+          # A manual watchdog run is an explicit verification request. If it had
+          # to send anything, allow the same short transit window as the final
+          # scheduled check before requiring delivery.
+          if [ "$EVENT_NAME" = 'workflow_dispatch' ]; then
+            if [ "$MISSING_BEFORE_RETRY" != '0' ]; then
+              sleep 180
+            fi
+            extra='--require-delivered'
+          fi
+
+          npx tsx pipeline/reconcile-recap-provider.ts \
+            --season="$INPUT_SEASON" \
+            --week="$INPUT_WEEK" \
+            $extra
 
       - name: Alert on watchdog failure
         if: failure()
@@ -95,7 +144,7 @@ jobs:
             --arg to "$ALERT_EMAIL" \
             --arg subject "Grudge recap watchdog FAILED ($TRIGGER) -- $(date -u +'%a %-d %b')" \
             --arg url "$RUN_URL" \
-            '{from: $from, to: [$to], subject: $subject, text: ("The Grudge Tuesday recap watchdog found an unsettled week or incomplete email delivery.\n\nLogs: " + $url)}')
+            '{from: $from, to: [$to], subject: $subject, text: ("The Grudge Tuesday recap watchdog found an unsettled week, an incomplete send, or a Resend delivery/bounce problem.\n\nLogs: " + $url)}')
           code=$(curl -sS -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H 'Content-Type: application/json' \
@@ -112,7 +161,11 @@ jobs:
             echo "- Result: **${{ job.status }}**"
             echo "- Season/week: **${{ steps.preflight.outputs.season || 'not resolved' }} / ${{ steps.preflight.outputs.week || 'not resolved' }}**"
             echo "- Eligible recipients: **${{ steps.preflight.outputs.eligible || 'unknown' }}**"
-            echo "- Sent before retry: **${{ steps.preflight.outputs.sent || 'unknown' }}**"
+            echo "- Accepted by Resend before retry: **${{ steps.preflight.outputs.sent || 'unknown' }}**"
             echo "- Missing before retry: **${{ steps.preflight.outputs.missing || 'unknown' }}**"
+            echo "- Confirmed delivered by Resend: **${{ steps.provider.outputs.provider_delivered || 'not checked' }}**"
+            echo "- Provider pending: **${{ steps.provider.outputs.provider_pending || 'not checked' }}**"
+            echo "- Provider failures: **${{ steps.provider.outputs.provider_failed || 'not checked' }}**"
+            echo "- Provider lookup errors: **${{ steps.provider.outputs.provider_lookup_errors || 'not checked' }}**"
             echo "- Trigger: **${{ github.event_name }}**"
           } >> "$GITHUB_STEP_SUMMARY"

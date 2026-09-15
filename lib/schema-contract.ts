@@ -1,4 +1,4 @@
-export const SCHEMA_CONTRACT_VERSION = '2026-09-18-canonical-draft-grade-players';
+export const SCHEMA_CONTRACT_VERSION = '2026-09-18-canonical-draft-grade-players+recap-provider-delivery';
 
 export interface SchemaProbeRow {
   franchise_season_teams: boolean;
@@ -15,6 +15,7 @@ export interface SchemaProbeRow {
   score_player_key: boolean;
   trade_player_key: boolean;
   draft_grade_player_key: boolean;
+  recap_provider_delivery: boolean;
 }
 
 export const SCHEMA_PROBE_SQL = `select
@@ -31,7 +32,17 @@ export const SCHEMA_PROBE_SQL = `select
   to_regclass('public.franchise_seasons') is not null as franchise_seasons,
   exists(select 1 from information_schema.columns where table_schema='public' and table_name='player_week_scores' and column_name='player_key') as score_player_key,
   exists(select 1 from information_schema.columns where table_schema='public' and table_name='trade_players' and column_name='player_key') as trade_player_key,
-  exists(select 1 from information_schema.columns where table_schema='public' and table_name='draft_grade_results' and column_name='player_key') as draft_grade_player_key`;
+  exists(select 1 from information_schema.columns where table_schema='public' and table_name='draft_grade_results' and column_name='player_key') as draft_grade_player_key,
+  (select count(*) = 5
+     from information_schema.columns
+    where table_schema='public' and table_name='recap_deliveries'
+      and column_name in (
+        'provider_status',
+        'provider_status_checked_at',
+        'provider_delivered_at',
+        'provider_failed_at',
+        'provider_error_code'
+      )) as recap_provider_delivery`;
 
 export function schemaProbeOk(row: SchemaProbeRow | null | undefined): boolean {
   return Boolean(row && Object.values(row).every((value) => value === true));
