@@ -1,4 +1,4 @@
-export const SCHEMA_CONTRACT_VERSION = '2026-09-18-canonical-draft-grade-players+recap-provider-delivery';
+export const SCHEMA_CONTRACT_VERSION = '2026-09-18-canonical-draft-grade-players+recap-provider-delivery+recap-membership-read';
 
 export interface SchemaProbeRow {
   franchise_season_teams: boolean;
@@ -16,6 +16,7 @@ export interface SchemaProbeRow {
   trade_player_key: boolean;
   draft_grade_player_key: boolean;
   recap_provider_delivery: boolean;
+  recap_membership_read: boolean;
 }
 
 export const SCHEMA_PROBE_SQL = `select
@@ -42,7 +43,10 @@ export const SCHEMA_PROBE_SQL = `select
         'provider_delivered_at',
         'provider_failed_at',
         'provider_error_code'
-      )) as recap_provider_delivery`;
+      )) as recap_provider_delivery,
+  has_column_privilege(current_user, 'public.league_allowlist', 'email', 'SELECT')
+    and has_column_privilege(current_user, 'public.league_allowlist', 'is_active', 'SELECT')
+    as recap_membership_read`;
 
 export function schemaProbeOk(row: SchemaProbeRow | null | undefined): boolean {
   return Boolean(row && Object.values(row).every((value) => value === true));
