@@ -1,7 +1,8 @@
 import {
   getCachedPlayoffOdds, getCachedPreseasonTeams, getCachedSeasonList, getCachedSeasonTable,
 } from '../../lib/cached-queries.ts';
-import { getCurrentSeason } from '../../lib/queries.ts';
+import { getCurrentSeason, getLuck } from '../../lib/queries.ts';
+import { getHistorySeasonStandings } from '../../lib/history-season-queries.ts';
 import { EspnTeamLink } from '../../components/EspnLink.tsx';
 import { SeasonPicker } from '../../components/SeasonPicker.tsx';
 import { RecapArchive } from '../../components/RecapArchive.tsx';
@@ -78,7 +79,13 @@ export default async function Standings({
   const season = Number(sp.season) || current || seasons[0]?.season;
   if (!season) return <p className="empty">No seasons on record yet.</p>;
 
-  const [rows, luck] = await getCachedSeasonTable(season);
+  // Historical season results are immutable and safe to cache. The current
+  // season is different: its canonical franchise mapping exists before a final
+  // season result, so overlay the latest team_week_results directly and avoid
+  // serving an hour-old 0-0 table after the Tuesday settlement pipeline runs.
+  const [rows, luck] = season === current
+    ? await Promise.all([getHistorySeasonStandings(season), getLuck(season)])
+    : await getCachedSeasonTable(season);
   const playoffOdds = season === current ? await getCachedPlayoffOdds(season) : [];
 
   if (rows.length === 0) {
