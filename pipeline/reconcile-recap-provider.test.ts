@@ -15,7 +15,7 @@ function obs(
   return {
     providerStatus,
     hasMessageId: true,
-    lookupError: null,
+    sendStatus: 'sent',
     ...overrides,
   };
 }
@@ -32,10 +32,11 @@ test('provider terminal failures remain failures even though Resend accepted the
   }
 });
 
-test('sent and delivery-delayed states remain pending until mailbox delivery is proven', () => {
+test('sent, delayed, unknown, and missing provider events remain pending', () => {
   assert.equal(classifyProviderStatus('sent'), 'pending');
   assert.equal(classifyProviderStatus('delivery_delayed'), 'pending');
   assert.equal(classifyProviderStatus('queued'), 'pending');
+  assert.equal(classifyProviderStatus(null), 'pending');
 });
 
 test('provider status normalization is safe for logs and database fields', () => {
@@ -54,23 +55,23 @@ test('assessment requires every eligible recipient to be confirmed delivered', (
     delivered: 3,
     failed: 0,
     pending: 0,
-    lookupErrors: 0,
+    unsent: 0,
     missingMessageIds: 0,
     complete: true,
   });
 });
 
-test('assessment separately reports pending, provider failures, lookups, and missing ids', () => {
+test('assessment separately reports pending, provider failures, unsent rows, and missing ids', () => {
   const assessment = assessProviderDelivery([
     obs('sent'),
     obs('bounced'),
-    obs(null, { lookupError: 'resend_lookup_500_unknown_error' }),
+    obs(null, { sendStatus: 'failed' }),
     obs(null, { hasMessageId: false }),
   ]);
   assert.equal(assessment.delivered, 0);
   assert.equal(assessment.pending, 1);
   assert.equal(assessment.failed, 1);
-  assert.equal(assessment.lookupErrors, 1);
+  assert.equal(assessment.unsent, 1);
   assert.equal(assessment.missingMessageIds, 1);
   assert.equal(assessment.complete, false);
 });
