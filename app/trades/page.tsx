@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { tradeSeasons, tradeVotes, votingOpen, type TradeCard, type VoteState }
+import { seasonTrades, tradeSeasons, tradeVotes, votingOpen, type TradeCard, type VoteState }
   from '../../lib/trade-history-queries.ts';
 import { getCachedSeasonTrades, getCachedTradeRecords } from '../../lib/cached-queries.ts';
 import {
@@ -195,8 +195,11 @@ export default async function Trades({ searchParams }: { searchParams: Promise<{
   const [seasons, current, { userId }] = await Promise.all([tradeSeasons(), getCurrentSeason(), auth()]);
   const season = Number(sp.season) || current || seasons[0] || new Date().getUTCFullYear();
 
+  // Voting is live current-season state. A trade published by the Tuesday
+  // pipeline must appear immediately, not after the one-hour historical cache.
+  // Completed seasons retain the expensive cached valuation path.
   const [cards, records, productionByTrade, productionRecords] = await Promise.all([
-    getCachedSeasonTrades(season),
+    season === current ? seasonTrades(season) : getCachedSeasonTrades(season),
     getCachedTradeRecords(),
     getTradeProductionForSeason(season),
     getAllTimeTradeProductionRecords(),
