@@ -1,0 +1,118 @@
+name: Recap delivery watchdog
+
+# The primary path runs immediately after the scheduled Weekly pipeline finishes.
+# Two later Tuesday checks are deliberate fallbacks for GitHub cron delay/misses.
+# send-recap.ts is idempotent per season/week/recipient, so retries cannot create
+# duplicate league emails once recap_deliveries says a recipient was sent.
+on:
+  workflow_run:
+    workflows: ['Weekly pipeline']
+    types: [completed]
+  schedule:
+    - cron: '0 17 * * 2'
+    - cron: '0 20 * * 2'
+  workflow_dispatch:
+
+concurrency:
+  group: recap-delivery-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  watchdog:
+    # Weekly pipeline also has safe push/manual retry paths. Those intentionally
+    # do not send league email, so only a scheduled Weekly run may auto-trigger
+    # this watchdog. The watchdog's own schedules/manual dispatch remain valid.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.event == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify production schema contract
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run schema:verify
+
+      - name: Check current recap state
+        id: preflight
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx pipeline/recap-delivery-check.ts
+
+      - name: Retry unsent recap deliveries
+        if: steps.preflight.outputs.missing != '0'
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
+          RECAP_SITE_URL: ${{ vars.RECAP_SITE_URL }}
+          INPUT_SEASON: ${{ steps.preflight.outputs.season }}
+          INPUT_WEEK: ${{ steps.preflight.outputs.week }}
+        run: |
+          npm run recap -- \
+            --season="$INPUT_SEASON" \
+            --week="$INPUT_WEEK"
+
+      - name: Confirm every eligible member was sent
+        if: always() && steps.preflight.outcome == 'success'
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          INPUT_SEASON: ${{ steps.preflight.outputs.season }}
+          INPUT_WEEK: ${{ steps.preflight.outputs.week }}
+        run: |
+          npx tsx pipeline/recap-delivery-check.ts \
+            --season="$INPUT_SEASON" \
+            --week="$INPUT_WEEK" \
+            --require-complete
+
+      - name: Alert on watchdog failure
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECAP_FROM_EMAIL: 'Grudge Match <recap@grudge.planitnow.us>'
+          ALERT_EMAIL: ${{ vars.PIPELINE_ALERT_EMAIL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGER: ${{ github.event_name }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$RECAP_FROM_EMAIL" ] || [ -z "$ALERT_EMAIL" ]; then
+            echo "::warning::Recap watchdog failed and NO ALERT WAS SENT. Set PIPELINE_ALERT_EMAIL and RESEND_API_KEY."
+            exit 0
+          fi
+          body=$(jq -n \
+            --arg from "$RECAP_FROM_EMAIL" \
+            --arg to "$ALERT_EMAIL" \
+            --arg subject "Grudge recap watchdog FAILED ($TRIGGER) -- $(date -u +'%a %-d %b')" \
+            --arg url "$RUN_URL" \
+            '{from: $from, to: [$to], subject: $subject, text: ("The Grudge Tuesday recap watchdog found an unsettled week or incomplete email delivery.\n\nLogs: " + $url)}')
+          code=$(curl -sS -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H 'Content-Type: application/json' \
+            -d "$body" -o /tmp/alert.json -w '%{http_code}')
+          echo "Resend responded $code"
+          cat /tmp/alert.json || true
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Recap delivery watchdog"
+            echo ""
+            echo "- Result: **${{ job.status }}**"
+            echo "- Season/week: **${{ steps.preflight.outputs.season || 'not resolved' }} / ${{ steps.preflight.outputs.week || 'not resolved' }}**"
+            echo "- Eligible recipients: **${{ steps.preflight.outputs.eligible || 'unknown' }}**"
+            echo "- Sent before retry: **${{ steps.preflight.outputs.sent || 'unknown' }}**"
+            echo "- Missing before retry: **${{ steps.preflight.outputs.missing || 'unknown' }}**"
+            echo "- Trigger: **${{ github.event_name }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
