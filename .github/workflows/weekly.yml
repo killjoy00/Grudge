@@ -2,7 +2,18 @@ name: Weekly pipeline
 
 on:
   schedule:
-    - cron: '0 12 * * 2'
+    # GitHub explicitly warns that jobs scheduled at the top of the hour are
+    # more likely to be delayed. Use local-time, off-minute triggers plus
+    # redundant Tuesday-morning backstops. The gate below makes later triggers
+    # no-ops once the week and recap send are complete.
+    - cron: '17 7 * * 2'
+      timezone: 'America/Chicago'
+    - cron: '57 7 * * 2'
+      timezone: 'America/Chicago'
+    - cron: '47 8 * * 2'
+      timezone: 'America/Chicago'
+    - cron: '7 10 * * 2'
+      timezone: 'America/Chicago'
   # A marker update gives the mobile/agent workflow a safe current-season retry
   # path. The pipeline's own data commit does not match this path, so it cannot
   # recursively trigger itself. Push-triggered runs never send a recap.
@@ -43,16 +54,26 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Decide whether this trigger still needs the weekly run
+        id: gate
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: npx tsx pipeline/weekly-run-gate.ts
+
       # No production write is allowed until code tests and the database schema
       # both agree with this commit's canonical identity contract.
       - name: Test
+        if: steps.gate.outputs.should_run == 'true'
         run: npx tsx --test pipeline/*.test.ts lib/*.test.ts
       - name: Verify production schema contract
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run schema:verify
 
       - name: Fetch ESPN data and load
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
           INPUT_SEASON: ${{ inputs.season }}
@@ -64,16 +85,19 @@ jobs:
           fi
 
       - name: Compute derived features
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/compute.ts
 
       - name: Score predictions
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/score-predictions.ts
 
       - name: Capture the week ahead
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/preview.ts
@@ -81,16 +105,19 @@ jobs:
       # Completed-season identities/results are regenerated from the archive;
       # mid-season this is idempotent and leaves current identities intact.
       - name: Rebuild league history
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run history:refresh
 
       - name: Capture free-agent ownership
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx pipeline/ownership.ts
 
       - name: Restore NFL source cache
+        if: steps.gate.outputs.should_run == 'true'
         uses: actions/cache@v4
         with:
           path: /tmp/grudge-draft-sources
@@ -98,14 +125,17 @@ jobs:
           restore-keys: nfl-draft-sources-
 
       - name: Build complete regular-season player scoring
+        if: steps.gate.outputs.should_run == 'true'
         run: npm run models:build-data
 
       - name: Publish validated model results
+        if: steps.gate.outputs.should_run == 'true'
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npm run models:refresh
 
       - name: Commit raw data
+        if: steps.gate.outputs.should_run == 'true'
         id: commit
         run: |
           git config user.name 'grudge-pipeline[bot]'
@@ -123,7 +153,7 @@ jobs:
           fi
 
       - name: Send weekly recap
-        if: github.event_name == 'schedule' || inputs.send_recap == true
+        if: steps.gate.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.send_recap == true)
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -170,8 +200,9 @@ jobs:
             echo "### Weekly pipeline"
             echo ""
             echo "- Result: **${{ job.status }}**"
-            echo "- Schema contract checked before writes: **yes**"
+            echo "- Gate: **${{ steps.gate.outputs.should_run || 'unknown' }}** — ${{ steps.gate.outputs.reason || 'not resolved' }}"
+            echo "- Schema contract checked before writes: **${{ steps.gate.outputs.should_run == 'true' }}**"
             echo "- New raw data committed: **${{ steps.commit.outputs.changed || 'no' }}**"
-            echo "- Recap requested: **${{ github.event_name == 'schedule' || inputs.send_recap == true }}**"
+            echo "- Recap requested: **${{ steps.gate.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.send_recap == true) }}**"
             echo "- Run: \`$(date -u +'%Y-%m-%d %H:%M UTC')\`"
           } >> "$GITHUB_STEP_SUMMARY"
