@@ -53,8 +53,14 @@ export function tradeWriteStatements(season: number, trades: DetectedTrade[]): S
       confidence = case when trades.manually_corrected then trades.confidence else excluded.confidence end,
       evidence_status = case when trades.manually_corrected or trades.evidence_status = 'retracted'
         then trades.evidence_status else 'active' end`, params),
+    // Current-season ESPN transaction payloads are windowed rather than a full
+    // ledger. Once a trade has been established from durable evidence, its
+    // absence from a later live/archive snapshot does not mean the historical
+    // event disappeared. Completed seasons remain authoritative rebuilds: if a
+    // detector no longer finds one there, keep the existing review behavior.
     stmt(`${INPUT} update public.trades t set evidence_status = 'needs_review'
       where t.season = $1 and not t.manually_corrected and t.evidence_status = 'active'
+        and not exists (select 1 from public.seasons s where s.season = t.season and s.is_current)
         and not exists (select 1 from incoming i where i.identity_key = t.identity_key)`, params),
     stmt(`${INPUT} delete from public.trade_players p using public.trades t, incoming i
       where p.season = t.season and p.trade_id = t.trade_id
