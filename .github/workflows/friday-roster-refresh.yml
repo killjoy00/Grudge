@@ -2,7 +2,7 @@ name: Friday roster refresh
 
 on:
   schedule:
-    - cron: '0 2 * * 5'
+    - cron: '30 2 * * 5'
       timezone: 'America/Chicago'
   workflow_dispatch:
 
