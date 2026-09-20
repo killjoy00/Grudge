@@ -1,0 +1,68 @@
+name: Friday roster refresh
+
+on:
+  schedule:
+    - cron: '0 2 * * 5'
+      timezone: 'America/Chicago'
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify production schema contract
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npm run schema:verify
+
+      - name: Refresh ESPN roster and transactions
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx pipeline/run.ts
+
+      - name: Commit refreshed raw data
+        id: commit
+        run: |
+          git config user.name 'grudge-pipeline[bot]'
+          git config user.email 'grudge-pipeline[bot]@users.noreply.github.com'
+          git add data/
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new raw data this run."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git commit -m "Friday roster refresh $(date -u +%Y-%m-%d)
+
+          Automated current-season roster and transaction capture from the ESPN v3 API."
+            git push
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Friday roster refresh"
+            echo ""
+            echo "- Result: **${{ job.status }}**"
+            echo "- New raw data committed: **${{ steps.commit.outputs.changed || 'no' }}**"
+            echo "- Run: `$(date -u +'%Y-%m-%d %H:%M UTC')`"
+          } >> "$GITHUB_STEP_SUMMARY"
