@@ -7,7 +7,7 @@ on:
     - cron: '47 8 * * 1'
       timezone: 'America/Chicago'
   push:
-    branches: [main]
+    branches: [main, monday-scoreboard-trigger]
     paths:
       - '.scoreboard-refresh-request'
   workflow_dispatch:
@@ -30,7 +30,11 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      # Control-branch pushes are only an external clock. Always run the code
+      # and safety boundary from the current production branch.
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - uses: actions/setup-node@v7
         with:
           node-version: 22
