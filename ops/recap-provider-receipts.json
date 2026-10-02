@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "season": 2026,
+  "week": 3,
+  "observed_at": "2026-10-02T01:10:00Z",
+  "receipts": [
+    {
+      "message_hash": "c406f4e4f404bd498587a13ecd08ab1ca741f84b1c007190f3487015e35e9e3d",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "b716871ac696b91e3b1aedb01ca6c7e56c46c521a6930b8e188914b6468bfe06",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "065ceb26e95eeb7b96cb6c6e64abc7dfd02ab1ca1d77e3b257029973feb6d7a6",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "771b59f89fe2002f5ea35e25d6db84e43694e03c65141288dc17eda442114065",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "70ce3bc7e31b701f378deca027811c12b5a36ea27a214b36f4d06d3a6669e6d5",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "c61523aa49e5b567b17a915d984ca2dfcea9483e2ea416149e7bcebe594558d0",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "2b6c87c9bf40da899412b8c9f8149de2d21e74119c4d4042a379bd4c357735f8",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "f532c303af822a34e639e800b2f05bd2d96515fc4367caa9b9134d0fa6e61dcd",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "ec86c4a8bca42de1f68c4dd9bede28842479b62faf21305fb79dc7d9027e33f9",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "55f7377ec8db137edc9a153a3c2eebcdc43dbf7653cea9132d3e818a1839291d",
+      "status": "delivered"
+    },
+    {
+      "message_hash": "4854187d92514196392307db4042672c0087ca9d18dfd7bf53f3f8457038c39b",
+      "status": "delivered"
+    }
+  ]
+}
