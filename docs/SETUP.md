@@ -259,7 +259,53 @@ CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 RESEND_API_KEY=re_...
 ```
 
-### 2g. Populate the league roster, then invite from the app
+### 2g. Verify recap delivery with Resend webhooks
+
+The recap watchdog deliberately keeps the GitHub `RESEND_API_KEY` send-only.
+Mailbox delivery is therefore reconciled by signed Resend webhooks rather than
+giving CI broad read access to the Resend account.
+
+1. Apply the webhook migration as the Neon owner:
+
+```bash
+NEON_URL="$DATABASE_URL" node scripts/neon-sql.mjs \
+  scripts/migrations/2026-10-01-recap-provider-webhook.sql
+```
+
+2. In Resend, create a webhook pointing to:
+
+```
+https://grudge.planitnow.us/api/webhooks/resend
+```
+
+Subscribe to the email lifecycle events used by the watchdog: sent, delivered,
+delivery delayed, bounced, complained, opened, clicked, failed, and suppressed.
+
+3. Copy the webhook signing secret (`whsec_...`) and store it only in the
+server-only database credential table. In the Neon SQL Editor, replace the
+placeholder below and run:
+
+```sql
+insert into public.provider_webhook_credentials (provider, secret)
+values ('resend', 'REPLACE_WITH_RESEND_WEBHOOK_SIGNING_SECRET')
+on conflict (provider) do update
+   set secret = excluded.secret,
+       rotated_at = now();
+```
+
+Do not put this signing secret in the repository, GitHub Actions, browser code,
+or recap email configuration. The web app can retrieve it only through the
+narrow `provider_webhook_secret` SECURITY DEFINER function. Verified lifecycle
+events can update only an already-known `recap_deliveries.provider_message_id`
+through `record_recap_provider_event`; unrelated Resend messages are ignored.
+
+Resend retries webhook delivery when the endpoint is temporarily unavailable,
+so deploy the endpoint and apply the migration before relying on the watchdog
+for mailbox-level delivery confirmation.
+
+---
+
+### 2h. Populate the league roster, then invite from the app
 
 The roster needs 13 rows. Email and team are enough. These rows go only into
 Postgres; the Members page creates Clerk invitations as members are activated:
