@@ -1,0 +1,34 @@
+name: Apply recap provider receipts
+
+on:
+  push:
+    branches:
+      - ops/recap-provider-reconcile
+    paths:
+      - 'ops/recap-provider-receipts.json'
+      - 'scripts/apply-recap-provider-receipts.ts'
+      - '.github/workflows/apply-recap-provider-receipts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recap-provider-receipts
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply privacy-preserving provider receipts
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: npx tsx scripts/apply-recap-provider-receipts.ts
