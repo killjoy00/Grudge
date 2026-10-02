@@ -1,0 +1,58 @@
+name: Neon capability probe
+
+on:
+  push:
+    branches:
+      - ops/neon-capability-probe
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Probe app_pipeline privileges
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          node --input-type=module <<'EOF'
+          import { neon } from '@neondatabase/serverless';
+
+          if (!process.env.PIPELINE_DATABASE_URL) {
+            throw new Error('PIPELINE_DATABASE_URL is unavailable');
+          }
+
+          const sql = neon(process.env.PIPELINE_DATABASE_URL);
+          const rows = await sql`
+            select
+              current_database() as database_name,
+              current_user as role_name,
+              has_schema_privilege(current_user, 'public', 'CREATE') as can_create_in_public,
+              has_table_privilege(current_user, 'public.recap_deliveries', 'UPDATE') as can_update_recap_deliveries,
+              exists (
+                select 1
+                  from pg_class c
+                  join pg_namespace n on n.oid = c.relnamespace
+                 where n.nspname = 'public'
+                   and c.relname = 'recap_deliveries'
+                   and pg_get_userbyid(c.relowner) = current_user
+              ) as owns_recap_deliveries,
+              r.rolsuper as is_superuser,
+              r.rolbypassrls as bypasses_rls,
+              to_regprocedure('public.record_recap_provider_event(text,text,timestamp with time zone)') is not null
+                as existing_recap_event_function
+            from pg_roles r
+            where r.rolname = current_user
+          `;
+
+          if (rows.length !== 1) throw new Error('capability probe returned unexpected result');
+          console.log(JSON.stringify(rows[0], null, 2));
+          EOF
