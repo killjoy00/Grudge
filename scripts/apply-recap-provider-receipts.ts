@@ -135,7 +135,15 @@ async function main() {
 
   if (matched === 0) throw new Error('no receipt matched a stored provider message id');
   if (unmatched.length > 0) {
-    console.warn(`${unmatched.length} sent row(s) still lack a provider receipt.`);
+    console.warn(`${unmatched.length} sent row(s) still lack a provider receipt: ${unmatched.join(', ')}`);
+  }
+  const matchedHashes = new Set(rows.map((row) => sha256(row.provider_message_id)));
+  const unknown = data.receipts
+    .map((receipt) => receipt.message_hash)
+    .filter((hash) => !matchedHashes.has(hash))
+    .map((hash) => hash.slice(0, 12));
+  if (unknown.length > 0) {
+    console.warn(`${unknown.length} receipt(s) did not match a stored provider id: ${unknown.join(', ')}`);
   }
 }
 
