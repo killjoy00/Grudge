@@ -32,3 +32,16 @@ jobs:
         env:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: npx tsx scripts/apply-recap-provider-receipts.ts
+
+      - name: Verify watchdog view after reconciliation
+        env:
+          PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          season=$(jq -r '.season' ops/recap-provider-receipts.json)
+          week=$(jq -r '.week' ops/recap-provider-receipts.json)
+          extra=''
+          if jq -e '.receipts | length > 0 and all(.status == "delivered" or .status == "opened" or .status == "clicked")'               ops/recap-provider-receipts.json >/dev/null; then
+            extra='--require-delivered'
+          fi
+          npx tsx pipeline/reconcile-recap-provider.ts             --season="$season"             --week="$week"             $extra
