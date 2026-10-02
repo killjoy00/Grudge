@@ -24,6 +24,7 @@ jobs:
           PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
         run: |
           node --input-type=module <<'EOF'
+          import { createHash } from 'node:crypto';
           import { neon } from '@neondatabase/serverless';
 
           if (!process.env.PIPELINE_DATABASE_URL) {
@@ -55,4 +56,16 @@ jobs:
 
           if (rows.length !== 1) throw new Error('capability probe returned unexpected result');
           console.log(JSON.stringify(rows[0], null, 2));
+
+          const deliveries = await sql`
+            select provider_message_id
+              from public.recap_deliveries
+             where season = 2026 and week = 3
+               and status = 'sent'
+               and provider_message_id is not null
+             order by id
+          `;
+          console.log('week3_provider_hashes=' + deliveries
+            .map((row) => createHash('sha256').update(row.provider_message_id).digest('hex').slice(0, 12))
+            .join(','));
           EOF
