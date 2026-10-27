@@ -10,7 +10,7 @@
  * because a year chip that leads to an empty page is worse than no chip.
  */
 export function SeasonPicker({
-  seasons, current, basePath, heading = 'Other seasons',
+  seasons, current, basePath, pathStyle = 'query', heading = 'Other seasons',
   note = 'The league did not play in 2020.',
 }: {
   seasons: number[];
@@ -18,6 +18,8 @@ export function SeasonPicker({
   current: number;
   /** e.g. "/standings" */
   basePath: string;
+  /** Segment links are cacheable ISR routes; query links remain for other pages. */
+  pathStyle?: "query" | "segment";
   heading?: string;
   /**
    * The footnote under the chips. The 2020 gap is the right thing to say on
@@ -33,7 +35,7 @@ export function SeasonPicker({
       <strong style={{ fontSize: 14 }}>{heading}</strong>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
         {seasons.map((s) => (
-          <a key={s} href={`${basePath}?season=${s}`}
+          <a key={s} href={pathStyle === 'segment' ? `${basePath}/${s}` : `${basePath}?season=${s}`}
              className={`btn${s === current ? '' : ' btn-quiet'}`}
              style={{ padding: '6px 12px' }}>
             {s}
