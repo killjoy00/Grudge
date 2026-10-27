@@ -4,12 +4,12 @@ import { usePathname } from 'next/navigation';
 
 const TABS = [
   ['/', 'Scoreboard'],
-  ['/standings', 'Standings'],
+  ['/standings/season/current', 'Standings'],
   ['/rankings', 'Power Rankings'],
   ['/predictions', 'Predictions'],
   ['/trades', 'Trades'],
   ['/players', 'Players'],
-  ['/history', 'History'],
+  ['/history/range/all', 'History'],
 ];
 
 export function Nav() {
@@ -34,9 +34,11 @@ export function Nav() {
       {TABS.map(([href, label]) => {
         const active = href === '/'
           ? path === '/'
-          : href === '/history'
+          : href === '/history/range/all'
             ? path.startsWith('/history') || path.startsWith('/franchise/') || path.startsWith('/manager/') || path.startsWith('/grudge/') || path.startsWith('/rivalry/')
-            : path === href || path.startsWith(`${href}/`);
+            : href === '/standings/season/current'
+              ? path.startsWith('/standings')
+              : path === href || path.startsWith(`${href}/`);
         return (
           <a key={href} href={href} className={active ? 'on' : ''}
              aria-current={active ? 'page' : undefined}>

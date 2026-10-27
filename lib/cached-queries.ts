@@ -3,9 +3,10 @@ import 'server-only';
 /**
  * Explicit caches for public league data.
  *
- * The pages using these functions render on request so a deploy never needs a
- * live database connection. These caches retain the old hourly/daily freshness
- * guarantees without coupling `next build` to Neon.
+ * Most pages render on request, and these caches avoid repeating expensive
+ * public queries. Standings and History use on-demand ISR paths instead:
+ * their first request builds a public snapshot, then the CDN serves it for
+ * a day / week. Empty generateStaticParams avoids a Neon dependency at build.
  */
 import { unstable_cache } from 'next/cache';
 import { getPlayerRecordLeaders } from './player-intelligence.ts';
