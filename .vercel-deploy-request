@@ -1,2 +1,3 @@
-Deploy main 120efff2eab68bbf2e28fd85c22ad0b58f9fa812 for recap delivery webhook recovery (PR #108).
-Requested 2026-10-01.
+Request controlled production release of main 004549d662bf9659caa42cf5cfa1997a69b831ed.
+Reason: cache public Standings daily and History weekly; patch audited Next.js dependencies (PR #109).
+Requested 2026-10-27.
