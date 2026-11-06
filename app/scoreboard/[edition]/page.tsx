@@ -111,7 +111,6 @@ export default async function Home({ params }: { params: Promise<{ edition: stri
   // front page something useful to show without creating partial results.
   if (activeWeek && activeStarted) {
     const lockAt = activeWeek.locks_at ?? activeWeek.first_kickoff_at;
-    const locked = lockAt ? new Date(lockAt).getTime() <= now : true;
     const games = await getCachedWeekMatchups(currentSeason, activeWeek.week);
     const hasScoreSnapshot = games.some((game) =>
       Number(game.away_points ?? 0) > 0 || Number(game.home_points ?? 0) > 0
@@ -177,13 +176,13 @@ export default async function Home({ params }: { params: Promise<{ edition: stri
 
         <div className="card">
           <p className="note" style={{ margin: 0 }}>
-            {locked
-              ? <>Week {activeWeek.week} picks are locked. Signed-in league members can see the full board below.</>
-              : <>Week {activeWeek.week} picks are still open until Saturday at midnight ET.</>}
+            Week {activeWeek.week} predictions lock Saturday at midnight ET. The
+            prediction board shows the current status and signed-in members can
+            view everyone&rsquo;s picks once the deadline has passed.
           </p>
           <div style={{ marginTop: 12 }}>
             <a href="/predictions" className="btn">
-              {locked ? 'Prediction board' : 'Make your picks'}
+              Prediction board
             </a>
           </div>
         </div>
@@ -200,7 +199,9 @@ export default async function Home({ params }: { params: Promise<{ edition: stri
     const [seasons, last] = await Promise.all([getPlayedSeasons(), preseason()]);
     const kickoffValue = activeWeek?.first_kickoff_at ?? last?.kickoff ?? null;
     const kickoff = kickoffValue ? new Date(kickoffValue) : null;
-    const days = kickoff ? Math.ceil((kickoff.getTime() - now) / 86_400_000) : null;
+    const kickoffLabel = kickoff
+      ? kickoff.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'America/Chicago' })
+      : null;
     const lockAt = activeWeek?.locks_at ?? activeWeek?.first_kickoff_at ?? null;
     const picksLocked = lockAt ? new Date(lockAt).getTime() <= now : false;
     const pickWeek = activeWeek?.week ?? 1;
@@ -208,9 +209,7 @@ export default async function Home({ params }: { params: Promise<{ edition: stri
       <>
         <div className="page-hero">
           <div className="eyebrow">{currentSeason} season</div>
-          <h1>{days === null ? 'Season on the clock.'
-            : days <= 0 ? 'Kickoff is today.'
-              : `${days} day${days === 1 ? '' : 's'} until kickoff.`}</h1>
+          <h1>{kickoffLabel ? `Kickoff: ${kickoffLabel}` : 'Season on the clock.'}</h1>
           <p>
             Nobody has lost yet. Ten teams, five matchups a week, and one trophy
             that has changed hands {seasons.length > 0 ? 'plenty of times' : 'before'}.
