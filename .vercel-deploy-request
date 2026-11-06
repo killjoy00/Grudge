@@ -1,3 +1,3 @@
-Request controlled production release of main 004549d662bf9659caa42cf5cfa1997a69b831ed.
-Reason: cache public Standings daily and History weekly; patch audited Next.js dependencies (PR #109).
-Requested 2026-10-27.
+Request controlled production release of main b904d6ea6e51909e4436cec51b2b5706eeffbe3c.
+Reason: deploy Grudge PRs #110, #111, and #112 together: seven-day cached reports, narrow Clerk middleware, retire unused comments.
+Requested 2026-11-05 America/Chicago. Preserve all existing schema, pipeline proof, exact-commit health, and public smoke gates.
