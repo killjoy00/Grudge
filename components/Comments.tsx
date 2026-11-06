@@ -18,8 +18,8 @@ function when(iso: string) {
 }
 
 export function Comments({
-  season, week, comments, me,
-}: { season: number; week: number; comments: Comment[]; me: string | null }) {
+  season, week, comments, me, onRefresh,
+}: { season: number; week: number; comments: Comment[]; me: string | null; onRefresh?: () => void }) {
   const router = useRouter();
   const [body, setBody] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export function Comments({
         setBody('');
         setReplyTo(null);
         setErr(null);
-        router.refresh();
+        if (onRefresh) onRefresh(); else router.refresh();
       }
       else setErr(res.error ?? 'Could not post.');
     });
@@ -51,7 +51,7 @@ export function Comments({
       if (res.ok) {
         setEditing(null);
         setErr(null);
-        router.refresh();
+        if (onRefresh) onRefresh(); else router.refresh();
       }
       else setErr(res.error ?? 'Could not save.');
     });
@@ -62,7 +62,7 @@ export function Comments({
       const res = await deleteComment(id);
       if (res.ok) {
         setErr(null);
-        router.refresh();
+        if (onRefresh) onRefresh(); else router.refresh();
       } else {
         setErr(res.error ?? 'Could not delete.');
       }
