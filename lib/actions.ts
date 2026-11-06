@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * Server actions for predictions and comments.
+ * Server actions for predictions and league-profile preferences.
  *
  * These run as `app_user` with the caller's identity set for the transaction,
  * so the database is what actually enforces the rules. The checks here are for
@@ -30,7 +30,6 @@ function friendly(e: unknown): string {
   if (/membership inactive|not provisioned/i.test(msg)) {
     return 'Your league membership is not active. Ask the commissioner to check your account.';
   }
-  if (/violates check constraint/i.test(msg)) return 'That comment is empty or too long.';
   return 'Something went wrong. Please try again.';
 }
 
@@ -62,74 +61,6 @@ export async function submitPick(
       return { ok: false, error: 'That week is not open for picks yet.' };
     }
     revalidatePath('/predictions');
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: friendly(e) };
-  }
-}
-
-export async function postComment(
-  season: number,
-  week: number,
-  body: string,
-  parentId: string | null
-): Promise<ActionResult> {
-  try {
-    const { userId } = await auth();
-    if (!userId) return { ok: false, error: 'You need to sign in.' };
-    const text = body.trim();
-    if (!text) return { ok: false, error: 'Write something first.' };
-
-    const [rows] = await asUser<{ id: string }>((q) => [
-      q(
-        `insert into public.comments (user_id, season, week, body, parent_id)
-         select $1, $2, $3, $4, $5::uuid
-          where $5::uuid is null
-             or exists (
-                  select 1 from public.comments parent
-                   where parent.id = $5::uuid
-                     and parent.season = $2
-                     and parent.week = $3
-                     and parent.parent_id is null
-                     and parent.deleted_at is null
-                )
-         returning id`,
-        [userId, season, week, text, parentId]
-      ),
-    ]);
-    if (!rows?.length) {
-      return { ok: false, error: 'That comment thread is no longer available.' };
-    }
-    revalidatePath('/');
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: friendly(e) };
-  }
-}
-
-export async function editComment(id: string, body: string): Promise<ActionResult> {
-  try {
-    const text = body.trim();
-    if (!text) return { ok: false, error: 'Write something first.' };
-    // No user_id filter needed: the RLS policy restricts this to your own rows.
-    // Adding one here would be belt-and-braces, not the actual protection.
-    await asUser((q) => [
-      q('update public.comments set body = $2, updated_at = now() where id = $1', [id, text]),
-    ]);
-    revalidatePath('/');
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: friendly(e) };
-  }
-}
-
-/** Soft delete, so replies to a deleted comment are not orphaned. */
-export async function deleteComment(id: string): Promise<ActionResult> {
-  try {
-    await asUser((q) => [
-      q('update public.comments set deleted_at = now() where id = $1 and deleted_at is null', [id]),
-    ]);
-    revalidatePath('/');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: friendly(e) };
