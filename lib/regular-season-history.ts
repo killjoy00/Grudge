@@ -54,5 +54,5 @@ async function getRegularSeasonChampions() {
 export const getCachedRegularSeasonChampions = unstable_cache(
   getRegularSeasonChampions,
   ['regular-season-champions-v2'],
-  { revalidate: 86400 }
+  { revalidate: 604800 }
 );
