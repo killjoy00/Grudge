@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { unstable_cache } from 'next/cache';
 import {
   getCurrentSeason, getPlayedSeasons, getWeekResults, getWeekAwards,
   getBenchWatch, getComments, getStandings, getWeekMatchups,
@@ -32,6 +33,49 @@ async function latestPlayedWeek(season: number) {
   return typeof week === 'number' && week > 0 ? week : null;
 }
 
+/**
+ * Share the expensive public league queries across requests. These values are
+ * published by the ESPN/GitHub pipeline rather than modified by site visitors.
+ * Locks still use Date.now() below and are enforced by the database on writes.
+ * Never put session-scoped picks or member comments into this shared cache.
+ */
+const getPublicHomeData = unstable_cache(
+  async () => {
+    const currentSeason = await getCurrentSeason();
+    const [week, activeWeek, wire] = await Promise.all([
+      latestPlayedWeek(currentSeason),
+      getCurrentIncompleteWeek(currentSeason),
+      getLeagueWire(currentSeason, 16),
+    ]);
+    return { currentSeason, week, activeWeek, wire };
+  },
+  ['grudge-public-home-v1'],
+  { revalidate: 120 }
+);
+
+const getCachedWeekMatchups = unstable_cache(
+  getWeekMatchups,
+  ['grudge-home-week-matchups-v1'],
+  { revalidate: 120 }
+);
+
+const getCachedTrackedPlayoffWeek = unstable_cache(
+  getTrackedPlayoffWeek,
+  ['grudge-home-playoff-week-v1'],
+  { revalidate: 120 }
+);
+
+const getCachedSettledWeek = unstable_cache(
+  async (season: number, week: number) => Promise.all([
+    getWeekResults(season, week),
+    getWeekAwards(season, week),
+    getBenchWatch(season, week),
+    getStandings(season, week),
+  ]),
+  ['grudge-home-settled-week-v1'],
+  { revalidate: 300 }
+);
+
 /** Week zero: no games yet, so lead with what the league already argues about. */
 async function preseason() {
   const [rows] = await Promise.all([
@@ -53,12 +97,7 @@ async function preseason() {
 
 export default async function Home() {
   const { userId } = await auth();
-  const currentSeason = await getCurrentSeason();
-  const [week, activeWeek, wire] = await Promise.all([
-    latestPlayedWeek(currentSeason),
-    getCurrentIncompleteWeek(currentSeason),
-    getLeagueWire(currentSeason, 16),
-  ]);
+  const { currentSeason, week, activeWeek, wire } = await getPublicHomeData();
   const now = Date.now();
   const activeStarted = Boolean(
     activeWeek?.first_kickoff_at && new Date(activeWeek.first_kickoff_at).getTime() <= now
@@ -72,7 +111,7 @@ export default async function Home() {
     const lockAt = activeWeek.locks_at ?? activeWeek.first_kickoff_at;
     const locked = lockAt ? new Date(lockAt).getTime() <= now : true;
     const [games, revealedPicks] = await Promise.all([
-      getWeekMatchups(currentSeason, activeWeek.week),
+      getCachedWeekMatchups(currentSeason, activeWeek.week),
       userId && locked
         ? getLockedWeekPicks(currentSeason, activeWeek.week)
         : Promise.resolve([]),
@@ -233,7 +272,7 @@ export default async function Home() {
   // Once the championship bracket starts, the regular-season week stops being
   // the news. Consolation placement games are deliberately absent: only the
   // five championship-bracket games are tracked after the regular season.
-  const playoffs = await getTrackedPlayoffWeek(season);
+  const playoffs = await getCachedTrackedPlayoffWeek(season);
   if (playoffs) {
     const board = (list: typeof playoffs.games) => (
       <div className="card">
@@ -289,12 +328,10 @@ export default async function Home() {
     );
   }
 
-  const [games, awards, bench, comments, table] = await Promise.all([
-    getWeekResults(season, week),
-    getWeekAwards(season, week),
-    getBenchWatch(season, week),
+  const [[games, awards, bench, table], comments] = await Promise.all([
+    getCachedSettledWeek(season, week),
+    // Comments are member-scoped; never cache them in a public snapshot.
     userId ? getComments(season, week) : Promise.resolve([]),
-    getStandings(season, week),
   ]);
 
   const award = (k: string) => awards.find((a) => a.award_key === k);
