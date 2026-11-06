@@ -9,7 +9,9 @@ import {
   getVaultSeasons,
 } from '../../../../lib/vault-queries.ts';
 
-export const dynamic = 'force-dynamic';
+// Historical source evidence is published in weekly batches; serve week-long ISR.
+export const revalidate = 604800;
+export function generateStaticParams(): Array<{ season: string }> { return []; }
 
 function score(value: string | null) {
   return value ?? '—';

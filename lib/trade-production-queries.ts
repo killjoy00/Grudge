@@ -35,7 +35,7 @@ async function seasonProductionRaw(season: number) {
 export const getTradeProductionForSeason = unstable_cache(
   async (season: number) => (await seasonProductionRaw(season)).values,
   ['trade-production-season-v3'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 export const getAllTimeTradeProductionRecords = unstable_cache(
@@ -80,7 +80,7 @@ export const getAllTimeTradeProductionRecords = unstable_cache(
     );
   },
   ['trade-production-all-time-v3'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 export type { FranchiseProductionRecord, TradeProductionValue } from '../pipeline/trade-production.ts';

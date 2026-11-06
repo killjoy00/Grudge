@@ -5,7 +5,7 @@ import { getCachedPowerRankings, getCachedSeasonList } from '../../../lib/cached
 import { getCachedHistorySeason } from '../../../lib/history-cache.ts';
 import { finish, franchiseHref, managerHref, pointsPerGame, record, seasonHref } from '../../../lib/history-format.ts';
 
-export const revalidate = 3600;
+export const revalidate = 604800;
 
 function gameSummary(row: { team_name: string; opponent_name: string; points_for: string; points_against: string }) {
   return `${row.team_name} ${row.points_for}–${row.points_against} ${row.opponent_name}`;

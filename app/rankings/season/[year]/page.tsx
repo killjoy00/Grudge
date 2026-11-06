@@ -9,7 +9,7 @@ import { SeasonPicker } from '../../../../components/SeasonPicker.tsx';
 import { franchiseHref } from '../../../../lib/history-format.ts';
 
 // Public season reports are served as on-demand ISR snapshots, never rendered at build.
-export const revalidate = 3600;
+export const revalidate = 604800;
 export function generateStaticParams(): Array<{ year: string }> { return []; }
 
 interface Components {

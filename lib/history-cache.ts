@@ -29,13 +29,13 @@ export const getCachedFranchiseByKey = unstable_cache(
     getFranchiseKeyPlayersByKey(franchiseKey),
   ]),
   ['history-franchise-by-key-v2'],
-  { revalidate: 86400 }
+  { revalidate: 604800 }
 );
 
 export const getCachedFranchiseKeyForEspnId = unstable_cache(
   getFranchiseKeyForEspnId,
   ['history-franchise-key-for-espn-id-v2'],
-  { revalidate: 86400 }
+  { revalidate: 604800 }
 );
 
 export const getCachedManagerFile = unstable_cache(
@@ -44,7 +44,7 @@ export const getCachedManagerFile = unstable_cache(
     getManagerSeasonsByKey(managerKey),
   ]),
   ['history-manager-file'],
-  { revalidate: 86400 }
+  { revalidate: 604800 }
 );
 
 export const getCachedHistorySeason = unstable_cache(
@@ -55,17 +55,17 @@ export const getCachedHistorySeason = unstable_cache(
     getTrackedSeasonHighlights(season),
   ]),
   ['history-season-file-v3'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 export const getCachedRichChampions = unstable_cache(
   getRichChampions,
   ['history-rich-champions'],
-  { revalidate: 86400 }
+  { revalidate: 604800 }
 );
 
 export const getCachedHistoryRecords = unstable_cache(
   async () => Promise.all([getAllSeasonRecords(), getTrackedGameRecords()]),
   ['history-record-book-v3'],
-  { revalidate: 86400 }
+  { revalidate: 604800 }
 );
