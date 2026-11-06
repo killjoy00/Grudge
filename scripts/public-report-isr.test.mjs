@@ -1,3 +1,5 @@
+import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server';
+import { config as middlewareConfig } from '../middleware.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -7,6 +9,7 @@ const WEEK = 'export const revalidate = 604800;';
 
 const publicRoutes = [
   'app/scoreboard/[edition]/page.tsx',
+  'app/standings/recaps/[season]/[week]/page.tsx',
   'app/standings/season/[year]/page.tsx',
   'app/rankings/season/[year]/page.tsx',
   'app/history/range/[years]/page.tsx',
@@ -30,6 +33,7 @@ test('public scoreboard and report pages use week-long ISR', () => {
   }
   const onDemand = [
     'app/scoreboard/[edition]/page.tsx',
+    'app/standings/recaps/[season]/[week]/page.tsx',
     'app/standings/season/[year]/page.tsx',
     'app/rankings/season/[year]/page.tsx',
     'app/history/range/[years]/page.tsx',
@@ -86,28 +90,78 @@ test('existing links preserve access to cached routes', () => {
   assert.ok(read('app/history/vault/page.tsx').includes('/weekly/current'));
 });
 
-test('weekly pages cannot leak signed-in comments or locked picks', () => {
-  const html = read('app/scoreboard/[edition]/page.tsx');
-  assert.ok(!html.includes('getComments('));
-  assert.ok(!html.includes('getLockedWeekPicks('));
-  assert.ok(!html.includes('auth('));
-  assert.ok(html.includes('kind="comments"'));
-  assert.ok(html.includes('kind="picks"'));
+test('public weekly pages no longer expose comments or signed-in data', () => {
+  const home = read('app/scoreboard/[edition]/page.tsx');
+  assert.ok(!home.includes('kind="comments"'));
+  assert.ok(!home.includes('auth('));
+  assert.ok(home.includes('<HomeMemberPanel season='));
+
+  const recap = read('app/standings/recaps/[season]/[week]/page.tsx');
+  assert.ok(!recap.includes('auth('));
+  assert.ok(!recap.includes('getComments'));
+  assert.ok(!recap.includes('Comments'));
 
   const route = read('app/api/home-member/route.ts');
   assert.ok(route.includes('await auth()'));
   assert.ok(route.includes('if (!userId)'));
-  assert.ok(route.includes('getComments('));
   assert.ok(route.includes('getLockedWeekPicks('));
+  assert.ok(route.includes("kind !== 'picks'"));
+  assert.ok(!route.includes('getComments('));
   assert.ok(route.includes('private, no-store'));
+
   const client = read('components/HomeMemberPanel.tsx');
   assert.ok(client.includes('useUser()'));
   assert.ok(client.includes('isSignedIn'));
   assert.ok(client.includes("cache: 'no-store'"));
+  assert.ok(!client.includes('Comments'));
+  for (const method of ['postComment', 'editComment', 'deleteComment']) {
+    assert.ok(!read('lib/actions.ts').includes(method));
+  }
+  assert.ok(!read('lib/queries.ts').includes('getComments('));
   assert.ok(read('app/predictions/page.tsx').includes("force-dynamic"));
 });
 
 test('private league is opted out of polite search indexing', () => {
   assert.ok(read('app/robots.ts').includes("userAgent: '*'"));
   assert.ok(read('app/robots.ts').includes("disallow: '/'"));
+});
+
+function middlewareMatches(path) {
+  return unstable_doesMiddlewareMatch({
+    config: middlewareConfig,
+    nextConfig: {},
+    url: `https://grudge.planitnow.us${path}`,
+  });
+}
+
+test('Clerk middleware skips public reports, assets, and signed webhooks', () => {
+  for (const path of [
+    '/', '/scoreboard/current', '/standings', '/standings/season/current',
+    '/standings/recaps/2026/8', '/rankings', '/rankings/season/current',
+    '/history', '/history/2026', '/history/records/weekly',
+    '/history/drafts/weekly', '/history/rivalries', '/team/10',
+    '/manager/ryan-mindell', '/franchise/cte-deniers',
+    '/players', '/players/records/weekly', '/matchup/2026/8/1',
+    '/grudge/manager-a/manager-b', '/api/health',
+    '/api/webhooks/clerk', '/api/webhooks/resend', '/preview',
+    '/_next/static/chunk.js',
+  ]) {
+    assert.equal(middlewareMatches(path), false, `public path invoked Clerk: ${path}`);
+  }
+});
+
+test('Clerk middleware continues to guard private pages and APIs', () => {
+  for (const path of [
+    '/predictions', '/predictions?season=2026', '/me', '/me?team=10',
+    '/admin', '/admin/status', '/admin/members', '/admin/recaps',
+    '/admin/pool', '/admin/trades', '/trades', '/trades?season=2026',
+    '/api/home-member?kind=picks&season=2026&week=8',
+    '/api/admin/pool', '/api/admin/allowlist', '/__clerk/frontend',
+  ]) {
+    assert.equal(middlewareMatches(path), true, `private path skipped Clerk: ${path}`);
+  }
+});
+
+test('Clerk-free preview still redirects root to preview', () => {
+  assert.ok(read('app/page.tsx').includes("previewWithoutClerk() ? '/preview' : '/scoreboard/current'"));
 });
