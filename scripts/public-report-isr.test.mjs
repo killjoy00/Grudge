@@ -25,3 +25,30 @@ test('legacy query filters redirect to ISR paths and navigation uses those paths
   assert.match(nav, /\/standings\/season\/current/);
   assert.match(nav, /\/history\/range\/all/);
 });
+
+test('power rankings serve on-demand cached season reports and keep old links working', () => {
+  const ranking = read('app/rankings/season/[year]/page.tsx');
+  assert.match(ranking, /export const revalidate = 3600;/);
+  assert.match(ranking, /generateStaticParams\(\).*return \[\]/s);
+  assert.doesNotMatch(ranking, /force-dynamic|searchParams|\bauth\(/);
+  assert.match(ranking, /pathStyle="segment"/);
+  const legacy = read('app/rankings/page.tsx');
+  assert.match(legacy, /searchParams/);
+  assert.match(legacy, /rankings\/season/);
+  assert.doesNotMatch(legacy, /getCachedPowerRankings|\bauth\(/);
+});
+
+test('shared home caches only public data; personalized comments and picks remain live', () => {
+  const home = read('app/page.tsx');
+  assert.match(home, /const getPublicHomeData = unstable_cache/);
+  assert.match(home, /revalidate: 120/);
+  const publicSection = home.split('const getPublicHomeData = unstable_cache(')[1].split('const getCachedWeekMatchups')[0];
+  assert.doesNotMatch(publicSection, /getComments|getLockedWeekPicks|\bauth\(/);
+  assert.match(home, /userId \? getComments\(season, week\)/);
+  assert.match(home, /userId && locked/);
+});
+
+test('private Grudge league excludes crawlers via a static robots route', () => {
+  const robots = read('app/robots.ts');
+  assert.match(robots, /userAgent: '\*', disallow: '\/'/);
+});
