@@ -33,7 +33,7 @@ export function Nav() {
     <nav className="tabs" ref={navRef}>
       {TABS.map(([href, label]) => {
         const active = href === '/'
-          ? path === '/'
+          ? path === '/' || path.startsWith('/scoreboard/')
           : href === '/history/range/all'
             ? path.startsWith('/history') || path.startsWith('/franchise/') || path.startsWith('/manager/') || path.startsWith('/grudge/') || path.startsWith('/rivalry/')
             : href === '/standings/season/current'
