@@ -16,7 +16,7 @@ import { getFranchisePlayerLeaders } from '../../../lib/player-intelligence.ts';
 import { getCurrentSeason } from '../../../lib/queries.ts';
 import { getCachedRegularSeasonChampions } from '../../../lib/regular-season-history.ts';
 
-export const revalidate = 3600;
+export const revalidate = 604800;
 
 const POSITIONS: Record<number, string> = {
   1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K', 16: 'D/ST',
