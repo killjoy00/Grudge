@@ -27,46 +27,46 @@ import {
 export const getCachedPlayedSeasons = unstable_cache(
   getPlayedSeasons,
   ['played-seasons'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 export const getCachedStandings = unstable_cache(
   async (season: number) => Promise.all([getStandings(season), getLuck(season)]),
   ['standings'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 /** A settled season's standings plus the score-derived schedule-luck index. */
 export const getCachedSeasonTable = unstable_cache(
   async (season: number) => Promise.all([getSeasonStandings(season), getLuck(season)]),
   ['season-table'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 /** The franchise field of a season, valid before its first result. */
 export const getCachedPreseasonTeams = unstable_cache(
   getIdentitySeasonField,
   ['season-identity-field-v2'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 /** Every canonical franchise season, including a current season with no results. */
 export const getCachedSeasonList = unstable_cache(
   getIdentitySeasonList,
   ['season-identity-list-v2'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 export const getCachedPowerRankings = unstable_cache(
   getIdentityPowerRankings,
   ['power-rankings-identity-v2'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 export const getCachedPlayoffOdds = unstable_cache(
   getPlayoffOdds,
   ['playoff-odds'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 /**
@@ -82,13 +82,13 @@ export const getCachedPlayoffOdds = unstable_cache(
 export const getCachedSeasonTrades = unstable_cache(
   seasonTrades,
   ['season-trades-v3'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 export const getCachedTradeRecords = unstable_cache(
   allTimeTradeRecords,
   ['trade-records-v4-canonical-franchises'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
 
 /**
@@ -102,5 +102,5 @@ export const getCachedTradeRecords = unstable_cache(
 export const getCachedPlayerRecordLeaders = unstable_cache(
   getPlayerRecordLeaders,
   ['player-record-leaders-v1'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
