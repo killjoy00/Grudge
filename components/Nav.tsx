@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   ['/', 'Scoreboard'],
   ['/standings/season/current', 'Standings'],
-  ['/rankings', 'Power Rankings'],
+  ['/rankings/season/current', 'Power Rankings'],
   ['/predictions', 'Predictions'],
   ['/trades', 'Trades'],
   ['/players', 'Players'],
@@ -38,7 +38,9 @@ export function Nav() {
             ? path.startsWith('/history') || path.startsWith('/franchise/') || path.startsWith('/manager/') || path.startsWith('/grudge/') || path.startsWith('/rivalry/')
             : href === '/standings/season/current'
               ? path.startsWith('/standings')
-              : path === href || path.startsWith(`${href}/`);
+              : href === '/rankings/season/current'
+                ? path.startsWith('/rankings')
+                : path === href || path.startsWith(`${href}/`);
         return (
           <a key={href} href={href} className={active ? 'on' : ''}
              aria-current={active ? 'page' : undefined}>
