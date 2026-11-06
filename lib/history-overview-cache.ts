@@ -7,5 +7,5 @@ import { getFranchiseHistory, getManagerHistory } from './queries.ts';
 export const getCachedHistoryDirectory = unstable_cache(
   async () => Promise.all([getFranchiseHistory(), getManagerHistory()]),
   ['history-directory'],
-  { revalidate: 86400 }
+  { revalidate: 604800 }
 );
