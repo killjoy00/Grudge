@@ -14,7 +14,7 @@ import { playerHref } from '../../../lib/player-data.ts';
 import { getManagerPlayerLeaders } from '../../../lib/player-intelligence.ts';
 import { getManagerGrudges } from '../../../lib/rivalry-queries.ts';
 
-export const revalidate = 3600;
+export const revalidate = 604800;
 
 function signed(value: string | null) {
   if (value === null) return '—';
