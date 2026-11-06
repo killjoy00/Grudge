@@ -3,52 +3,89 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(path, 'utf8');
+const WEEK = 'export const revalidate = 604800;';
 
-test('public standings and history are on-demand ISR routes, not per-request SSR', () => {
-  const standings = read('app/standings/season/[year]/page.tsx');
-  const history = read('app/history/range/[years]/page.tsx');
-  assert.match(standings, /export const revalidate = 86400;/);
-  assert.match(history, /export const revalidate = 604800;/);
-  for (const page of [standings, history]) {
-    assert.match(page, /generateStaticParams\(\).*return \[\]/s);
-    assert.doesNotMatch(page, /force-dynamic|searchParams|\bauth\(/);
+test('public scoreboard and report routes use full weekly ISR, never per-request rendering', () => {
+  const routes = [
+    'app/scoreboard/[edition]/page.tsx',
+    'app/standings/season/[year]/page.tsx',
+    'app/rankings/season/[year]/page.tsx',
+    'app/history/range/[years]/page.tsx',
+    'app/history/[season]/page.tsx',
+    'app/history/records/[edition]/page.tsx',
+    'app/history/drafts/[edition]/page.tsx',
+    'app/history/vault/[edition]/page.tsx',
+    'app/players/records/[edition]/page.tsx',
+    'app/team/[id]/page.tsx',
+    'app/manager/[key]/page.tsx',
+    'app/franchise/[key]/page.tsx',
+  ];
+  for (const path of routes) {
+    const source = read(path);
+    assert.ok(source.includes(WEEK), `${path} must use weekly ISR`);
+    assert.doesNotMatch(source, /force-dynamic|\\bauth\\(/, `${path} must not be session-rendered`);
+  }
+  for (const path of routes.filter(p => p.includes('[edition]') ||
+      p.includes('standings/season') || p.includes('rankings/season') ||
+      p.includes('history/range'))) {
+    assert.match(read(path), /generateStaticParams\\(\\).*return \\[\\]/s, `${path} must skip build-time DB queries`);
   }
 });
 
-test('legacy query filters redirect to ISR paths and navigation uses those paths', () => {
-  assert.match(read('app/standings/page.tsx'), /searchParams/);
-  assert.match(read('app/standings/page.tsx'), /standings\/season/);
-  assert.match(read('app/history/page.tsx'), /history\/range/);
-  assert.match(read('app/history/range/[years]/page.tsx'), /action="\/history"/);
-  assert.match(read('components/SeasonPicker.tsx'), /pathStyle === 'segment'/);
-  const nav = read('components/Nav.tsx');
-  assert.match(nav, /\/standings\/season\/current/);
-  assert.match(nav, /\/history\/range\/all/);
+test('public query caches use weekly TTL rather than minute-level invalidation', () => {
+  const paths = [
+    'lib/cached-queries.ts', 'lib/history-cache.ts',
+    'lib/history-overview-cache.ts', 'lib/regular-season-history.ts',
+    'lib/trade-production-queries.ts', 'lib/draft-slot-records.ts',
+    'lib/draft-records.ts', 'lib/weekly-recaps.ts',
+  ];
+  for (const path of paths) {
+    const source = read(path);
+    assert.doesNotMatch(source, /revalidate:\\s*(120|300|3600|86400)\\b/, path);
+  }
+  const home = read('app/scoreboard/[edition]/page.tsx');
+  assert.match(home, /revalidate: 604800/);
+  assert.match(home, /getPublicHomeData = unstable_cache/);
+  assert.doesNotMatch(home, /getComments|getLockedWeekPicks|\\bauth\\(/);
+  assert.match(home, /HomeMemberPanel/);
 });
 
-test('power rankings serve on-demand cached season reports and keep old links working', () => {
-  const ranking = read('app/rankings/season/[year]/page.tsx');
-  assert.match(ranking, /export const revalidate = 3600;/);
-  assert.match(ranking, /generateStaticParams\(\).*return \[\]/s);
-  assert.doesNotMatch(ranking, /force-dynamic|searchParams|\bauth\(/);
-  assert.match(ranking, /pathStyle="segment"/);
-  const legacy = read('app/rankings/page.tsx');
-  assert.match(legacy, /searchParams/);
-  assert.match(legacy, /rankings\/season/);
-  assert.doesNotMatch(legacy, /getCachedPowerRankings|\bauth\(/);
+test('legacy URLs still reach the weekly cached pages', () => {
+  assert.match(read('app/page.tsx'), /scoreboard\\/current/);
+  assert.match(read('app/standings/page.tsx'), /standings\\/season/);
+  assert.match(read('app/rankings/page.tsx'), /rankings\\/season/);
+  assert.match(read('app/history/page.tsx'), /history\\/range/);
+  assert.match(read('app/history/range/[years]/page.tsx'), /action="\\/history"/);
+  assert.match(read('components/Nav.tsx'), /path.startsWith\\('\\/scoreboard\\/'\\)/);
+  assert.match(read('components/Nav.tsx'), /\\/standings\\/season\\/current/);
+  for (const path of [
+    'app/history/records/page.tsx',
+    'app/history/drafts/page.tsx',
+    'app/history/vault/page.tsx',
+    'app/players/records/page.tsx',
+  ]) {
+    assert.match(read(path), /redirect\\('\\/.*\\/weekly'\\)/);
+  }
 });
 
-test('shared home caches only public data; personalized comments and picks remain live', () => {
-  const home = read('app/page.tsx');
-  assert.match(home, /const getPublicHomeData = unstable_cache/);
-  assert.match(home, /revalidate: 120/);
-  const publicSection = home.split('const getPublicHomeData = unstable_cache(')[1].split('const getCachedWeekMatchups')[0];
-  assert.doesNotMatch(publicSection, /getComments|getLockedWeekPicks|\bauth\(/);
-  assert.match(home, /userId \? getComments\(season, week\)/);
-  assert.match(home, /userId && locked/);
+test('member-only comments and locked picks cannot leak into weekly HTML', () => {
+  const home = read('app/scoreboard/[edition]/page.tsx');
+  assert.doesNotMatch(home, /getComments|getLockedWeekPicks|\\bauth\\(/);
+  assert.match(home, /kind="comments"/);
+  assert.match(home, /kind="picks"/);
+  const memberRoute = read('app/api/home-member/route.ts');
+  assert.match(memberRoute, /const \\{ userId \\} = await auth\\(\\)/);
+  assert.match(memberRoute, /if \\(!userId\\) return Response.json/);
+  assert.match(memberRoute, /getLockedWeekPicks/);
+  assert.match(memberRoute, /getComments/);
+  assert.match(memberRoute, /Cache-Control': 'private, no-store'/);
+  const client = read('components/HomeMemberPanel.tsx');
+  assert.match(client, /useUser\\(\\)/);
+  assert.match(client, /if \\(!isLoaded \\|\\| !isSignedIn/);
+  assert.match(client, /cache: 'no-store'/);
+  assert.match(read('app/predictions/page.tsx'), /force-dynamic/);
 });
 
-test('private Grudge league excludes crawlers via a static robots route', () => {
-  const robots = read('app/robots.ts');
-  assert.match(robots, /userAgent: '\*', disallow: '\/'/);
+test('the private Grudge league discourages search indexing', () => {
+  assert.match(read('app/robots.ts'), /userAgent: '\\*', disallow: '\\/'/);
 });
