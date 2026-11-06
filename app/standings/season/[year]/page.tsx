@@ -9,9 +9,9 @@ import { SeasonPicker } from '../../../../components/SeasonPicker.tsx';
 import { RecapArchive } from '../../../../components/RecapArchive.tsx';
 import { franchiseHref, seasonHref } from '../../../../lib/history-format.ts';
 
-// Materialize public reports only on the first visit and then once per day.
+// Materialize public reports only on the first visit and then once per week.
 // Never prebuild them: production database access belongs to the runtime.
-export const revalidate = 86400;
+export const revalidate = 604800;
 export function generateStaticParams(): Array<{ year: string }> { return []; }
 
 const PLAYOFF_FIELD = 6;
