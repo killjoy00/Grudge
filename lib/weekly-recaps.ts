@@ -28,5 +28,5 @@ async function recapWeeks(season: number) {
 export const getRecapWeeks = unstable_cache(
   recapWeeks,
   ['weekly-recap-weeks-2026.2'],
-  { revalidate: 3600 }
+  { revalidate: 604800 }
 );
