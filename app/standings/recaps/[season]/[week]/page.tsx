@@ -1,16 +1,16 @@
-import { auth } from '@clerk/nextjs/server';
 import { notFound } from 'next/navigation';
 
 import {
-  getWeekResults, getWeekAwards, getBenchWatch, getComments, getStandings,
+  getWeekResults, getWeekAwards, getBenchWatch, getStandings,
 } from '../../../../../lib/queries.ts';
 import { getHistoricalRecapExtras } from '../../../../../lib/historical-recap-queries.ts';
-import { Comments } from '../../../../../components/Comments.tsx';
 import { EspnMatchupLink, EspnTeamLink } from '../../../../../components/EspnLink.tsx';
 import { franchiseHref, managerHref } from '../../../../../lib/history-format.ts';
 import { getSeasonFranchiseMap } from '../../../../../lib/season-identity-queries.ts';
 
-export const dynamic = 'force-dynamic';
+// Settled, public recap. No session-specific comments.
+export const revalidate = 604800;
+export function generateStaticParams(): Array<{ season: string; week: string }> { return []; }
 
 export default async function WeeklyRecapPage({
   params,
@@ -26,12 +26,10 @@ export default async function WeeklyRecapPage({
   }
 
   const historical = season < 2018;
-  const { userId } = await auth();
-  const [games, awards, bench, comments, table, seasonIdentities, historicalExtras] = await Promise.all([
+  const [games, awards, bench, table, seasonIdentities, historicalExtras] = await Promise.all([
     getWeekResults(season, week),
     getWeekAwards(season, week),
     getBenchWatch(season, week),
-    userId ? getComments(season, week) : Promise.resolve([]),
     getStandings(season, week),
     getSeasonFranchiseMap(season),
     historical ? getHistoricalRecapExtras(season, week) : Promise.resolve(null),
@@ -238,7 +236,6 @@ export default async function WeeklyRecapPage({
         </>
       )}
 
-      <Comments season={season} week={week} comments={comments} me={userId ?? null} />
     </>
   );
 }
