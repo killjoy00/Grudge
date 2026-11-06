@@ -38,7 +38,7 @@ async function latestPlayedWeek(season: number) {
  * Share the expensive public league queries across requests. These values are
  * published by the ESPN/GitHub pipeline rather than modified by site visitors.
  * Locks still use Date.now() below and are enforced by the database on writes.
- * Never put session-scoped picks or member comments into this shared cache.
+ * Never put session-scoped picks into this shared cache.
  */
 const getPublicHomeData = unstable_cache(
   async () => {
@@ -187,7 +187,7 @@ export default async function Home({ params }: { params: Promise<{ edition: stri
           </div>
         </div>
 
-        <HomeMemberPanel kind="picks" season={currentSeason} week={activeWeek.week}
+        <HomeMemberPanel season={currentSeason} week={activeWeek.week}
           matchups={games} lockAt={lockAt} />
 
         <LeagueWire events={wire} />
@@ -437,7 +437,6 @@ export default async function Home({ params }: { params: Promise<{ edition: stri
       </div>
 
       <LeagueWire events={wire} />
-      <HomeMemberPanel kind="comments" season={season} week={week} />
     </>
   );
 }
