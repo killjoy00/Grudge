@@ -53,27 +53,83 @@ export function observedPlayerWeeks(
   }).sort((a, b) => a.season - b.season || a.week - b.week || a.player_key.localeCompare(b.player_key));
 }
 
-/** A fresh exact score can correct an old exact score. Estimates cannot replace it. */
+/**
+ * A fresh exact score can correct an old exact score. Estimates cannot replace it.
+ *
+ * The week also has a second unique key, (season, week, espn_player_id).
+ * Live ESPN evidence may use a provisional espn:* key while the player
+ * directory has already resolved the same provider id to a GSIS identity.
+ * Resolving ONLY the player-key conflict left that second constraint exposed
+ * on reruns. Resolve the identity from the season-scoped alias first, then
+ * from the already-published provider row, before attempting the upsert.
+ */
 export function scoreStatements(rows: PlayerWeekScore[]): Stmt[] {
   const out: Stmt[] = [];
-  for (let i = 0; i < rows.length; i += 1000) out.push(stmt(`
-    insert into public.player_week_scores
-      (season, week, player_key, espn_player_id, position_id, points, evidence, source, scoring_version, input_hash)
-    select season, week, player_key, espn_player_id, position_id, points, evidence, source, scoring_version, input_hash
-      from jsonb_to_recordset($1::jsonb) as x(season int, week int, player_key text,
-        espn_player_id bigint, position_id int, points numeric, evidence text, source text,
-        scoring_version text, input_hash text)
-    on conflict (season, week, player_key) do update set
-      espn_player_id = coalesce(excluded.espn_player_id, player_week_scores.espn_player_id),
-      position_id = coalesce(excluded.position_id, player_week_scores.position_id),
-      points = excluded.points, evidence = excluded.evidence, source = excluded.source,
-      scoring_version = excluded.scoring_version, input_hash = excluded.input_hash, updated_at = now()
-    where (excluded.source = 'espn_weekly' or player_week_scores.source <> 'espn_weekly')
-      and (excluded.evidence <> 'missing' or player_week_scores.evidence = 'missing')
-      and (excluded.evidence in ('observed', 'conflict') or player_week_scores.evidence <> 'observed')
-      and (player_week_scores.input_hash, player_week_scores.evidence, player_week_scores.points)
-        is distinct from (excluded.input_hash, excluded.evidence, excluded.points)
-  `, [JSON.stringify(rows.slice(i, i + 1000))]));
+  for (let i = 0; i < rows.length; i += 1000) {
+    const chunk = rows.slice(i, i + 1000);
+    const payload = JSON.stringify(chunk);
+    const observed = chunk.some((row) => row.source === 'espn_weekly' && row.espn_player_id !== null);
+
+    if (observed) {
+      // Only a literal ESPN placeholder may be rekeyed automatically, and
+      // only when a reviewed, season-scoped alias exists. If the canonical
+      // slot is occupied or a real GSIS identity disagrees, leave it untouched:
+      // the following INSERT must fail rather than merge two players.
+      out.push(stmt(`
+        with incoming as (
+          select x.season, x.week, x.espn_player_id, a.player_key
+            from jsonb_to_recordset($1::jsonb)
+              as x(season int, week int, espn_player_id bigint, source text)
+            join public.nfl_player_aliases a
+              on a.season = x.season and a.espn_player_id = x.espn_player_id
+           where x.source = 'espn_weekly'
+        )
+        update public.player_week_scores as saved
+           set player_key = incoming.player_key, updated_at = now()
+          from incoming
+         where saved.season = incoming.season
+           and saved.week = incoming.week
+           and saved.espn_player_id = incoming.espn_player_id
+           and saved.source = 'espn_weekly'
+           and saved.player_key = 'espn:' || saved.espn_player_id::text
+           and saved.player_key <> incoming.player_key
+           and not exists (
+             select 1 from public.player_week_scores as occupied
+              where occupied.season = incoming.season
+                and occupied.week = incoming.week
+                and occupied.player_key = incoming.player_key
+           )
+      `, [payload]));
+    }
+
+    out.push(stmt(`
+      insert into public.player_week_scores
+        (season, week, player_key, espn_player_id, position_id, points, evidence, source, scoring_version, input_hash)
+      select x.season, x.week,
+        ${observed ? `case when x.source = 'espn_weekly' and x.espn_player_id is not null
+          then coalesce(alias.player_key, prior.player_key, x.player_key)
+          else x.player_key end` : 'x.player_key'},
+        x.espn_player_id, x.position_id, x.points, x.evidence, x.source, x.scoring_version, x.input_hash
+        from jsonb_to_recordset($1::jsonb) as x(season int, week int, player_key text,
+          espn_player_id bigint, position_id int, points numeric, evidence text, source text,
+          scoring_version text, input_hash text)
+        ${observed ? `left join public.nfl_player_aliases alias
+          on alias.season = x.season and alias.espn_player_id = x.espn_player_id
+         left join public.player_week_scores prior
+          on prior.season = x.season and prior.week = x.week and prior.espn_player_id = x.espn_player_id` : ''}
+       where true
+      on conflict (season, week, player_key) do update set
+        espn_player_id = coalesce(excluded.espn_player_id, player_week_scores.espn_player_id),
+        position_id = coalesce(excluded.position_id, player_week_scores.position_id),
+        points = excluded.points, evidence = excluded.evidence, source = excluded.source,
+        scoring_version = excluded.scoring_version, input_hash = excluded.input_hash, updated_at = now()
+      where (excluded.source = 'espn_weekly' or player_week_scores.source <> 'espn_weekly')
+        and (excluded.evidence <> 'missing' or player_week_scores.evidence = 'missing')
+        and (excluded.evidence in ('observed', 'conflict') or player_week_scores.evidence <> 'observed')
+        and (player_week_scores.input_hash, player_week_scores.evidence, player_week_scores.points)
+          is distinct from (excluded.input_hash, excluded.evidence, excluded.points)
+    `, [payload]));
+  }
   return out;
 }
 
