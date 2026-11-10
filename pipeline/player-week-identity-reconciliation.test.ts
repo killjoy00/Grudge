@@ -4,7 +4,8 @@ import { modelDatabase, execute } from '../tests/models/database.ts';
 import { scoreStatements, type PlayerWeekScore } from './player-week.ts';
 
 const fallback = 'espn:4686658';
-const canonical = 'gsis:00-0099111';
+const canonical = 'gsis:00-0040878';
+const staleSynthetic = 'gsis:WAS569019';
 
 function observed(points: number, input_hash = String(points)): PlayerWeekScore {
   return {
@@ -112,5 +113,57 @@ test('an occupied canonical slot is a genuine identity conflict and rolls back',
     assert.equal(rows.length, 2, 'must not silently merge or lose historical evidence');
     assert.equal(rows.find(r => r.player_key === fallback)?.input_hash, 'old');
     assert.equal(rows.find(r => r.player_key === canonical)?.input_hash, 'historical');
+  } finally { await db.close(); }
+});
+
+
+test('2026 week 5: the authoritative alias safely replaces an earlier synthetic GSIS score key', async () => {
+  const db = await modelDatabase();
+  try {
+    await seedPlayers(db);
+    await db.query(`
+      insert into nfl_players(player_key,full_name,position,bio)
+      values($1,'Earlier ESPN synthetic identity','WR','{}')
+    `, [staleSynthetic]);
+    await addAlias(db);
+    await db.query(`
+      insert into player_week_scores(season,week,player_key,espn_player_id,
+        position_id,points,evidence,source,scoring_version,input_hash)
+      values(2026,5,$1,4686658,3,8,'observed','espn_weekly','old','old')
+    `, [staleSynthetic]);
+    const changed = { ...observed(12), player_key: staleSynthetic };
+    await execute(db, scoreStatements([changed]));
+    await execute(db, scoreStatements([changed]));
+    const rows = await savedScores(db);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.player_key, canonical);
+    assert.equal(Number(rows[0]?.points), 12);
+    assert.equal(rows[0]?.input_hash, '12');
+  } finally { await db.close(); }
+});
+
+test('a prior GSIS identity assigned to another ESPN player cannot be silently rekeyed', async () => {
+  const db = await modelDatabase();
+  try {
+    await seedPlayers(db);
+    await db.query(`
+      insert into nfl_players(player_key,full_name,position,bio)
+      values($1,'Another provider identity','WR','{}')
+    `, [staleSynthetic]);
+    await addAlias(db);
+    await db.query(`
+      insert into nfl_player_aliases(season,espn_player_id,player_key,match_method)
+      values(2026,9999999,$1,'reviewed')
+    `, [staleSynthetic]);
+    await db.query(`
+      insert into player_week_scores(season,week,player_key,espn_player_id,
+        position_id,points,evidence,source,scoring_version,input_hash)
+      values(2026,5,$1,4686658,3,8,'observed','espn_weekly','old','old')
+    `, [staleSynthetic]);
+    await assert.rejects(execute(db, scoreStatements([{ ...observed(12), player_key: staleSynthetic }])));
+    const rows = await savedScores(db);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.player_key, staleSynthetic);
+    assert.equal(rows[0]?.input_hash, 'old');
   } finally { await db.close(); }
 });

@@ -71,10 +71,10 @@ export function scoreStatements(rows: PlayerWeekScore[]): Stmt[] {
     const observed = chunk.some((row) => row.source === 'espn_weekly' && row.espn_player_id !== null);
 
     if (observed) {
-      // Only a literal ESPN placeholder may be rekeyed automatically, and
-      // only when a reviewed, season-scoped alias exists. If the canonical
-      // slot is occupied or a real GSIS identity disagrees, leave it untouched:
-      // the following INSERT must fail rather than merge two players.
+      // The season-scoped alias is authoritative even when an earlier weekly
+      // import used a synthetic GSIS key (e.g. WAS569019). Rekey only when the
+      // destination is vacant and no other ESPN player owns the old identity.
+      // Genuine dual-ownership conflicts must still fail and roll back.
       out.push(stmt(`
         with incoming as (
           select x.season, x.week, x.espn_player_id, a.player_key
@@ -91,8 +91,13 @@ export function scoreStatements(rows: PlayerWeekScore[]): Stmt[] {
            and saved.week = incoming.week
            and saved.espn_player_id = incoming.espn_player_id
            and saved.source = 'espn_weekly'
-           and saved.player_key = 'espn:' || saved.espn_player_id::text
            and saved.player_key <> incoming.player_key
+           and not exists (
+             select 1 from public.nfl_player_aliases as other_alias
+              where other_alias.season = saved.season
+                and other_alias.player_key = saved.player_key
+                and other_alias.espn_player_id <> saved.espn_player_id
+           )
            and not exists (
              select 1 from public.player_week_scores as occupied
               where occupied.season = incoming.season
