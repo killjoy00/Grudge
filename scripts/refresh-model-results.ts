@@ -110,13 +110,47 @@ if (!dryRun) {
     }
     const positions = new Map([...profiles.values()].filter((p) => p.default_position_id !== null)
       .map((p) => [p.espn_player_id, p.default_position_id!]));
-    await runTransaction(sql, [
-      ...tradeWriteStatements(year, detectTrades(year, entries, league.transactions ?? [])),
-      ...scoreStatements(observedPlayerWeeks(entries, positions, digest(league.settings))),
-      ...upsertChunked('public.player_season_profiles', ['season', 'espn_player_id', 'full_name', 'position_id', 'eligible_slots'],
-        [...profiles.values()].map((p) => ({ season: year, espn_player_id: p.espn_player_id, full_name: p.full_name,
-          position_id: p.default_position_id, eligible_slots: p.eligible_slots })), ['season', 'espn_player_id']),
-    ]);
+    const weeklyScores = observedPlayerWeeks(entries, positions, digest(league.settings));
+    try {
+      await runTransaction(sql, [
+        ...tradeWriteStatements(year, detectTrades(year, entries, league.transactions ?? [])),
+        ...scoreStatements(weeklyScores),
+        ...upsertChunked('public.player_season_profiles', ['season', 'espn_player_id', 'full_name', 'position_id', 'eligible_slots'],
+          [...profiles.values()].map((p) => ({ season: year, espn_player_id: p.espn_player_id, full_name: p.full_name,
+            position_id: p.default_position_id, eligible_slots: p.eligible_slots })), ['season', 'espn_player_id']),
+      ]);
+    } catch (error) {
+      // A canonical-key collision cannot be repaired from a unique-index error
+      // alone. Report only the PUBLIC NFL score/alias identities associated
+      // with the actual failed player-week; never log member, owner or contact
+      // records. The writer transaction has already rolled back at this point.
+      const failure = error as { constraint?: string; detail?: string };
+      const key = failure.detail?.match(/Key \(season, week, espn_player_id\)=\((\d+), (\d+), (-?\d+)\)/);
+      if (failure.constraint === 'player_week_scores_season_week_espn_player_id_key' && key && Number(key[1]) === year) {
+        const [season, week, espn] = key.slice(1).map(Number);
+        const input = weeklyScores.filter((row) => row.season === season && row.week === week && row.espn_player_id === espn);
+        const keys = input.map((row) => row.player_key);
+        const [stored, aliases] = await Promise.all([
+          query<{ player_key: string; espn_player_id: number | null; source: string; evidence: string }>(
+            `select player_key, espn_player_id, source, evidence
+              from public.player_week_scores
+             where season = $1 and week = $2
+               and (espn_player_id = $3::bigint or player_key = any($4::text[]))`,
+            [season, week, espn, keys]),
+          query<{ espn_player_id: number; player_key: string; match_method: string }>(
+            `select espn_player_id, player_key, match_method
+              from public.nfl_player_aliases
+             where season = $1 and (espn_player_id = $2::bigint or player_key = any($3::text[]))`,
+            [season, espn, keys]),
+        ]);
+        console.error('Scoring identity collision diagnostic:', JSON.stringify({
+          season, week, espn_player_id: espn,
+          input: input.map(({ player_key, source, evidence }) => ({ player_key, source, evidence })),
+          stored, aliases,
+        }));
+      }
+      throw error;
+    }
   }
   // Historical players missing from the final roster still need a display identity.
   const players = [...new Map(bases.flatMap((s) => s.picks).map((p) => [p.espn_player_id, {
