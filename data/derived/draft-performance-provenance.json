@@ -2,7 +2,7 @@
   "sources": [
     {
       "url": "https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv",
-      "sha256": "a02b7dc2364a8b8de2bd3c91147b1dce46033f627a382161c409b29c5e7defd2"
+      "sha256": "b84b8310514124d05c61e423016a0e23cd600908139662b04c64ab735188c194"
     },
     {
       "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2005.csv",
